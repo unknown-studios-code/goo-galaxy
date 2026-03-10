@@ -1,0 +1,16 @@
+{
+  "name": "GooGalaxy.Editor.Shared",
+  "rootNamespace": "GooGalaxy.Editor.Shared",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

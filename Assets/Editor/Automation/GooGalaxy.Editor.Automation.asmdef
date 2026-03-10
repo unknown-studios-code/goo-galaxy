@@ -1,0 +1,16 @@
+{
+  "name": "GooGalaxy.Editor.Automation",
+  "rootNamespace": "GooGalaxy.Editor.Automation",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

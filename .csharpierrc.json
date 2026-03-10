@@ -1,0 +1,7 @@
+{
+  "indentSize": 4,
+  "printWidth": 160,
+  "endOfLine": "lf",
+  "filesToExclude": ["*.slnx", "*.csproj", "*.asmdef", "*.asmref"],
+  "useTabs": false
+}

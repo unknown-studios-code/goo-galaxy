@@ -1,0 +1,41 @@
+{
+  "inputs": [
+    {
+      "description": "Your Tavily API key from tavily.com",
+      "id": "TAVILY_API_KEY",
+      "type": "promptString",
+      "password": true
+    },
+    {
+      "description": "JSON string with default search parameters (e.g., {\"include_images\": true, \"max_results\": 15})",
+      "id": "DEFAULT_PARAMETERS",
+      "type": "promptString",
+      "password": false
+    }
+  ],
+  "servers": {
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp"
+    },
+    "io.github.tavily-ai/tavily-mcp": {
+      "command": "npx",
+      "gallery": "https://api.mcp.github.com",
+      "type": "stdio",
+      "version": "0.2.15",
+      "args": ["tavily-mcp@0.2.15"],
+      "env": {
+        "DEFAULT_PARAMETERS": "${input:DEFAULT_PARAMETERS}",
+        "TAVILY_API_KEY": "${input:TAVILY_API_KEY}"
+      }
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "unity-mcp": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/mcp"
+    }
+  }
+}

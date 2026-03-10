@@ -1,0 +1,16 @@
+{
+  "name": "GooGalaxy.Editor.Inspectors",
+  "rootNamespace": "GooGalaxy.Editor.Inspectors",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

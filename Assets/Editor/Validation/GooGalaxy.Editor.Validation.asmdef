@@ -1,0 +1,16 @@
+{
+  "name": "GooGalaxy.Editor.Validation",
+  "rootNamespace": "GooGalaxy.Editor.Validation",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

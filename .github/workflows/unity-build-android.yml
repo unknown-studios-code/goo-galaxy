@@ -1,0 +1,74 @@
+name: Unity Build (Android)
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android:
+    name: Build Android Player
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Create LFS file list
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        uses: actions/cache@v5
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
+
+      - name: Pull LFS assets
+        run: git lfs pull
+
+      - name: Restore Library cache
+        uses: actions/cache@v5
+        with:
+          path: Library
+          key: Library-Android-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Android-${{ runner.os }}-
+            Library-
+
+      - name: Build Android player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          unityVersion: 6000.3.11f1
+          containerRegistryImageVersion: 3.2.1
+          androidExportType: androidAppBundle
+          versioning: None
+
+      - name: Upload Android build
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Android-Build
+          path: build/Android
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Android-Build-Logs
+          path: |
+            Library/Bee/artifacts/**/*.log
+            Logs/**

@@ -1,0 +1,14 @@
+{
+  "name": "GooGalaxy.Runtime.Progression",
+  "rootNamespace": "GooGalaxy.Runtime.Progression",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

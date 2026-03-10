@@ -1,0 +1,14 @@
+{
+  "name": "GooGalaxy.Runtime.Networking",
+  "rootNamespace": "GooGalaxy.Runtime.Networking",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

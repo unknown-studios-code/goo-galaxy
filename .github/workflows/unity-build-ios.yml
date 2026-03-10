@@ -1,0 +1,72 @@
+name: Unity Build (iOS)
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Build iOS Player
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Create LFS file list
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        uses: actions/cache@v5
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
+
+      - name: Pull LFS assets
+        run: git lfs pull
+
+      - name: Restore Library cache
+        uses: actions/cache@v5
+        with:
+          path: Library
+          key: Library-iOS-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-iOS-${{ runner.os }}-
+            Library-
+
+      - name: Build iOS player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: iOS
+          unityVersion: 6000.3.11f1
+          versioning: None
+
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: iOS-Build
+          path: build/iOS
+
+      - name: Upload build logs
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: iOS-Build-Logs
+          path: |
+            Library/Bee/artifacts/**/*.log
+            Logs/**

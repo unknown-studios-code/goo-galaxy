@@ -1,0 +1,14 @@
+{
+  "name": "GooGalaxy.Runtime.Match",
+  "rootNamespace": "GooGalaxy.Runtime.Match",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

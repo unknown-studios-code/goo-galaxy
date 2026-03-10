@@ -1,0 +1,61 @@
+# This workflow validates Pull Request titles to ensure they follow Conventional Commits specification.
+# It requires a specific format: type(scope): subject, where:
+# - type: feat, fix, docs, style, refactor, perf, test, chore, ci, build, or revert
+# - scope: required, describes the area of change
+# - subject: must start with lowercase letter, max 72 characters
+# Example: feat(networking): add relay session bootstrap
+# Validation can be bypassed using the "skip-title-check" label.
+
+name: PR Check
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate-pr-title:
+    name: PR Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR Title
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            chore
+            ci
+            build
+            revert
+          requireScope: true
+          subjectPattern: ^(?=.{1,72}$)[a-z](?:.*[^.])?$
+          subjectPatternError: |
+            ❌ PR title format validation failed!
+
+            The subject "{subject}" found in PR title "{title}" didn't match the pattern.
+
+            Requirements:
+            - Format: type(scope): subject
+            - Subject must start with a lowercase letter
+            - No period at the end
+            - Max 72 characters
+
+            Example: feat(networking): add relay session bootstrap
+
+            Please update your PR title to match the Conventional Commits specification.
+          validateSingleCommit: false
+          ignoreLabels: |
+            skip-title-check

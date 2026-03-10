@@ -1,0 +1,52 @@
+{
+  "author": "Unknown Studios",
+  "description": "A real-time PvP mobile strategy game combining Ataxx/Hexxagon-style hexagonal territorial domination with asymmetrical deck-building and troop deployment, set in a sci-fi universe of sentient alien slimes.",
+  "homepage": "https://github.com/unknown-studios-code/goo-galaxy#readme",
+  "main": ".vscode/launch.json",
+  "name": "goo-galaxy",
+  "version": "0.0.1",
+  "bugs": {
+    "url": "https://github.com/unknown-studios-code/goo-galaxy/issues"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "devDependencies": {
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.1"
+  },
+  "keywords": [
+    "mobile",
+    "strategy",
+    "pvp",
+    "ataxx",
+    "unity",
+    "multiplayer"
+  ],
+  "overrides": {
+    "ajv": "8.18.0",
+    "js-yaml": "4.1.1",
+    "lodash": "4.17.23",
+    "minimatch": "3.1.5",
+    "tmp": "0.2.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/unknown-studios-code/goo-galaxy.git"
+  },
+  "scripts": {
+    "check": "npm run check:csharpier && npm run check:dotnet && npm run check:prettier",
+    "check:csharpier": "dotnet csharpier check Assets/Scripts --ignore-path .formatterignore",
+    "check:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" --verify-no-changes --severity info",
+    "check:prettier": "prettier --check \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
+    "format": "npm run format:csharpier && npm run format:dotnet && npm run format:prettier",
+    "format:csharpier": "dotnet csharpier format Assets/Scripts --ignore-path .formatterignore",
+    "format:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\"",
+    "format:prettier": "prettier --write \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
+    "prepare": "husky && dotnet tool restore"
+  }
+}

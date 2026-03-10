@@ -1,0 +1,56 @@
+{
+  "enforcement": "active",
+  "name": "Sensitive Files Protection",
+  "target": "push",
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    }
+  ],
+  "conditions": {},
+  "rules": [
+    {
+      "type": "file_path_restriction",
+      "parameters": {
+        "restricted_file_paths": [
+          "*.key",
+          "*.pem",
+          "*.env",
+          ".env*",
+          "**/*.p12",
+          "**/*.pfx",
+          "**/*.keystore",
+          "**/*.jks",
+          "**/*.mobileprovision",
+          "**/*.cer",
+          "**/*.p8",
+          "**/id_rsa",
+          "**/id_dsa",
+          "**/.ssh/*",
+          "**/credentials.json",
+          "**/secrets.json"
+        ]
+      }
+    },
+    {
+      "type": "file_extension_restriction",
+      "parameters": {
+        "restricted_file_extensions": [".key", ".pem", ".p12", ".pfx", ".keystore", ".jks", ".mobileprovision", ".cer", ".p8"]
+      }
+    },
+    {
+      "type": "max_file_size",
+      "parameters": {
+        "max_file_size": 104857600
+      }
+    },
+    {
+      "type": "max_file_path_length",
+      "parameters": {
+        "max_file_path_length": 255
+      }
+    }
+  ]
+}
