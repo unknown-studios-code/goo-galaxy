@@ -5,7 +5,12 @@
   "excludePlatforms": [],
   "includePlatforms": [],
   "precompiledReferences": [],
-  "references": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Match",
+    "GooGalaxy.Runtime.Networking",
+    "GooGalaxy.Runtime.Progression"
+  ],
   "versionDefines": [],
   "allowUnsafeCode": false,
   "autoReferenced": true,

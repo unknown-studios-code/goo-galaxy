@@ -42,7 +42,7 @@ Because of that, the ruleset set is intentionally small. The copied `master`, `d
   - block force-push
   - require linear history
   - block deletion
-  - block direct updates
+  - allow pull request merges to update `main`
 
 ### Sensitive Files Protection
 

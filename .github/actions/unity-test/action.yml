@@ -1,0 +1,98 @@
+name: Unity Test
+description: Restore Unity Library cache, run Unity tests, and upload test artifacts.
+
+inputs:
+  unity-version:
+    description: Unity editor version to use.
+    required: true
+  test-mode:
+    description: Unity test mode to run.
+    required: true
+  library-cache-key:
+    description: Cache key for the Unity Library directory.
+    required: true
+  library-cache-restore-keys:
+    description: Restore keys for the Unity Library cache.
+    required: true
+  unity-license:
+    description: Unity license content.
+    required: true
+  unity-email:
+    description: Unity account email.
+    required: true
+  unity-password:
+    description: Unity account password.
+    required: true
+  github-token:
+    description: GitHub token used to publish the Unity test check.
+    required: true
+  check-name:
+    description: Name for the Unity test results check.
+    required: true
+  coverage-options:
+    description: Coverage configuration for the Unity test runner.
+    required: true
+  test-results-artifact-name:
+    description: Artifact name for Unity test results.
+    required: true
+  coverage-artifact-name:
+    description: Artifact name for Unity coverage results.
+    required: true
+  artifact-retention-days:
+    description: Artifact retention period in days.
+    required: false
+    default: "7"
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Library cache
+      uses: actions/cache@v5
+      with:
+        path: Library
+        key: ${{ inputs.library-cache-key }}
+        restore-keys: ${{ inputs.library-cache-restore-keys }}
+
+    - name: Run Unity tests
+      id: tests
+      uses: game-ci/unity-test-runner@v4
+      env:
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      with:
+        testMode: ${{ inputs.test-mode }}
+        unityVersion: ${{ inputs.unity-version }}
+        githubToken: ${{ inputs.github-token }}
+        checkName: ${{ inputs.check-name }}
+        coverageOptions: ${{ inputs.coverage-options }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: ${{ inputs.test-results-artifact-name }}
+        path: ${{ steps.tests.outputs.artifactsPath }}
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: ${{ inputs.coverage-artifact-name }}
+        path: ${{ steps.tests.outputs.coveragePath }}
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Print success summary
+      if: success()
+      shell: bash
+      run: |
+        echo "Unity ${{ inputs.test-mode }} tests passed."
+        echo "Test results and coverage artifacts were uploaded."
+
+    - name: Print failure summary
+      if: failure()
+      shell: bash
+      run: |
+        echo "Unity ${{ inputs.test-mode }} tests failed."
+        echo "Review the uploaded test results artifact for details."

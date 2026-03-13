@@ -1,2 +1,12 @@
 ﻿<Solution>
+  <Project Path="GooGalaxy.Runtime.Tests.EditMode.csproj" />
+  <Project Path="GooGalaxy.Runtime.Networking.csproj" />
+  <Project Path="GooGalaxy.Runtime.Cards.csproj" />
+  <Project Path="GooGalaxy.Runtime.Bootstrap.csproj" />
+  <Project Path="GooGalaxy.Runtime.Input.csproj" />
+  <Project Path="GooGalaxy.Runtime.Match.csproj" />
+  <Project Path="GooGalaxy.Runtime.Shared.csproj" />
+  <Project Path="GooGalaxy.Runtime.HUD.csproj" />
+  <Project Path="GooGalaxy.Runtime.Progression.csproj" />
+  <Project Path="GooGalaxy.Runtime.Board.csproj" />
 </Solution>

@@ -16,15 +16,37 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+
+env:
+  NODE_VERSION: ${{ vars.NODE_VERSION }}
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   format-check:
     name: Format Check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
+      - name: Validate required CI variables
+        env:
+          NODE_VERSION: ${{ env.NODE_VERSION }}
+        shell: bash
+        run: |
+          if [[ -z "$NODE_VERSION" ]]; then
+            echo "Missing required GitHub Actions variable: NODE_VERSION" >&2
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -33,7 +55,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install npm dependencies

@@ -9,23 +9,58 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
-  contents: read
   checks: write
+  contents: read
+
+env:
+  UNITY_VERSION: ${{ vars.UNITY_VERSION }}
+  UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
+  UNITY_COVERAGE_OPTIONS: ${{ vars.UNITY_COVERAGE_OPTIONS }}
+  CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
+  ARTIFACT_RETENTION_DAYS: ${{ vars.ARTIFACT_RETENTION_DAYS }}
 
 jobs:
   unity-tests-editmode:
     name: Unity Edit Mode Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
+      - name: Validate required CI variables
+        env:
+          UNITY_VERSION: ${{ env.UNITY_VERSION }}
+          UNITY_CACHE_VERSION: ${{ env.UNITY_CACHE_VERSION }}
+          UNITY_COVERAGE_OPTIONS: ${{ env.UNITY_COVERAGE_OPTIONS }}
+          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
+          ARTIFACT_RETENTION_DAYS: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        shell: bash
+        run: |
+          missing=0
+
+          for variable_name in UNITY_VERSION UNITY_CACHE_VERSION UNITY_COVERAGE_OPTIONS CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS; do
+            if [[ -z "${!variable_name}" ]]; then
+              echo "Missing required GitHub Actions variable: $variable_name" >&2
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
           lfs: true
 
       - name: Create LFS file list
+        shell: bash
         run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
       - name: Restore LFS cache
@@ -33,60 +68,31 @@ jobs:
         with:
           path: .git/lfs
           key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
 
-      - name: Git LFS Pull
+      - name: Pull LFS assets
+        shell: bash
         run: git lfs pull
 
-      - name: Restore Library cache
-        uses: actions/cache@v5
+      - name: Run Edit Mode tests
+        uses: ./.github/actions/unity-test
         with:
-          path: Library
-          key: Library-Tests-EditMode-${{ hashFiles('Assets/**', 'Packages/**') }}
-          restore-keys: |
+          unity-version: ${{ env.UNITY_VERSION }}
+          test-mode: editmode
+          library-cache-key: Library-Tests-EditMode-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          library-cache-restore-keys: |
+            Library-Tests-EditMode-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-
+            Library-Tests-EditMode-${{ runner.os }}-${{ env.UNITY_VERSION }}-
+            Library-Tests-EditMode-${{ runner.os }}-
             Library-Tests-EditMode-
             Library-
-
-      - name: Run Edit Mode Tests
-        uses: game-ci/unity-test-runner@v4
-        id: tests
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          testMode: editmode
-          unityVersion: 6000.3.11f1
-          containerRegistryImageVersion: 3.2.1
-          checkName: Edit Mode Test Results
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          coverageOptions: "generateAdditionalMetrics;generateHtmlReport;generateBadgeReport;assemblyFilters:+GooGalaxy.Runtime.*,-GooGalaxy.Tests.*"
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: Test-Results-EditMode
-          path: ${{ steps.tests.outputs.artifactsPath }}
-
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: Coverage-Report-EditMode
-          path: ${{ steps.tests.outputs.coveragePath }}
-
-      - name: Test Summary
-        if: success()
-        run: |
-          echo "✅ All Edit Mode tests passed!"
-          echo ""
-          echo "Deterministic board, card, and match logic validated."
-          echo "Coverage report available in artifacts."
-
-      - name: Test Failed
-        if: failure()
-        run: |
-          echo "❌ Edit Mode tests failed!"
-          echo ""
-          echo "Check the test results artifact for details."
-          echo "Review failing tests and fix issues before merging."
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          check-name: Unity Edit Mode Test Results
+          coverage-options: ${{ env.UNITY_COVERAGE_OPTIONS }}
+          test-results-artifact-name: Test-Results-EditMode
+          coverage-artifact-name: Coverage-Report-EditMode
+          artifact-retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}

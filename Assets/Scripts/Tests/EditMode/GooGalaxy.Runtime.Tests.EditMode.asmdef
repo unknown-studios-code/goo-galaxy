@@ -1,0 +1,30 @@
+{
+  "name": "GooGalaxy.Runtime.Tests.EditMode",
+  "rootNamespace": "GooGalaxy.Runtime.Tests.EditMode",
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "excludePlatforms": [],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Cards",
+    "GooGalaxy.Runtime.HUD",
+    "GooGalaxy.Runtime.Input",
+    "GooGalaxy.Runtime.Match",
+    "GooGalaxy.Runtime.Networking",
+    "GooGalaxy.Runtime.Progression",
+    "GooGalaxy.Runtime.Bootstrap"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "overrideReferences": true
+}
