@@ -1,0 +1,33 @@
+name: Unity Workspace Setup
+description: Prepare the repository workspace with checkout, LFS cache, and LFS pull.
+
+inputs:
+  fetch-depth:
+    description: Git fetch depth for repository checkout.
+    required: false
+    default: "1"
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+        lfs: true
+
+    - name: Create LFS file list
+      shell: bash
+      run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+    - name: Restore LFS cache
+      uses: actions/cache@v5
+      with:
+        path: .git/lfs
+        key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+        restore-keys: |
+          ${{ runner.os }}-lfs-
+
+    - name: Pull LFS assets
+      shell: bash
+      run: git lfs pull

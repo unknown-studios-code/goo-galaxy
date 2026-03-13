@@ -6,22 +6,55 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+
+env:
+  UNITY_VERSION: ${{ vars.UNITY_VERSION }}
+  UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
+  CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
+  ARTIFACT_RETENTION_DAYS: ${{ vars.ARTIFACT_RETENTION_DAYS }}
 
 jobs:
   build-ios:
     name: Build iOS Player
     runs-on: macos-latest
+    timeout-minutes: 90
 
     steps:
+      - name: Validate required CI variables
+        env:
+          UNITY_VERSION: ${{ env.UNITY_VERSION }}
+          UNITY_CACHE_VERSION: ${{ env.UNITY_CACHE_VERSION }}
+          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
+          ARTIFACT_RETENTION_DAYS: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        shell: bash
+        run: |
+          missing=0
+
+          for variable_name in UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS; do
+            if [[ -z "${!variable_name}" ]]; then
+              echo "Missing required GitHub Actions variable: $variable_name" >&2
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
           lfs: true
 
       - name: Create LFS file list
+        shell: bash
         run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
 
       - name: Restore LFS cache
@@ -33,40 +66,25 @@ jobs:
             ${{ runner.os }}-lfs-
 
       - name: Pull LFS assets
+        shell: bash
         run: git lfs pull
 
-      - name: Restore Library cache
-        uses: actions/cache@v5
+      - name: Build iOS player
+        uses: ./.github/actions/unity-build
         with:
-          path: Library
-          key: Library-iOS-${{ runner.os }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          restore-keys: |
+          unity-version: ${{ env.UNITY_VERSION }}
+          target-platform: iOS
+          library-cache-key: Library-iOS-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          library-cache-restore-keys: |
+            Library-iOS-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-
+            Library-iOS-${{ runner.os }}-${{ env.UNITY_VERSION }}-
             Library-iOS-${{ runner.os }}-
             Library-
-
-      - name: Build iOS player
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          targetPlatform: iOS
-          unityVersion: 6000.3.11f1
-          versioning: None
-
-      - name: Upload iOS build
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: iOS-Build
-          path: build/iOS
-
-      - name: Upload build logs
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: iOS-Build-Logs
-          path: |
-            Library/Bee/artifacts/**/*.log
-            Logs/**
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}
+          cache-unity-installation-on-mac: "true"
+          artifact-name: iOS-Build
+          artifact-path: build/iOS
+          log-artifact-name: iOS-Build-Logs
+          artifact-retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}

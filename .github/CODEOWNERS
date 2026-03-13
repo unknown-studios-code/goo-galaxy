@@ -1,0 +1,12 @@
+# Automation and repository policy
+/.github/ @unknown-studios-code
+
+# Workflow and action changes deserve explicit review
+/.github/workflows/ @unknown-studios-code
+/.github/actions/ @unknown-studios-code
+/.github/rulesets/ @unknown-studios-code
+
+# Dependency automation and package policy
+/.github/dependabot.yml @unknown-studios-code
+/package.json @unknown-studios-code
+/Packages/manifest.json @unknown-studios-code

@@ -5,7 +5,10 @@
   "excludePlatforms": [],
   "includePlatforms": [],
   "precompiledReferences": [],
-  "references": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Cards"
+  ],
   "versionDefines": [],
   "allowUnsafeCode": false,
   "autoReferenced": true,

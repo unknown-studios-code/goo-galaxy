@@ -1,5 +1,5 @@
 ---
-description: "Use when searching Notion tasks or stories, extracting task metadata for commits or pull requests, or updating Notion task properties such as Branch and Pull Request URLs. Covers the Notion MCP tools available in this environment for Goo Galaxy task tracking."
+description: "Use when searching Notion tasks or stories, extracting task metadata for commits or pull requests, or updating Notion task properties such as Branch name and Pull Request URL. Covers the Notion MCP tools available in this environment for Goo Galaxy task tracking."
 name: "Notion MCP Usage"
 ---
 
@@ -12,7 +12,7 @@ Use these rules whenever task, story, epic, branch, or pull request metadata nee
 | Tool                             | Use Case                                                                                      |
 | -------------------------------- | --------------------------------------------------------------------------------------------- |
 | `mcp_notion_notion-search`       | Find tasks, stories, epics, and related Notion pages by `GOOE`, `GOOS`, `GOOT`, or `GOOM` IDs |
-| `mcp_notion_notion-update-page`  | Update task properties with branch and PR links                                               |
+| `mcp_notion_notion-update-page`  | Update task properties with branch name and PR link                                           |
 | `mcp_notion_notion-create-pages` | Create new Notion pages only when explicitly requested                                        |
 
 Do not instruct the agent to use legacy `notion-search`, `notion-fetch`, or `CallMcpTool` wrappers.
@@ -53,7 +53,7 @@ Use `mcp_notion_notion-update-page`.
   "page_id": "<task_page_id>",
   "command": "update_properties",
   "properties": {
-    "Branch": "https://github.com/unknown-studios-code/goo-galaxy/tree/tech/GOOM-13",
+    "Branch": "tech/GOOM-13",
     "Pull Request": "https://github.com/unknown-studios-code/goo-galaxy/pull/42",
     "Priority": "Medium"
   }
@@ -64,7 +64,7 @@ Use `mcp_notion_notion-update-page`.
 
 | Property         | Type   | Use                            | Verification                            |
 | ---------------- | ------ | ------------------------------ | --------------------------------------- |
-| `Branch`         | URL    | GitHub branch link             | Confirmed by project workflow reference |
+| `Branch`         | Text   | GitHub branch name             | Confirmed by project workflow reference |
 | `Pull Request`   | URL    | GitHub PR link                 | Confirmed by project workflow reference |
 | `Priority`       | Select | PR labels and prioritization   | Confirmed by project workflow reference |
 | `userDefined:ID` | Text   | Task ID (`GOOT-X` or `GOOM-X`) | Confirmed by project workflow reference |

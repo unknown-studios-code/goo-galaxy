@@ -1,0 +1,112 @@
+name: Unity Build
+description: Restore Unity Library cache, build a player, and upload build artifacts and logs.
+
+inputs:
+  unity-version:
+    description: Unity editor version to use.
+    required: true
+  target-platform:
+    description: Unity target platform.
+    required: true
+  library-cache-key:
+    description: Cache key for the Unity Library directory.
+    required: true
+  library-cache-restore-keys:
+    description: Restore keys for the Unity Library cache.
+    required: true
+  unity-license:
+    description: Unity license content.
+    required: true
+  unity-email:
+    description: Unity account email.
+    required: true
+  unity-password:
+    description: Unity account password.
+    required: true
+  artifact-name:
+    description: Artifact name for the build output.
+    required: true
+  artifact-path:
+    description: Path to the build output.
+    required: true
+  log-artifact-name:
+    description: Artifact name for build logs.
+    required: true
+  artifact-retention-days:
+    description: Artifact retention period in days.
+    required: false
+    default: "7"
+  android-export-type:
+    description: Android export type when building Android players.
+    required: false
+    default: ""
+  cache-unity-installation-on-mac:
+    description: Whether to cache the Unity installation on macOS.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Library cache
+      uses: actions/cache@v5
+      with:
+        path: Library
+        key: ${{ inputs.library-cache-key }}
+        restore-keys: ${{ inputs.library-cache-restore-keys }}
+
+    - name: Build Unity player
+      if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac != 'true' }}
+      uses: game-ci/unity-builder@v4
+      env:
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      with:
+        targetPlatform: ${{ inputs.target-platform }}
+        unityVersion: ${{ inputs.unity-version }}
+        versioning: None
+
+    - name: Build Android player
+      if: ${{ inputs.android-export-type != '' }}
+      uses: game-ci/unity-builder@v4
+      env:
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      with:
+        targetPlatform: ${{ inputs.target-platform }}
+        unityVersion: ${{ inputs.unity-version }}
+        androidExportType: ${{ inputs.android-export-type }}
+        versioning: None
+
+    - name: Build macOS-backed Unity player
+      if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac == 'true' }}
+      uses: game-ci/unity-builder@v4
+      env:
+        UNITY_LICENSE: ${{ inputs.unity-license }}
+        UNITY_EMAIL: ${{ inputs.unity-email }}
+        UNITY_PASSWORD: ${{ inputs.unity-password }}
+      with:
+        targetPlatform: ${{ inputs.target-platform }}
+        unityVersion: ${{ inputs.unity-version }}
+        cacheUnityInstallationOnMac: true
+        versioning: None
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.artifact-path }}
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Upload build logs
+      uses: actions/upload-artifact@v7
+      if: failure()
+      with:
+        name: ${{ inputs.log-artifact-name }}
+        path: |
+          Library/Bee/artifacts/**/*.log
+          Logs/**
+        retention-days: ${{ inputs.artifact-retention-days }}
