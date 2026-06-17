@@ -22,6 +22,7 @@ env:
 jobs:
   build-ios:
     name: Build iOS Player
+    if: github.actor != 'dependabot[bot]'
     runs-on: macos-latest
     timeout-minutes: 90
 

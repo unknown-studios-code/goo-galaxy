@@ -197,11 +197,43 @@ These section names must stay aligned with `.github/instructions/references/conv
 
 ## Agent Commit Rules
 
-When creating commits programmatically, always disable Husky hooks:
+When creating commits programmatically, always disable Husky and Commitizen hooks.
+The environment variable `HUSKY=0` prevents all git hooks from running.
+
+### PowerShell (pwsh) — this project's shell
+
+PowerShell does not support bash-style inline environment variables (`VAR=value command`).
+Always set the variable explicitly before the git command:
+
+```powershell
+# Single-line commit:
+$env:HUSKY = "0"; git commit -m "type(scope): subject"
+
+# Multi-line body (each -m adds a paragraph):
+$env:HUSKY = "0"
+git commit -m "type(scope): subject" -m "body line 1" -m "body line 2"
+
+# For amend or rebase, set once before the operation:
+$env:HUSKY = "0"
+git commit --amend -m "updated message"
+```
+
+### Bash / sh
 
 ```bash
 HUSKY=0 git commit -m "type(scope): subject"
 ```
+
+### Operations That Require HUSKY=0
+
+All git operations that may trigger hooks must include `HUSKY=0`:
+
+| Operation               | Example                                                           |
+| :---------------------- | :---------------------------------------------------------------- |
+| `git commit`            | `$env:HUSKY = "0"; git commit -m "docs(gdd): update terminology"` |
+| `git commit --amend`    | `$env:HUSKY = "0"; git commit --amend -m "new message"`           |
+| `git rebase -i`         | `$env:HUSKY = "0"; git rebase -i HEAD~2`                          |
+| `git rebase --continue` | `$env:HUSKY = "0"; git rebase --continue`                         |
 
 Do not create automated commits without `HUSKY=0`.
 

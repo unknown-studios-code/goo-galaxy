@@ -18,7 +18,11 @@
       "type": "http",
       "url": "https://mcp.figma.com/mcp"
     },
-    "io.github.tavily-ai/tavily-mcp": {
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "tavily-mcp": {
       "command": "npx",
       "gallery": "https://api.mcp.github.com",
       "type": "stdio",
@@ -28,10 +32,6 @@
         "DEFAULT_PARAMETERS": "${input:DEFAULT_PARAMETERS}",
         "TAVILY_API_KEY": "${input:TAVILY_API_KEY}"
       }
-    },
-    "notion": {
-      "type": "http",
-      "url": "https://mcp.notion.com/mcp"
     },
     "unity-mcp": {
       "type": "http",
