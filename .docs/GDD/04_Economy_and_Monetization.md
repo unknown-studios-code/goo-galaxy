@@ -4,181 +4,146 @@
 
 The contemporary mobile gaming market rejects overt "pay-to-win" mechanics, especially in competitive strategy environments. The monetization strategy for Goo Galaxy is built on the **SUV Framework**:
 
-| Pillar      | Description                                                                     | Goo Galaxy Implementation                                        |
-| :---------- | :------------------------------------------------------------------------------ | :--------------------------------------------------------------- |
-| **Social**  | Items that enhance social interaction and self-expression.                      | Emotes, profile banners, clan badges, shareable replays.         |
-| **Utility** | Items that save time or reduce friction without affecting competitive fairness. | Chest timer skips, extra deck slots, deck presets/loadout slots. |
-| **Vanity**  | Pure cosmetics with zero gameplay impact.                                       | Goo skins, board themes, deployment animations, mascots/pets.    |
+| Pillar      | Description                                                                     | Goo Galaxy Implementation                                                                            |
+| :---------- | :------------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------------- |
+| **Social**  | Items that enhance social interaction and self-expression.                      | Emotes, Researcher ID frames, Crew badges, shareable Expedition Logs.                                |
+| **Utility** | Items that save time or reduce friction without affecting competitive fairness. | Capsule timer skips, extra Kit slots, Kit presets/loadout slots.                                     |
+| **Vanity**  | Pure cosmetics with zero gameplay impact.                                       | Researcher gear (coats, helmets, species skins), specimen skins, starship themes, deploy animations. |
 
-> **Golden Rule:** No purchasable item may ever increase a player's Conversion Power, Energy generation rate, or provide any stat advantage in ranked matches. Draft Mode (normalized levels) exists specifically to prove this commitment.
+> **Golden Rule:** No purchasable item may ever increase a specimen's Assimilation Power, Energy generation rate, or provide any stat advantage in ranked expeditions. Blind Discovery (normalized levels) exists specifically to prove this commitment.
 
 ---
 
 ## Dual-Currency System
 
-### Gold (Soft Currency)
+### Stardust (Soft Currency)
 
-| Source                            | Amount         |
-| :-------------------------------- | :------------- |
-| Victory Chest                     | 50-200 Gold    |
-| Chest Cycle (free timed chests)   | 30-500 Gold    |
-| Clan Donations (per card donated) | 5 Gold + 1 XP  |
-| Daily Win Bonus (first 5 wins)    | 20 Gold each   |
-| Weekly Challenges                 | 200-1,000 Gold |
+| Source                               | Amount             |
+| :----------------------------------- | :----------------- |
+| Expedition Cache                     | 50-200 Stardust    |
+| Capsule Cycle (free timed capsules)  | 30-500 Stardust    |
+| Sample Sharing (per specimen shared) | 5 Stardust + 1 XP  |
+| Daily Discovery Bonus (first 5 wins) | 20 Stardust each   |
+| Weekly Research Contracts            | 200-1,000 Stardust |
 
-**Primary Sinks:** Card upgrades (see cost table in `02_Mathematics_and_Balancing.md`), cosmetic shop (basic tier).
+**Primary Sinks:** Specimen Enhancements (see cost table in `02_Mathematics_and_Balancing.md`), Galactic Market (basic tier).
 
-### Premium Gems (Hard Currency)
+### Nova Cores (Hard Currency)
 
-| Source                                   | Amount                  |
-| :--------------------------------------- | :---------------------- |
-| Real-Money Purchase                      | See pricing table below |
-| Free in Milestone Chests (Arena unlocks) | 10-50 Gems              |
-| Galaxy Pass Free Track (weekly)          | 5-10 Gems               |
-| Tournament Top 3 Rewards                 | 50-200 Gems             |
-| Achievement Milestones                   | 10-100 Gems             |
+| Source                                           | Amount                  |
+| :----------------------------------------------- | :---------------------- |
+| Real-Money Purchase                              | See pricing table below |
+| Free in Milestone Capsules (Star System unlocks) | 10-50 Nova Cores        |
+| Galaxy Pass Free Track (weekly)                  | 5-10 Nova Cores         |
+| Symposium Top 3 Rewards                          | 50-200 Nova Cores       |
+| Achievement Milestones                           | 10-100 Nova Cores       |
 
-**Primary Sinks:** Galaxy Pass premium track, cosmetic shop (premium tier), chest timer acceleration, special event entries.
+**Primary Sinks:** Galaxy Pass premium track, Galactic Market (premium tier), capsule timer acceleration, special event entries.
 
-### Gem Pricing Table
+### Nova Core Pricing Table
 
-| Pack             |  Gems  | USD Price | Gems/USD | Bonus      |
-| :--------------- | :----: | :-------: | :------: | :--------- |
-| **Handful**      |   80   | USD 0.99  |   80.8   | —          |
-| **Pouch**        |  500   | USD 4.99  |  100.2   | +25% value |
-| **Bucket**       | 1,200  | USD 9.99  |  120.1   | +49% value |
-| **Barrel**       | 2,500  | USD 19.99 |  125.1   | +55% value |
-| **Tank**         | 6,500  | USD 49.99 |  130.0   | +61% value |
-| **Galaxy Vault** | 14,000 | USD 99.99 |  140.0   | +73% value |
+| Pack             | Nova Cores | USD Price | Cores/USD | Bonus      |
+| :--------------- | :--------: | :-------: | :-------: | :--------- |
+| **Handful**      |     80     | USD 0.99  |   80.8    | —          |
+| **Pouch**        |    500     | USD 4.99  |   100.2   | +25% value |
+| **Bucket**       |   1,200    | USD 9.99  |   120.1   | +49% value |
+| **Barrel**       |   2,500    | USD 19.99 |   125.1   | +55% value |
+| **Tank**         |   6,500    | USD 49.99 |   130.0   | +61% value |
+| **Galaxy Vault** |   14,000   | USD 99.99 |   140.0   | +73% value |
 
 > **Anchor Strategy:** The USD 0.99 pack is intentionally the worst value. It exists to set a psychological anchor. The USD 4.99 and USD 9.99 packs are the **target conversion points** — high perceived value drives first-time purchase.
 
 ---
 
-## The Chest System
+## The Capsule System
 
-### Chest Types
+### Capsule Types
 
-| Chest               | Unlock Time | Cards |   Gold   |    Guaranteed Rare+    | Source                      |
-| :------------------ | :---------: | :---: | :------: | :--------------------: | :-------------------------- |
-| **Silver Chest**    |   3 hours   |   3   |  50-100  |           —            | Victory (most common)       |
-| **Gold Chest**      |   8 hours   |   5   | 100-300  |         1 Rare         | Victory (1 in 4)            |
-| **Platinum Chest**  |  12 hours   |   8   | 200-500  |         2 Rare         | Victory (1 in 20)           |
-| **Mythic Chest**    |  24 hours   |  12   | 500-1000 |    1 Epic + 3 Rare     | Victory (1 in 100)          |
-| **Legendary Chest** |      —      |   1   |    —     | 1 Legendary guaranteed | Arena unlock milestone only |
-| **Free Chest**      |   4 hours   |   2   |  20-50   |           —            | Passive (no win required)   |
+| Capsule              | Unlock Time | Specimens | Stardust |    Guaranteed Rare+    | Source                            |
+| :------------------- | :---------: | :-------: | :------: | :--------------------: | :-------------------------------- |
+| **Standard Capsule** |   3 hours   |     3     |  50-100  |           —            | Expedition (most common)          |
+| **Enhanced Capsule** |   8 hours   |     5     | 100-300  |         1 Rare         | Expedition (1 in 4)               |
+| **Premium Capsule**  |  12 hours   |     8     | 200-500  |         2 Rare         | Expedition (1 in 20)              |
+| **Exotic Capsule**   |  24 hours   |    12     | 500-1000 |    1 Epic + 3 Rare     | Expedition (1 in 100)             |
+| **Mythic Capsule**   |      —      |     1     |    —     | 1 Legendary guaranteed | Star System unlock milestone only |
+| **Daily Scan**       |   4 hours   |     2     |  20-50   |           —            | Passive (no expedition required)  |
 
-### The 240-Chest Cycle
+### The 240-Capsule Discovery Cycle
 
-Chests follow a **deterministic 240-chest cycle**. The player sees "random" chests, but the sequence is fixed:
+Capsules follow a **deterministic 240-capsule cycle**. The Researcher sees "random" capsules, but the sequence is fixed — guaranteeing fair rarity distribution for every consistent player.
 
-```mermaid
-%%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
-flowchart LR
-    START["Cycle Start<br/>Position 1"] --> CHECK240{"Position = 240?"}
-    CHECK240 -- Yes --> SM["Super Mythic Chest<br/>Reset Cycle"]
-    CHECK240 -- No --> CHECK100{"Multiple of 100?"}
-    CHECK100 -- Yes --> M["Mythic Chest"]
-    CHECK100 -- No --> CHECK20{"Multiple of 20?"}
-    CHECK20 -- Yes --> P["Platinum Chest"]
-    CHECK20 -- No --> CHECK4{"Multiple of 4?"}
-    CHECK4 -- Yes --> G["Gold Chest"]
-    CHECK4 -- No --> S["Silver Chest"]
-    SM --> NEXT["Advance to next chest"]
-    M --> NEXT
-    P --> NEXT
-    G --> NEXT
-    S --> NEXT
-    NEXT --> START
-```
+### Capsule Bay
 
-Sample window of the first 20 positions:
-
-| Position | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10  | 11  | 12  | 13  | 14  | 15  | 16  | 17  | 18  | 19  | 20  |
-| :------- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| Chest    | S   | S   | S   | G   | S   | S   | S   | G   | S   | S   | S   | G   | S   | S   | S   | G   | S   | S   | S   | P   |
-
-| Position in Cycle | Chest Type                           |
-| :---------------- | :----------------------------------- |
-| Every 4th chest   | Gold Chest                           |
-| Every 20th chest  | Platinum Chest                       |
-| Every 100th chest | Mythic Chest                         |
-| Position 240      | **Super Mythic Chest** (cycle reset) |
-
-This guarantees that every player who plays consistently receives the same distribution of card rarities over time — eliminating "bad luck" frustration while maintaining the excitement of variable rewards.
-
-### Chest Slots
-
-Players have **4 chest unlock slots**. Only **1 chest** can be actively unlocking at a time. Additional victory chests are queued (up to 4). If all slots are full and the queue is full, subsequent victories award **Gold only** (no chest) — creating a natural incentive to return regularly.
+Researchers have **4 capsule bay slots** on their starship. Only **1 capsule** can be actively decapsulating at a time. Additional expedition capsules are queued (up to 4). If all bays are full and the queue is full, subsequent expedition victories award **Stardust only** (no capsule) — creating a natural incentive to return regularly.
 
 ---
 
-## The Galaxy Pass (Battle Pass)
+## The Galaxy Pass
 
 ### Structure
 
-Each Season (4 weeks) features a new Galaxy Pass with **35 tiers**, split into a Free Track and a Premium Track.
+Each Expedition Cycle (4 weeks) features a new Galaxy Pass with **35 tiers**, split into a Free Track and a Premium Track.
 
-**Premium Pass Price:** 500 Gems (USD 4.99 equivalent — the target conversion price point).
+**Premium Pass Price:** 500 Nova Cores (USD 4.99 equivalent — the target conversion price point).
 
 ### Tier Rewards
 
-|     Tier     | Free Track         | Premium Track                                        |
-| :----------: | :----------------- | :--------------------------------------------------- |
-|      1       | 50 Gold            | 5 Gems + 50 Gold                                     |
-|      5       | Silver Chest       | Gold Chest + Emote                                   |
-|      10      | 100 Gold           | Exclusive Goo Skin (Season-themed)                   |
-|      15      | 2 Rare Cards       | 500 Gold + 10 Gems                                   |
-|      20      | Gold Chest         | Platinum Chest + Board Skin                          |
-|      25      | 200 Gold           | 5 Epic Cards + 20 Gems                               |
-|      30      | Platinum Chest     | Mythic Chest + Exclusive Deploy Animation            |
-| 35 _(Final)_ | 500 Gold + 10 Gems | **Exclusive Mascot/Pet** + 50 Gems + Legendary Chest |
+|     Tier     | Free Track                   | Premium Track                                                  |
+| :----------: | :--------------------------- | :------------------------------------------------------------- |
+|      1       | 50 Stardust                  | 5 Nova Cores + 50 Stardust                                     |
+|      5       | Standard Capsule             | Enhanced Capsule + Emote                                       |
+|      10      | 100 Stardust                 | Exclusive Specimen Skin (Cycle-themed)                         |
+|      15      | 2 Rare Specimens             | 500 Stardust + 10 Nova Cores                                   |
+|      20      | Enhanced Capsule             | Premium Capsule + Starship Theme                               |
+|      25      | 200 Stardust                 | 5 Epic Specimens + 20 Nova Cores                               |
+|      30      | Premium Capsule              | Exotic Capsule + Exclusive Deploy Animation                    |
+| 35 _(Final)_ | 500 Stardust + 10 Nova Cores | **Exclusive Researcher Gear** + 50 Nova Cores + Mythic Capsule |
 
 ### Galaxy Pass XP
 
-- **20 XP per win** (capped at 200 XP/day from wins).
-- **Daily Challenges** (3 per day): 50-100 XP each.
-- **Weekly Challenges** (3 per week): 200-500 XP each.
-- **Target pace:** A player completing all dailies and winning ~10 matches/day reaches Tier 35 in 25 days (5 days buffer in a 30-day season).
+- **20 XP per expedition victory** (capped at 200 XP/day from victories).
+- **Daily Research Contracts** (3 per day): 50-100 XP each.
+- **Weekly Expedition Milestones** (3 per week): 200-500 XP each.
+- **Target pace:** A Researcher completing all dailies and winning ~10 expeditions/day reaches Tier 35 in 25 days (5 days buffer in a 30-day cycle).
 
 ---
 
-## The 30-Day Player Progression Journey
+## The 30-Day Researcher Journey
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 gantt
-    title Player Progression Journey (30 Days)
+    title Researcher Journey (30 Days)
     dateFormat X
     axisFormat %d
 
     section Engagement
-    Incubation (Arena 1-2)    :a1, 0, 3
-    Mutation (Arena 3-4)      :a2, 3, 10
-    Symbiosis (Arena 5-6)     :a3, 10, 20
-    Apex (Arena 7+)           :a4, 20, 30
+    First Contact (Gloopiter-Sludgar)  :a1, 0, 3
+    Exploration (Cryo-9-Toxis Major)   :a2, 3, 10
+    Discovery (Nova Rubra-Nexar Prime) :a3, 10, 20
+    Renown (Void's Edge+)             :a4, 20, 30
 
     section Monetization
-    Free Chests & FTUE        :m1, 0, 3
-    Starter Bundles Offered   :m2, 3, 7
-    Galaxy Pass Push          :m3, 7, 14
-    Premium Cosmetics & Targeted Offers :m4, 14, 30
+    Daily Scans & FTUE                 :m1, 0, 3
+    Starter Bundles Offered            :m2, 3, 7
+    Galaxy Pass Push                   :m3, 7, 14
+    Premium Gear & Targeted Offers     :m4, 14, 30
 ```
 
-| Timeline       | Phase      | Arena | Meta-Game Focus                                             | Monetization Events                                                                                                    |
-| :------------- | :--------- | :---- | :---------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------- |
-| **Day 1-3**    | Incubation | 1-2   | Tutorial, core loop mastery. Learn Clone vs. Jump.          | High-velocity fast-unlock chests (dopamine loops). Galaxy Pass free track introduced.                                  |
-| **Day 4-10**   | Mutation   | 3-4   | Deck-building experimentation. Unlock asymmetric troops.    | **Starter Bundle** (USD 2.99 — 500 Gems + Gold + Guaranteed Rare): highest conversion-rate offer. Cosmetic shop opens. |
-| **Day 11-20**  | Symbiosis  | 5-6   | Social integration. Join Laboratories (Clans). Co-op goals. | Mid-tier progression wall. Premium Galaxy Pass push. Alliance-specific banners and Mascots.                            |
-| **Day 21-30+** | Apex       | 7+    | High-stakes competitive ladder. Deck optimization.          | Mythic board skins, legendary deploy animations. Targeted fragment packs for specific upgrades.                        |
+| Timeline       | Phase         | Star Systems           | Meta-Game Focus                                            | Monetization Events                                                                                                                |
+| :------------- | :------------ | :--------------------- | :--------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| **Day 1-3**    | First Contact | Gloopiter-Sludgar-4    | Tutorial, core loop mastery. Learn Clone vs. Jump.         | High-velocity fast-unlock capsules (dopamine loops). Galaxy Pass free track introduced.                                            |
+| **Day 4-10**   | Exploration   | Cryo-9-Toxis Major     | Kit-building experimentation. Unlock asymmetric specimens. | **Starter Bundle** (USD 2.99 — 500 Nova Cores + Stardust + Guaranteed Rare): highest conversion-rate offer. Galactic Market opens. |
+| **Day 11-20**  | Discovery     | Nova Rubra-Nexar Prime | Social integration. Join Crews. Co-op objectives.          | Mid-tier progression wall. Premium Galaxy Pass push. Crew-specific Researcher ID frames and gear.                                  |
+| **Day 21-30+** | Renown        | Void's Edge+           | High-stakes competitive ladder. Kit optimization.          | Exotic starship themes, legendary deploy animations. Targeted DNA Strand packs for specific Enhancements.                          |
 
 ### Starter Bundle Details
 
-| Bundle                   | Price    | Contents                                                    | Target                                                         |
-| :----------------------- | :------- | :---------------------------------------------------------- | :------------------------------------------------------------- |
-| **Welcome Pack**         | USD 0.99 | 100 Gems + 500 Gold + Silver Chest                          | Micro-conversion. "Break the seal" purchase.                   |
-| **Researcher's Kit**     | USD 2.99 | 500 Gems + 2,000 Gold + Gold Chest + 1 Guaranteed Rare      | Primary conversion target. Best value in the game (once only). |
-| **Lab Director's Vault** | USD 9.99 | 1,500 Gems + 10,000 Gold + Platinum Chest + Exclusive Frame | Whale bait. Premium anchor.                                    |
+| Bundle                     | Price    | Contents                                                                             | Target                                                         |
+| :------------------------- | :------- | :----------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| **Welcome Kit**            | USD 0.99 | 100 Nova Cores + 500 Stardust + Standard Capsule                                     | Micro-conversion. "Break the seal" purchase.                   |
+| **Researcher's Field Kit** | USD 2.99 | 500 Nova Cores + 2,000 Stardust + Enhanced Capsule + 1 Guaranteed Rare Specimen      | Primary conversion target. Best value in the game (once only). |
+| **Star Captain's Vault**   | USD 9.99 | 1,500 Nova Cores + 10,000 Stardust + Premium Capsule + Exclusive Researcher ID Frame | Whale bait. Premium anchor.                                    |
 
 > **Once-Only Rule:** Each Starter Bundle can only be purchased **once per account**. This prevents them from undermining the long-term economy while maximizing their conversion impact.
 

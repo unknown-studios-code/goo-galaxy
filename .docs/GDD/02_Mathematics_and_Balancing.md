@@ -138,6 +138,37 @@ Because Energy regenerates 2x faster, the "waiting penalty" for deploying expens
 
 ---
 
+## Containment Breach Protocol (Catch-Up Mathematics)
+
+The catch-up energy bonus is designed to create comeback windows without rubber-banding. The math must be subtle enough to avoid punishing the leading player.
+
+### Effective Regeneration Rates
+
+$$E_{catchup}(t) = \frac{t}{R} \times 1.15 \quad \text{where } R = 2.8s \text{ (standard)} \text{ or } 1.4s \text{ (overtime)}$$
+
+| Phase             | Standard Regen | Catch-Up Regen (+15%) | Extra Energy over 20s |
+| :---------------- | :------------: | :-------------------: | :-------------------: |
+| **Standard**      | 1 E / 2.80 sec |    1 E / 2.43 sec     |     +1.08 Energy      |
+| **Overtime (2x)** | 1 E / 1.40 sec |    1 E / 1.22 sec     |     +1.72 Energy      |
+
+### Design Safety Margins
+
+| Concern                            | Mitigation                                                                                                      |
+| :--------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| Bonus enables degenerate stalling  | 60s cooldown means at most 2-3 activations per match. 20s cap prevents hoarding.                                |
+| Bonus overshoots into unfair lead  | +15% is ~1 extra 1E deployment per activation — enough to contest, not dominate.                                |
+| Players intentionally stay behind  | Staying ≤40% troops means risking Domination loss. The risk far outweighs +15% regen.                           |
+| Bonus invalidates Komi calibration | Both players have equal access to the catch-up bonus. Komi only affects starting state, not mid-match dynamics. |
+
+### Simulation Validation
+
+Before finalizing the threshold and bonus values, run Monte Carlo simulations:
+
+1. **10,000 matches** with varied starting skill deltas.
+2. **Metric:** "Comeback Rate" — percentage of matches where the trailing player at the 1:30 mark goes on to win.
+3. **Target:** Comeback rate should increase from baseline (no bonus) by **5-10 percentage points** without exceeding 50%.
+4. **Correction:** If comeback rate jumps >15pp, reduce bonus to +10%. If <3pp increase, raise to +20%.
+
 ## Resolving the First Mover Advantage: Komi
 
 ### The Problem
@@ -201,6 +232,7 @@ The GDD assumes a live-tuned game, so the tuning surface must be explicit.
 - Event toggles and weekend rulesets.
 - Card ability parameters such as durations, radii, and target caps.
 - Map pool rotation and draft-eligible card pool.
+- **Containment Breach Protocol:** activation threshold (default ≤40%), regen bonus (default +15%), bonus duration (default 20s), and cooldown (default 60s).
 
 ### Delivery Model
 
@@ -236,14 +268,28 @@ Players progress through **10 Arenas** by earning Trophies from competitive matc
 
 ### Trophy Gain/Loss Formula
 
-$$\Delta T = T_{base} \times M_{streak} \times M_{arena}$$
+$$\Delta T = T_{base} \times M_{streak} \times M_{arena} \times M_{domination}$$
 
-| Parameter         | Value                               | Description                                                 |
-| :---------------- | :---------------------------------- | :---------------------------------------------------------- |
-| $T_{base}$ (Win)  | +30                                 | Base trophies gained on victory.                            |
-| $T_{base}$ (Loss) | -25                                 | Base trophies lost on defeat (asymmetric to soften losses). |
-| $M_{streak}$      | 1.0 + (0.1 × streak count, max 1.5) | Win streak multiplier (up to +50% bonus).                   |
-| $M_{arena}$       | Arenas 1-3: 1.5x gain, 0.5x loss    | Newcomer protection: faster climbing, gentler falls.        |
+| Parameter         | Value                               | Description                                                                                      |
+| :---------------- | :---------------------------------- | :----------------------------------------------------------------------------------------------- |
+| $T_{base}$ (Win)  | +30                                 | Base trophies gained on victory.                                                                 |
+| $T_{base}$ (Loss) | -25                                 | Base trophies lost on defeat (asymmetric to soften losses).                                      |
+| $M_{streak}$      | 1.0 + (0.1 × streak count, max 1.5) | Win streak multiplier (up to +50% bonus).                                                        |
+| $M_{arena}$       | Arenas 1-3: 1.5x gain, 0.5x loss    | Newcomer protection: faster climbing, gentler falls.                                             |
+| $M_{domination}$  | 1.5 if Domination victory, else 1.0 | **Domination Bonus:** wiping every enemy piece awards +50% extra Trophies as a spectacle reward. |
+
+**Domination Bonus Examples:**
+
+| Scenario                                     | Base Trophies | Streak Multiplier | Arena Multiplier | Domination Multiplier | Final Trophies  |
+| :------------------------------------------- | :-----------: | :---------------: | :--------------: | :-------------------: | :-------------: |
+| Standard win, Arena 1, no streak             |      +30      |        1.0        |       1.5        |          1.0          |     **+45**     |
+| Domination win, Arena 1, no streak           |      +30      |        1.0        |       1.5        |          1.5          | **+67.5 → +68** |
+| Standard win, Arena 5, 3-win streak          |      +30      |        1.3        |       1.0        |          1.0          |     **+39**     |
+| Domination win, Arena 5, 3-win streak        |      +30      |        1.3        |       1.0        |          1.5          | **+58.5 → +59** |
+| Standard win, Arena 10, 5-win streak (max)   |      +30      |        1.5        |       1.0        |          1.0          |     **+45**     |
+| Domination win, Arena 10, 5-win streak (max) |      +30      |        1.5        |       1.0        |          1.5          | **+67.5 → +68** |
+
+> **Rounding Rule:** Trophy gains round to the nearest integer (≥0.5 rounds up).
 
 ### Season Reset
 
@@ -258,18 +304,18 @@ This compresses the top end of the ladder, forcing elite players to re-earn thei
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 flowchart TD
-    A["Player enters queue"] --> B["Search: ±200 Trophies<br/>Timeout: 5 sec"]
-    B --> C{"Match found?"}
+    A["Researcher enters queue"] --> B["Search: ±200 DP<br/>Timeout: 5 sec"]
+    B --> C{"Expedition found?"}
     C -- Yes --> D["Latency check<br/>< 150ms preferred"]
-    C -- No --> E["Widen: ±400 Trophies<br/>Timeout: 10 sec"]
-    E --> F{"Match found?"}
+    C -- No --> E["Widen: ±400 DP<br/>Timeout: 10 sec"]
+    E --> F{"Expedition found?"}
     F -- Yes --> D
-    F -- No --> G["Widen: ±600 Trophies<br/>Timeout: 15 sec"]
-    G --> H{"Match found?"}
+    F -- No --> G["Widen: ±600 DP<br/>Timeout: 15 sec"]
+    G --> H{"Expedition found?"}
     H -- Yes --> D
     H -- No --> I["Match with Bot<br/>(AI opponent)"]
     D --> J{"Latency OK?"}
-    J -- Yes --> K["Match Start"]
+    J -- Yes --> K["Expedition Start"]
 
     style K fill:#E4F3E1,color:#4E4A57,stroke:#BCD0B9
     J -- No --> L["Re-queue with<br/>region preference"]

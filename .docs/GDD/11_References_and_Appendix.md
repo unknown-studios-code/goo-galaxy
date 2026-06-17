@@ -2,55 +2,87 @@
 
 ## Glossary of Terms
 
-| Term                         | Definition                                                                                                                                                                                   |
-| :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **APM**                      | Actions Per Minute. A measure of player execution speed, especially relevant during Overtime.                                                                                                |
-| **Acid Puddle**              | A temporary hazardous hex-state modifier created by Acid Crawler's Jump. Blocks landings until its owner action window expires or it is cleansed.                                            |
-| **Arena**                    | A ranked tier in the Trophy Road progression system. 10 Arenas in total.                                                                                                                     |
-| **ARPDAU**                   | Average Revenue Per Daily Active User. Key monetization metric.                                                                                                                              |
-| **Ataxx**                    | A 1990 abstract strategy board game by Leland Corporation. Pieces clone/jump and convert adjacent enemies. The primary mechanical inspiration for Goo Galaxy.                                |
-| **Axial Coordinates (q, r)** | A two-axis coordinate system for hexagonal grids. Enables non-branching mathematical operations for distance/neighbor calculations.                                                          |
-| **Clone**                    | A 1-hex range movement. Creates a copy of the unit on the target hex while keeping the original in place. Net +1 piece.                                                                      |
-| **Conversion**               | When a unit lands adjacent to enemy pieces, those enemies are flipped to the deploying player's faction. The core mechanic of spatial domination.                                            |
-| **COPPA**                    | Children's Online Privacy Protection Act (US). Requires verifiable parental consent for data collection from children under 13. Amended Rule effective April 2026.                           |
-| **DAU**                      | Daily Active Users. Players who log in and play at least once per day.                                                                                                                       |
-| **Domination**               | An instant win condition — triggered when a player eliminates/converts every enemy piece on the board.                                                                                       |
-| **Draft Mode**               | A competitive format where players draft from a shared random pool at normalized card levels. Removes progression advantages.                                                                |
-| **Defender Action Window**   | A temporary duration that expires after the affected unit's controller completes their next successful deployment.                                                                           |
-| **Draft Seed**               | The deterministic server-generated value used to build the same draft offer sequence for both players in Draft Mode.                                                                         |
-| **Energy / Elixir**          | The accumulating resource used to deploy cards. Generates at 1.0/2.8s (standard) or 1.0/1.4s (Overtime).                                                                                     |
-| **FMOD**                     | A professional audio middleware tool used for adaptive music and interactive sound design.                                                                                                   |
-| **FOMO**                     | Fear Of Missing Out. A psychological driver used in time-limited events and rotating shop offers.                                                                                            |
-| **Fragment**                 | A card-specific collectible required (along with Gold) to upgrade a card's level.                                                                                                            |
-| **Frozen**                   | A protected status that prevents movement and conversion interactions for its defender action window duration.                                                                               |
-| **FTUE**                     | First-Time User Experience. The tutorial and onboarding flow.                                                                                                                                |
-| **Galaxy Pass**              | The seasonal Battle Pass. 35 tiers with free and premium tracks. 30-day seasons.                                                                                                             |
-| **GDPR**                     | General Data Protection Regulation (EU). Governs personal data collection, storage, and processing.                                                                                          |
-| **Hexxagon**                 | A hexagonal variant of Ataxx. Played on a 61-hex grid. Direct inspiration for Goo Galaxy's board geometry.                                                                                   |
-| **Jump**                     | A 2-hex range movement. Repositions the unit to the target hex, leaving the source hex empty. Net +0 pieces.                                                                                 |
-| **Komi**                     | A mathematical compensation system (inspired by Go) that gives Player 2 bonus starting Energy to offset First Mover Advantage.                                                               |
-| **Laboratory**               | The in-game name for Clans/Guilds. A social group of up to 50 players.                                                                                                                       |
-| **LGPD**                     | Lei Geral de Proteção de Dados (Brazil). Brazilian data protection law similar to GDPR.                                                                                                      |
-| **LiveOps**                  | Live Operations. Ongoing game updates, events, balance patches, and content drops delivered without full client updates.                                                                     |
-| **LTV**                      | Lifetime Value. Total revenue expected from a single player over their entire engagement with the game.                                                                                      |
-| **MAU**                      | Monthly Active Users. Players who log in at least once per month.                                                                                                                            |
-| **MCTS**                     | Monte Carlo Tree Search. An AI algorithm used for simulating game outcomes. Used in balance testing.                                                                                         |
-| **MVP**                      | Minimum Viable Product. In this GDD it often refers to the Phase 2 target slice, though a leaner internal cut may be required before external playtesting.                                   |
-| **MPS SDK**                  | Unity Multiplayer Services SDK. The preferred session-layer integration point for Lobby, Relay, Matchmaker, and related multiplayer service flows.                                           |
-| **NGO**                      | Netcode for GameObjects. Unity's official multiplayer networking framework.                                                                                                                  |
-| **Owner Action Window**      | A temporary duration that expires after the effect owner's next successful deployment resolves.                                                                                              |
-| **Overtime**                 | A 1-minute sudden death phase triggered when the match score is tied at the end of standard time. Energy generation doubles (2x).                                                            |
-| **Score**                    | For timeout and Overtime resolution, score equals the number of troops currently controlled on the board.                                                                                    |
-| **P2W**                      | Pay-to-Win. A monetization design where spending real money provides direct competitive advantages. Avoided in Goo Galaxy.                                                                   |
-| **$P_v$**                    | Power Value. The theoretical impact budget of a card, calculated as $P_v = k \cdot E^2$.                                                                                                     |
-| **ScriptableObject (SO)**    | A Unity data container that exists as a project-level asset. In Goo Galaxy these primarily live under `Assets/Data/*` and hold card definitions, configs, registries, and tuning parameters. |
-| **Sealed**                   | A temporary hex-state modifier that blocks Clone/Jump landings on selected empty hexes until its owner action window expires or it is cleansed.                                              |
-| **Soft Launch**              | A limited-geography release to test retention, monetization, and server stability before global launch.                                                                                      |
-| **SUV Framework**            | Social, Utility, Vanity — the three pillars of ethical F2P monetization.                                                                                                                     |
-| **Trophy**                   | The ranked currency earned/lost from competitive matches. Determines Arena placement.                                                                                                        |
-| **UGS**                      | Unity Gaming Services. Includes Relay, Lobby, Cloud Save, and Analytics.                                                                                                                     |
-| **WCAG**                     | Web Content Accessibility Guidelines. Used as the accessibility standard for color contrast (minimum 4.5:1 ratio).                                                                           |
-| **Rooted**                   | A status that prevents a unit's controller from moving that unit until the defender action window expires.                                                                                   |
+| Term                                | Definition                                                                                                                                                                                            |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **APM**                             | Actions Per Minute. A measure of Researcher execution speed, especially relevant during Overtime.                                                                                                     |
+| **Acid Puddle**                     | A temporary hazardous sector-state modifier created by Acid Crawler's Jump. Blocks landings until its owner action window expires or it is cleansed.                                                  |
+| **Assimilation**                    | When a specimen lands adjacent to enemy specimens, those enemies are flipped to the deploying Researcher's faction. The core mechanic of spatial domination. Also called "conversion" in design docs. |
+| **Ataxx**                           | A 1990 abstract strategy board game by Leland Corporation. Pieces clone/jump and convert adjacent enemies. The primary mechanical inspiration for Goo Galaxy.                                         |
+| **Axial Coordinates (q, r)**        | A two-axis coordinate system for hexagonal grids. Enables non-branching mathematical operations for distance/neighbor calculations.                                                                   |
+| **Blind Discovery**                 | A competitive format where Researchers draft from a shared random pool at normalized specimen levels. Removes progression advantages. Formerly "Draft Mode."                                          |
+| **Callsign**                        | A Researcher's unique display name. The in-world term for "username."                                                                                                                                 |
+| **Capsule**                         | A sealed orbital container that delivers specimens, Stardust, DNA Strands, and Nova Cores to Researchers. Formerly "Chest."                                                                           |
+| **Capsule Bay**                     | The starship compartment that holds up to 4 Capsules awaiting decapsulation. Formerly "Chest Slots."                                                                                                  |
+| **Clone**                           | A 1-sector range movement. Creates a copy of the specimen on the target sector while keeping the original in place. Net +1 specimen.                                                                  |
+| **Comms**                           | Crew communication channel. The in-world term for clan chat.                                                                                                                                          |
+| **Containment Breach Protocol**     | A catch-up energy bonus that activates when a Researcher controls ≤40% of specimens on the surface. +15% energy regeneration for 20 seconds. 60s cooldown.                                            |
+| **COPPA**                           | Children's Online Privacy Protection Act (US). Requires verifiable parental consent for data collection from children under 13. Amended Rule effective April 2026.                                    |
+| **Crew**                            | A social group of up to 50 Researchers aboard a starship. The in-world term for Clans/Guilds.                                                                                                         |
+| **DAU**                             | Daily Active Users. Researchers who log in and embark on at least one expedition per day.                                                                                                             |
+| **Defender Action Window**          | A temporary duration that expires after the affected specimen's controller completes their next successful deployment.                                                                                |
+| **Discovery Capsule**               | The in-world term for loot containers. Earned from expeditions. Delivers specimens, Stardust, and DNA Strands.                                                                                        |
+| **Discovery Complete**              | The victory screen message when a Researcher wins an expedition.                                                                                                                                      |
+| **Discovery Cycle**                 | A deterministic 240-Capsule sequence ensuring fair distribution of rarities over time.                                                                                                                |
+| **Discovery Points (DP)**           | The ranked currency earned/lost from competitive expeditions. Determines Star System placement. Formerly "Trophies."                                                                                  |
+| **DNA Strands**                     | Specimen-specific collectibles required (along with Stardust) to Enhance a specimen's level. Formerly "Fragments."                                                                                    |
+| **Domination / Total Assimilation** | An instant win condition — triggered when a Researcher assimilates every single enemy specimen on the planetary surface. Awards +50% bonus DP.                                                        |
+| **Energy**                          | The accumulating resource used to deploy specimens and activate protocols. Generates at 1.0/2.8s (standard) or 1.0/1.4s (Overtime).                                                                   |
+| **Enhance**                         | The action of upgrading a specimen's level using DNA Strands and Stardust. Formerly "Upgrade."                                                                                                        |
+| **Expedition**                      | A single competitive match. Two Researchers descend to a planetary surface and compete for territorial dominance.                                                                                     |
+| **Expedition Cache**                | Resources recovered from a successful expedition. Formerly "Victory Chest."                                                                                                                           |
+| **Expedition Cycle**                | A 4-week competitive season. Formerly "Season."                                                                                                                                                       |
+| **Expedition Log**                  | A replay of a past expedition, reconstructed from authoritative command logs.                                                                                                                         |
+| **Expedition Race**                 | A weekly competitive format where two Crews compete for the most expedition victories. Formerly "Clan Wars."                                                                                          |
+| **Expedition Recalled**             | The defeat screen message when a Researcher loses an expedition. Softer and more thematic than "Defeat."                                                                                              |
+| **Expedition Rank**                 | A Researcher's overall progression level, from Junior Researcher to Galactic Laureate.                                                                                                                |
+| **Field Journal**                   | A Researcher's personal record of past expeditions, stats, and achievements.                                                                                                                          |
+| **FMOD**                            | A professional audio middleware tool used for adaptive music and interactive sound design.                                                                                                            |
+| **FOMO**                            | Fear Of Missing Out. A psychological driver used in time-limited Galactic Phenomena and rotating market offers.                                                                                       |
+| **FTUE**                            | First-Time User Experience. The tutorial and onboarding flow for new Researchers.                                                                                                                     |
+| **Galactic Archives**               | The intergalactic leaderboard. The hall of fame for the galaxy's greatest Researchers.                                                                                                                |
+| **Galactic Core, The**              | The 10th and final Star System. 3,500+ DP. Infinite ladder. Top 1,000 Researchers immortalized.                                                                                                       |
+| **Galactic Market**                 | The intergalactic trading post where Researchers spend Stardust and Nova Cores. Formerly "Shop."                                                                                                      |
+| **Galactic Phenomena**              | Time-limited weekend events (Tectonic Shift, Anomaly Zone, Blind Discovery). Formerly "Events."                                                                                                       |
+| **Galaxy Pass**                     | The seasonal progression pass. Tiers with free and premium tracks. Themed around each Expedition Cycle.                                                                                               |
+| **GDPR**                            | General Data Protection Regulation (EU). Governs personal data collection, storage, and processing.                                                                                                   |
+| **Hexxagon**                        | A hexagonal variant of Ataxx. Played on a 61-hex grid. Direct inspiration for Goo Galaxy's planetary surface geometry.                                                                                |
+| **Jump**                            | A 2-sector range movement. Repositions the specimen to the target sector, leaving the source sector empty. Net +0 specimens.                                                                          |
+| **Kit**                             | A Researcher's 8-specimen loadout for expeditions. The in-world term for "Deck."                                                                                                                      |
+| **Komi**                            | A mathematical compensation system (inspired by Go) that gives Player 2 bonus starting Energy to offset First Mover Advantage.                                                                        |
+| **LGPD**                            | Lei Geral de Proteção de Dados (Brazil). Brazilian data protection law similar to GDPR.                                                                                                               |
+| **LiveOps**                         | Live Operations. Ongoing game updates, Galactic Phenomena, balance patches, and content drops delivered without full client updates.                                                                  |
+| **LTV**                             | Lifetime Value. Total revenue expected from a single Researcher over their entire engagement with the game.                                                                                           |
+| **MAU**                             | Monthly Active Users. Researchers who log in at least once per month.                                                                                                                                 |
+| **MCTS**                            | Monte Carlo Tree Search. An AI algorithm used for simulating expedition outcomes. Used in balance testing.                                                                                            |
+| **MVP**                             | Minimum Viable Product. In this GDD it often refers to the Phase 2 target slice, though a leaner internal cut may be required before external playtesting.                                            |
+| **MPS SDK**                         | Unity Multiplayer Services SDK. The preferred session-layer integration point for Lobby, Relay, Matchmaker, and related multiplayer service flows.                                                    |
+| **NGO**                             | Netcode for GameObjects. Unity's official multiplayer networking framework.                                                                                                                           |
+| **Nova Cores**                      | The premium (hard) currency. Rare, super-dense stellar energy cores purchased with real money. Formerly "Gems."                                                                                       |
+| **Owner Action Window**             | A temporary duration that expires after the effect owner's next successful deployment resolves.                                                                                                       |
+| **Overtime**                        | A 1-minute sudden death phase triggered when expedition scores are tied at the end of standard time. Energy generation doubles (2x).                                                                  |
+| **P2W**                             | Pay-to-Win. A monetization design where spending real money provides direct competitive advantages. Avoided in Goo Galaxy.                                                                            |
+| **$P_v$**                           | Power Value. The theoretical impact budget of a specimen or protocol, calculated as $P_v = k \cdot E^2$.                                                                                              |
+| **Planetary Surface**               | The 61-sector hexagonal grid where expeditions take place. Formerly "Hex Grid" / "Board."                                                                                                             |
+| **Protocol**                        | A card type representing a scientific procedure activated during expeditions. Does not place a specimen. Formerly "Spell."                                                                            |
+| **Research Contract**               | An optional bonus objective from the Galactic Research Council. Formerly "Challenge."                                                                                                                 |
+| **Researcher**                      | The player's in-world identity. A comical, charming alien scientist exploring the galaxy.                                                                                                             |
+| **Researcher ID**                   | The player's chosen Researcher character and visual appearance. The primary cosmetic vector.                                                                                                          |
+| **Sample Purge**                    | The ability to discard a specimen from the Active Samples for 0.5 Energy, drawing the next in the cycle.                                                                                              |
+| **Sample Sharing**                  | Crewmates sharing duplicate DNA Strands with each other. Formerly "Card Donations."                                                                                                                   |
+| **ScriptableObject (SO)**           | A Unity data container that exists as a project-level asset. In Goo Galaxy these primarily live under `Assets/Data/*` and hold specimen definitions, configs, registries, and tuning parameters.      |
+| **Sealed**                          | A temporary sector-state modifier that blocks Clone/Jump landings on selected empty sectors until its owner action window expires or it is cleansed.                                                  |
+| **Sector**                          | A single hex on the planetary surface survey grid. Formerly "Hex" / "Tile."                                                                                                                           |
+| **Soft Launch**                     | A limited-geography release to test retention, monetization, and server stability before global launch.                                                                                               |
+| **Specimen**                        | A card type representing a slime life form deployed onto the planetary surface. Formerly "Troop."                                                                                                     |
+| **Star System**                     | A ranked tier in the Discovery Points progression system. 10 Star Systems spanning from Gloopiter to The Galactic Core. Formerly "Arena."                                                             |
+| **Stardust**                        | The common (soft) currency. Abundant cosmic resource used for basic enhancements and market purchases. Formerly "Gold."                                                                               |
+| **SUV Framework**                   | Social, Utility, Vanity — the three pillars of ethical F2P monetization.                                                                                                                              |
+| **Total Assimilation**              | See Domination.                                                                                                                                                                                       |
+| **Transmission**                    | An in-world push notification from the Researcher's starship. "Incoming Transmission: ..."                                                                                                            |
+| **Warp Jump**                       | The act of advancing to the next Star System upon earning enough Discovery Points. Formerly "Arena Promotion."                                                                                        |
+| **WCAG**                            | Web Content Accessibility Guidelines. Used as the accessibility standard for color contrast (minimum 4.5:1 ratio).                                                                                    |
+| **UGS**                             | Unity Gaming Services. Includes Relay, Lobby, Cloud Save, and Analytics.                                                                                                                              |
+| **Rooted**                          | A status that prevents a specimen's controller from moving that specimen until the defender action window expires.                                                                                    |
 
 ---
 
@@ -68,68 +100,68 @@ $$\text{Stat}_{Lv} = \text{Stat}_{Base} \times 1.10^{(Lv - 1)}$$
 
 $$d = \frac{|q_1 - q_2| + |r_1 - r_2| + |(q_1 + r_1) - (q_2 + r_2)|}{2}$$
 
-### 4. Trophy Change per Match
+### 4. Discovery Point Change per Expedition
 
-$$\Delta T = T_{base} \times M_{streak} \times M_{arena}$$
+$$\Delta DP = DP_{base} \times M_{streak} \times M_{system} \times M_{assimilation}$$
 
-### 5. Season Trophy Reset (Soft Reset)
+### 5. Expedition Cycle Archival Reset (Soft Reset)
 
-$$T_{new} = 3000 + \frac{T_{current} - 3000}{2}$$
+$$DP_{new} = 3000 + \frac{DP_{current} - 3000}{2}$$
 
 ### 6. Energy Generation
 
 $$E_{generated}(t) = \frac{t}{R} \quad \text{where } R = 2.8s \text{ (standard)} \text{ or } 1.4s \text{ (overtime)}$$
 
-### 7. Effective Conversion Rate (Balance Metric)
+### 7. Effective Assimilation Rate (Balance Metric)
 
-$$ECR = \frac{\text{Average enemy hexes flipped per deployment}}{E_{cost}}$$
+$$EAR = \frac{\text{Average enemy sectors assimilated per deployment}}{E_{cost}}$$
 
 ### 8. Timeout Score
 
-$$Score_{player} = \text{controlled troops currently on the board}$$
+$$Score_{researcher} = \text{controlled specimens currently on the planetary surface}$$
 
 ---
 
 ## Launch Roster Quick Reference
 
-| Card               | Cost | Type  | Rarity    | Key Ability                                                                      |
-| :----------------- | :--: | :---- | :-------- | :------------------------------------------------------------------------------- |
-| Subject Alpha      |  1   | Troop | Common    | Standard conversion. Baseline unit.                                              |
-| Acid Crawler       |  2   | Troop | Common    | Jump leaves an acid puddle for 2 owner action windows (area denial).             |
-| Bio-Phalanx        |  3   | Troop | Rare      | Armored Membrane — first valid conversion attempt strips armor, second converts. |
-| Volatile Mass      |  4   | Troop | Epic      | 2-hex AoE conversion. Cannot Clone. Self-destructs.                              |
-| Plasmic Leaper     |  4   | Troop | Epic      | Hover (ignores hazards). Roots newly converted enemies.                          |
-| The Apex Strain    |  5   | Troop | Legendary | Seismic push (displaces enemies 1 hex). Immovable.                               |
-| Cryo-Stasis        |  2   | Spell | Rare      | Freezes a 3-hex cluster for 1 defender action window. Immune to all interaction. |
-| Sterilization Beam |  4   | Spell | Epic      | Vaporizes 4-hex cluster. Ignores all defenses.                                   |
+| Specimen / Protocol | Cost | Type     | Rarity    | Key Ability                                                                           |
+| :------------------ | :--: | :------- | :-------- | :------------------------------------------------------------------------------------ |
+| Subject Alpha       |  1   | Specimen | Common    | Standard assimilation. Baseline specimen.                                             |
+| Acid Crawler        |  2   | Specimen | Common    | Jump leaves an acid puddle for 2 owner action windows (area denial).                  |
+| Bio-Phalanx         |  3   | Specimen | Rare      | Armored Membrane — first valid assimilation attempt strips armor, second assimilates. |
+| Volatile Mass       |  4   | Specimen | Epic      | 2-sector AoE assimilation. Cannot Clone. Self-destructs.                              |
+| Plasmic Leaper      |  4   | Specimen | Epic      | Hover (ignores hazards). Roots newly assimilated enemies.                             |
+| The Apex Strain     |  5   | Specimen | Legendary | Seismic push (displaces enemies 1 sector). Immovable.                                 |
+| Cryo-Stasis         |  2   | Protocol | Rare      | Freezes a 3-sector cluster for 1 defender action window. Immune to all interaction.   |
+| Sterilization Beam  |  4   | Protocol | Epic      | Vaporizes 4-sector cluster. Ignores all defenses.                                     |
 
 ---
 
 ## Expansion Prototype Quick Reference
 
-| Card             | Cost | Type  | Rarity | Key Ability                                                                 |
-| :--------------- | :--: | :---- | :----- | :-------------------------------------------------------------------------- |
-| Quarantine Drone |  3   | Troop | Rare   | Creates up to 2 Sealed adjacent empty hexes for 1 owner action window.      |
-| Detox Mycelium   |  3   | Troop | Rare   | Cleanses nearby friendly Frozen/Rooted states and dissolves acid puddles.   |
-| Purge Pulse      |  2   | Spell | Rare   | Cleanses Frozen, Rooted, Sealed, and acid puddles in a 3-hex cluster.       |
-| Phase Relay      |  3   | Spell | Epic   | Repositions 1 allied troop with a free Jump that still resolves on landing. |
+| Specimen / Protocol | Cost | Type     | Rarity | Key Ability                                                                    |
+| :------------------ | :--: | :------- | :----- | :----------------------------------------------------------------------------- |
+| Quarantine Drone    |  3   | Specimen | Rare   | Creates up to 2 Sealed adjacent empty sectors for 1 owner action window.       |
+| Detox Mycelium      |  3   | Specimen | Rare   | Cleanses nearby friendly Frozen/Rooted states and dissolves acid puddles.      |
+| Purge Pulse         |  2   | Protocol | Rare   | Cleanses Frozen, Rooted, Sealed, and acid puddles in a 3-sector cluster.       |
+| Phase Relay         |  3   | Protocol | Epic   | Repositions 1 allied specimen with a free Jump that still resolves on landing. |
 
 ---
 
-## Arena Quick Reference
+## Star System Quick Reference
 
-|  #  | Arena Name       | Trophies  | Key Unlock                      |
-| :-: | :--------------- | :-------- | :------------------------------ |
-|  1  | Petri Dish       | 0-299     | Subject Alpha, Acid Crawler     |
-|  2  | Observation Lab  | 300-599   | Bio-Phalanx                     |
-|  3  | Containment Wing | 600-999   | Volatile Mass, Clans            |
-|  4  | Mutation Chamber | 1000-1399 | Plasmic Leaper, Shop            |
-|  5  | Biohazard Sector | 1400-1799 | Cryo-Stasis, Draft Mode         |
-|  6  | Xenobiology Lab  | 1800-2199 | Sterilization Beam, Galaxy Pass |
-|  7  | Deep Space Wing  | 2200-2599 | The Apex Strain                 |
-|  8  | Apex Research    | 2600-2999 | Epic card pool expansion        |
-|  9  | Director's Suite | 3000-3499 | Legendary pool, Tournaments     |
-| 10  | The Nexus        | 3500+     | Infinite ladder, Leaderboard    |
+|  #  | System Name       | DP Range      | Key Unlock                         |
+| :-: | :---------------- | :------------ | :--------------------------------- |
+|  1  | Gloopiter         | 0 – 299       | Subject Alpha, Acid Crawler        |
+|  2  | Sludgar-4         | 300 – 599     | Bio-Phalanx                        |
+|  3  | Cryo-9            | 600 – 999     | Volatile Mass, Crews               |
+|  4  | Toxis Major       | 1,000 – 1,399 | Plasmic Leaper, Galactic Market    |
+|  5  | Nova Rubra        | 1,400 – 1,799 | Cryo-Stasis, Blind Discovery       |
+|  6  | Nexar Prime       | 1,800 – 2,199 | Sterilization Beam, Galaxy Pass    |
+|  7  | Void's Edge       | 2,200 – 2,599 | The Apex Strain                    |
+|  8  | Apex Nebula       | 2,600 – 2,999 | Epic specimen pool expands         |
+|  9  | Singularity Reach | 3,000 – 3,499 | Legendary pool, Symposia           |
+| 10  | The Galactic Core | 3,500+        | Infinite ladder, Galactic Archives |
 
 ---
 

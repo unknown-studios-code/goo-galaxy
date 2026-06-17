@@ -86,10 +86,10 @@ flowchart TD
 | Chat mode                   |      Pre-approved phrases only       |                   Pre-approved phrases only                   | Full text with profanity and safety filters |
 | Real-money purchases        |               Blocked                | Parental gate or hard block, depending on region/legal review |                   Allowed                   |
 | Personalized ads            |               Blocked                |                            Blocked                            |               Opt-in consent                |
-| Social features (Clans)     |               Blocked                |                       Limited (no DMs)                        |                    Full                     |
+| Social features (Crews)     |               Blocked                |                       Limited (no DMs)                        |                    Full                     |
 | Data collection (analytics) | Verifiable parental consent required |                           Minimized                           |              Standard consent               |
-| Loot box purchases          |               Blocked                |                   Parental consent required                   |     Allowed (with drop rate disclosure)     |
-| Push notifications          |               Blocked                |                  Limited (game events only)                   |      Full (with per-category opt-out)       |
+| Loot capsule purchases      |               Blocked                |                   Parental consent required                   |     Allowed (with drop rate disclosure)     |
+| Transmissions (push)        |               Blocked                |               Limited (expedition events only)                |      Full (with per-category opt-out)       |
 
 ### Chat Retention Policy
 
@@ -115,54 +115,54 @@ flowchart TD
 
 ### Drop Rate Disclosure Implementation
 
-All chest contents must display **exact drop probabilities** before the player commits to opening/purchasing:
+All capsule contents must display **exact drop probabilities** before the Researcher commits to opening/purchasing:
 
 ```json
 {
-  "chestType": "Gold Chest",
+  "capsuleType": "Enhanced Capsule",
   "dropRates": {
-    "common_fragments": {
+    "common_dna_strands": {
       "min": 3,
       "max": 8,
       "probability": 1.0
     },
-    "rare_fragments": {
+    "rare_dna_strands": {
       "min": 1,
       "max": 3,
       "probability": 1.0
     },
-    "epic_fragments": {
+    "epic_dna_strands": {
       "min": 0,
       "max": 1,
       "probability": 0.1
     },
-    "legendary_fragments": {
+    "legendary_dna_strands": {
       "min": 0,
       "max": 1,
       "probability": 0.01
     },
-    "gold": {
+    "stardust": {
       "min": 100,
       "max": 300,
       "probability": 1.0
     }
   },
-  "note": "Probabilities are per-chest. Gold Chest always contains at least 1 Rare card."
+  "note": "Probabilities are per-capsule. Enhanced Capsule always contains at least 1 Rare specimen."
 }
 ```
 
 This information must be accessible via:
 
-1. **Info button** on every chest in the UI (tap to see full drop table).
-2. **Shop page** for any chest or bundle available for purchase.
+1. **Info button** on every capsule in the UI (tap to see full drop table).
+2. **Galactic Market page** for any capsule or bundle available for purchase.
 3. **Help/FAQ section** in Settings.
 
 ### Belgium Compliance
 
-For Belgian players, the monetization system must be modified:
+For Belgian Researchers, the monetization system must be modified:
 
-- **Chests earned through gameplay** (free chests, victory chests) remain unchanged — they are not "purchased."
-- **Chests available for purchase with Gems** are replaced with **direct purchase** options — players buy specific card fragments directly, removing the random element.
+- **Capsules earned through expeditions** (Daily Scans, Expedition Caches) remain unchanged — they are not "purchased."
+- **Capsules available for purchase with Nova Cores** are replaced with **direct purchase** options — Researchers buy specific DNA Strands directly, removing the random element.
 - The Galaxy Pass premium track rewards remain unchanged (they are not randomized — each tier has a fixed, known reward).
 
 ---

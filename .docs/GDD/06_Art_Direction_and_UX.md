@@ -1,50 +1,60 @@
 # Art Direction & UX
 
-## Theme: The Corporate Laboratory & The Slime
+## Theme: Cosmic Discovery — Researchers & Specimens
 
-The narrative foundation subverts two classic tropes — the "Mad Scientist" and the "Blob Monster" — into a fresh, commercially viable aesthetic.
+The narrative foundation reimagines space exploration through a charming, comedic lens — **alien Researchers** travel the galaxy discovering, cataloging, and testing exotic slime life forms on uncharted planets. Think _Guardians of the Galaxy_ meets _Pokémon Snap_, with a science-comedy twist.
 
-### The Environment: Corporate Sterility
+### The Researchers: Comical Alien Scientists
 
-Instead of a sadistic dungeon, the setting is a **pristine, hyper-funded intergalactic corporate laboratory**. Characteristics:
+The player's avatar is a **charming, expressive alien Researcher** — part of an intergalactic collective of bumbling but brilliant scientists. Key design principles:
 
-- Sleek metallic surfaces with subtle hexagonal panel textures.
-- Biohazard containment units glowing with soft neon accents.
-- Observation decks with holographic data readouts.
-- Experimentation is **bureaucratic**, not malicious — filed in triplicate.
+- **Non-human, instantly lovable designs** — round, squishy, big-eyed aliens in slightly-too-large lab coats and fogged-up helmets.
+- **Expressive body language** — antennae that droop on defeat, goggles that pop off on Total Assimilation, gloves that are comically oversized.
+- **Multiple species** for player choice and cosmetic variety — gelatinous (Dr. Bloop), insectoid (Doc Sparks), crystalline (Chief Glimmer), gaseous (Capt. Nebula), hedgehog-like (Prof. Quill).
+- **Diegetic UI** — all HUD elements appear as holographic projections from the Researcher's equipment, reinforcing that _you_ are the scientist conducting the expedition.
 
-### The Combatants: Sentient Slimes
+> **IP Potential:** The Researchers are the primary IP vehicle — they appear on the main menu, in expedition intros, on the Galaxy Pass, and as emotes. They should be as recognizable and marketable as Clash Royale's King or Among Us's Crewmates.
 
-The "Alien/Mutant Samples" are designed with:
+### The Environment: Alien Planets & Deep Space
+
+Instead of sterile lab rooms, expeditions take place on the surfaces of colorful, exotic planets:
+
+- **Deep space backdrops** — nebulae, starfields, ringed planets on the horizon, twin moons.
+- **Planetary surfaces** — each Star System has a distinct biome: gas giant cloud layers (Gloopiter), bioluminescent swamps (Sludgar-4), crystalline ice fields (Cryo-9), volcanic wastelands (Nova Rubra).
+- **Holographic grid overlay** — the hex grid appears as a scanning projection cast onto the planetary surface by the Researcher's orbital starship.
+- **Tone** — wonder and discovery, not sterile containment. The galaxy is vast, colorful, and _alive_.
+
+### The Specimens: Sentient Slimes
+
+The alien life forms discovered across the galaxy are designed with:
 
 - **Vibrant, bouncy idle animations** — gentle wobbling, eye-blinking, occasional stretching.
 - **Expressive, oversized eyes** — the primary vehicle for personality.
 - **Geometric simplicity** — rounded tear-drop or blob shapes. Easy to read at mobile scale.
-- **Charming dissonance** — cute appearance contrasts with aggressive self-replicating behavior on the board.
-
-> **IP Potential:** This duality (cute + aggressive) is critical for global appeal, merchandising, and cosmetic desirability. The slimes must be as recognizable and marketable as Clash Royale's King or Among Us's Crewmates.
+- **Charming dissonance** — cute appearance contrasts with aggressive self-replicating behavior during expeditions.
+- **Color-coded by faction** — Player 1's specimens glow Electric Cyan; Player 2's glow Hot Magenta. Ownership is instantly readable.
 
 ---
 
-## High-Contrast Color System (Cyber Neon)
+## High-Contrast Color System (Cosmic Neon)
 
-Mobile game UIs must prioritize **instant readability**, especially in real-time PvP where split-second cognitive processing determines success. The color system follows a strict hierarchy:
+Mobile game UIs must prioritize **instant readability**, especially in real-time PvP where split-second cognitive processing determines success. The color system follows a strict hierarchy, optimized for deep space backgrounds:
 
 ### Color Palette
 
-| Layer                | Purpose                                | Color(s)               | Hex Code(s)          | WCAG Contrast vs Background |
-| :------------------- | :------------------------------------- | :--------------------- | :------------------- | :-------------------------: |
-| **Background**       | "Deep Night Base" — dark foundation    | Charcoal / Space Black | `#0B0F1A`, `#1B1B1B` |        — (baseline)         |
-| **Grid Lines**       | Hex boundaries — visible but recessive | Synthetic Slate        | `#2B2D42`            |       2.1:1 (subtle)        |
-| **Player 1 Faction** | Goo color — high visual dominance      | Electric Cyan          | `#00F5FF`            |           12.8:1            |
-| **Player 2 Faction** | Goo color — opposite wheel position    | Hot Magenta            | `#FF2DAA`            |            5.2:1            |
-| **Critical UI**      | Energy bar, spell targeting            | Radioactive Lime       | `#39FF14`            |           11.4:1            |
-| **Warning/Urgent**   | Low energy, overtime timer             | Warning Orange         | `#FF6A00`            |            5.7:1            |
-| **Information**      | Timers, costs, scores                  | Pure White             | `#FFFFFF`            |           18.1:1            |
-| **Negative/Error**   | Failed actions, loss screen            | Soft Red               | `#FF4444`            |            5.5:1            |
-| **Positive/Success** | Wins, conversions, rank-ups            | Bright Gold            | `#FFD700`            |           11.0:1            |
+| Layer                | Purpose                                   | Color(s)               | Hex Code(s)          | WCAG Contrast vs Background |
+| :------------------- | :---------------------------------------- | :--------------------- | :------------------- | :-------------------------: |
+| **Background**       | "Deep Space" — cosmic void foundation     | Charcoal / Space Black | `#0B0F1A`, `#1B1B1B` |        — (baseline)         |
+| **Grid Lines**       | Sector boundaries — visible but recessive | Synthetic Slate        | `#2B2D42`            |       2.1:1 (subtle)        |
+| **Player 1 Faction** | Specimen color — high visual dominance    | Electric Cyan          | `#00F5FF`            |           12.8:1            |
+| **Player 2 Faction** | Specimen color — opposite wheel position  | Hot Magenta            | `#FF2DAA`            |            5.2:1            |
+| **Critical UI**      | Energy bar, protocol targeting            | Radioactive Lime       | `#39FF14`            |           11.4:1            |
+| **Warning/Urgent**   | Low energy, overtime timer                | Warning Orange         | `#FF6A00`            |            5.7:1            |
+| **Information**      | Timers, costs, scores                     | Pure White             | `#FFFFFF`            |           18.1:1            |
+| **Negative/Error**   | Failed actions, expedition recalled       | Soft Red               | `#FF4444`            |            5.5:1            |
+| **Positive/Success** | Discoveries, assimilations, warp jumps    | Bright Gold            | `#FFD700`            |           11.0:1            |
 
-> **Accessibility:** All text and interactive elements achieve a minimum **4.5:1 contrast ratio** against their backgrounds, per WCAG 2.1 Level AA (Section 1.4.3). Neon accents against the dark base provide maximum readability while maintaining the sci-fi aesthetic.
+> **Accessibility:** All text and interactive elements achieve a minimum **4.5:1 contrast ratio** against their backgrounds, per WCAG 2.1 Level AA (Section 1.4.3). Neon accents against the deep space backdrop provide maximum readability while maintaining the cosmic sci-fi aesthetic.
 
 ### Mermaid Documentation Palette
 
@@ -91,9 +101,21 @@ graph TD
 
 ## Character Design Specifications
 
-### Unit Visual Design
+### Researcher Visual Design (Player Avatars)
 
-| Unit               | Shape                      | Size (relative) | Distinctive Feature                        | Animation Style                                 |
+See `Space_Expedition_Naming_Proposal.md` §10 for the full Researcher cast. Key design specs:
+
+| Researcher        | Species           | Size (relative) | Distinctive Feature                              | Animation Style                                    |
+| :---------------- | :---------------- | :-------------: | :----------------------------------------------- | :------------------------------------------------- |
+| **Dr. Bloop**     | Gelatinous blob   |      1.0x       | Oversized lab coat, perpetually fogged goggles   | Bouncy, squishy idle. Goggles fog up when excited. |
+| **Prof. Quill**   | Hedgehog-like     |      0.9x       | Spines poke through coat, tiny round spectacles  | Precise, slightly grumpy movements.                |
+| **Capt. Nebula**  | Gaseous entity    |      1.1x       | Contained in translucent helmet, flowing scarf   | Swirling, charismatic poses.                       |
+| **Doc Sparks**    | Tiny insectoid    |      0.8x       | Four arms, constantly fidgeting with equipment   | Hyperactive, skittering idle. Drops things.        |
+| **Chief Glimmer** | Crystalline being |      1.2x       | Faceted translucent body, elegant slow movements | Refracts light. Graceful, deliberate gestures.     |
+
+### Specimen Visual Design
+
+| Specimen           | Shape                      | Size (relative) | Distinctive Feature                        | Animation Style                                 |
 | :----------------- | :------------------------- | :-------------: | :----------------------------------------- | :---------------------------------------------- |
 | **Subject Alpha**  | Round blob                 | 1.0x (baseline) | Simple round pupils                        | Bouncy, elastic idle wobble.                    |
 | **Acid Crawler**   | Slug-like, elongated       |      1.1x       | Dripping texture, narrow angry eyes        | Slithering movement, drool particles.           |
@@ -120,44 +142,44 @@ flowchart TD
     AGE --> LOGIN["Login<br/>(Guest / Account)"]
     LOGIN --> MAIN["Main Menu Hub"]
 
-    MAIN --> PLAY["Play<br/>(Matchmaking)"]
-    MAIN --> DECK["Deck Builder"]
-    MAIN --> SHOP["Cosmetic Shop"]
+    MAIN --> PLAY["Expeditions<br/>(Matchmaking)"]
+    MAIN --> KIT["Kit Builder"]
+    MAIN --> MARKET["Galactic Market"]
     MAIN --> PASS["Galaxy Pass"]
-    MAIN --> CLAN["Laboratory<br/>(Clan)"]
-    MAIN --> PROFILE["Player Profile"]
+    MAIN --> CREW["Crew<br/>(Social)"]
+    MAIN --> PROFILE["Researcher ID"]
     MAIN --> SETTINGS["Settings"]
-    MAIN --> EVENTS["Events<br/>(Weekend)"]
+    MAIN --> PHENOMENA["Galactic Phenomena<br/>(Weekend)"]
 
     PLAY --> QUEUE["Matchmaking Queue<br/>(less than 10 sec)"]
-    QUEUE --> MATCH["Match Found<br/>Player Cards Screen"]
-    MATCH --> GAME["In-Match HUD"]
-    GAME --> RESULTS["Results Screen<br/>+ Chest Award"]
+    QUEUE --> FOUND["Expedition Rivals Detected<br/>Researcher Cards Screen"]
+    FOUND --> GAME["Expedition HUD"]
+    GAME --> RESULTS["Results Screen<br/>+ Capsule Award"]
     RESULTS --> MAIN
 
-    DECK --> CARD_INFO["Card Info<br/>(Stats + Upgrade)"]
+    KIT --> SPECIMEN_INFO["Specimen Info<br/>(Stats + Enhance)"]
 
     SETTINGS --> AUDIO["Audio Settings"]
-    SETTINGS --> NOTIF["Notification Prefs"]
+    SETTINGS --> NOTIF["Transmission Prefs"]
     SETTINGS --> ACCOUNT["Account / Privacy"]
     SETTINGS --> SUPPORT["Customer Support"]
 ```
 
 ### Screen Descriptions
 
-| Screen                | Key Elements                                                                                                          | Thumb Zone Priority                        |
-| :-------------------- | :-------------------------------------------------------------------------------------------------------------------- | :----------------------------------------- |
-| **Main Menu Hub**     | Player name, Trophy count, Arena badge. 6 navigation buttons in a radial or grid layout. Current chest slots visible. | All navigation within thumb reach.         |
-| **Matchmaking Queue** | Animated "searching" effect. Trophy range indicator. Cancel button.                                                   | Cancel in easy reach (bottom-center).      |
-| **Match Found**       | Both players' profiles, Trophy count, arena badge, equipped cosmetics. 3-second countdown.                            | Non-interactive. Just visual anticipation. |
-| **In-Match HUD**      | See HUD layout below.                                                                                                 | Card hand and Energy bar in bottom 30%.    |
-| **Results Screen**    | Win/Loss/Draw banner. Trophy change (+30/-25). Chest awarded (if win). "Play Again" and "Return" buttons.             | "Play Again" prominently in bottom-center. |
-| **Deck Builder**      | 8-slot deck grid. Full card collection below. Sort/filter by rarity, cost, type. Average Elixir cost displayed.       | Drag-and-drop card placement.              |
-| **Galaxy Pass**       | 35-tier horizontal scroll. Free track on top, Premium on bottom. Purchase button for Premium upgrade.                 | Horizontal scroll with momentum.           |
+| Screen                | Key Elements                                                                                                                                             | Thumb Zone Priority                          |
+| :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------- |
+| **Main Menu Hub**     | Researcher callsign, DP count, Star System badge. 6 navigation buttons in a radial or grid layout. Capsule bay visible.                                  | All navigation within thumb reach.           |
+| **Matchmaking Queue** | Animated "scanning" effect. DP range indicator. Cancel button.                                                                                           | Cancel in easy reach (bottom-center).        |
+| **Expedition Rivals** | Both Researchers' IDs, DP count, Star System badge, equipped Expedition Gear. 3-second countdown.                                                        | Non-interactive. Just visual anticipation.   |
+| **Expedition HUD**    | See HUD layout below.                                                                                                                                    | Active Samples and Energy bar in bottom 30%. |
+| **Results Screen**    | Discovery Complete / Expedition Recalled / Stalemate banner. DP change (+30/-25). Capsule awarded (if win). "Embark Again" and "Return to Ship" buttons. | "Embark Again" prominently in bottom-center. |
+| **Kit Builder**       | 8-specimen Kit grid. Full Catalog below. Sort/filter by rarity, cost, type. Average Energy cost displayed.                                               | Drag-and-drop specimen placement.            |
+| **Galaxy Pass**       | 35-tier horizontal scroll. Free track on top, Premium on bottom. Purchase button for Premium upgrade.                                                    | Horizontal scroll with momentum.             |
 
 ---
 
-## Combat HUD Layout
+## Expedition HUD Layout
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
@@ -169,22 +191,22 @@ flowchart TB
     P2A["P2 Avatar"]
   end
 
-  subgraph MID["Playfield (Center 50-60%)"]
+  subgraph MID["Planetary Surface (Center 50-60%)"]
     direction TB
-    GRID["Hex Grid<br/>(61 tiles)"]
+    GRID["Survey Grid<br/>(61 sectors)"]
   end
 
-  subgraph BOTTOM["Player HUD (Bottom 20-30%)"]
+  subgraph BOTTOM["Researcher HUD (Bottom 20-30%)"]
     direction TB
     META["P1 Score"] --- EMOTE["Emote Button"]
     ENERGY["Energy Bar<br/>7 / 10"]
-    subgraph HAND["Card Hand"]
+    subgraph HAND["Active Samples"]
       direction LR
-      C1["Card 1"]
-      C2["Card 2"]
-      C3["Card 3"]
-      C4["Card 4"]
-      NEXT["Next Card"]
+      C1["Sample 1"]
+      C2["Sample 2"]
+      C3["Sample 3"]
+      C4["Sample 4"]
+      NEXT["Next Sample"]
     end
   end
 ```
@@ -192,16 +214,16 @@ flowchart TB
 ### Layout Zoning Rule
 
 - **Top 20%:** Timer, opponent identity, and opponent score only.
-- **Center 50-60%:** Playfield remains visually dominant at all times.
-- **Bottom 20-30%:** All primary player interactions live here: score, emote, Energy, and hand.
+- **Center 50-60%:** Planetary surface remains visually dominant at all times.
+- **Bottom 20-30%:** All primary Researcher interactions live here: score, emote, Energy, and Active Samples.
 
-| Element          | Position                         | Size                                                                         |
-| :--------------- | :------------------------------- | :--------------------------------------------------------------------------- |
-| **Timer**        | Top-center                       | Large font, always visible. Turns red at <30 sec.                            |
-| **Scores**       | Top-left (P2) / Bottom-left (P1) | Player's score always on their "home" side.                                  |
-| **Energy Bar**   | Bottom, spanning full width      | Fills left→right. Shows numeric value. Glows green at 10/10 (waste warning). |
-| **Card Hand**    | Bottom row, 4 cards + 1 "next"   | Cards show art, Energy cost badge, and rarity border.                        |
-| **Emote Button** | Bottom-right                     | Small, unobtrusive. Opens radial emote selector.                             |
+| Element            | Position                         | Size                                                                         |
+| :----------------- | :------------------------------- | :--------------------------------------------------------------------------- |
+| **Timer**          | Top-center                       | Large font, always visible. Turns red at <30 sec.                            |
+| **Scores**         | Top-left (P2) / Bottom-left (P1) | Researcher's score always on their "home" side.                              |
+| **Energy Bar**     | Bottom, spanning full width      | Fills left→right. Shows numeric value. Glows green at 10/10 (waste warning). |
+| **Active Samples** | Bottom row, 4 samples + 1 "next" | Samples show art, Energy cost badge, and rarity border.                      |
+| **Emote Button**   | Bottom-right                     | Small, unobtrusive. Opens radial emote selector.                             |
 
 ---
 

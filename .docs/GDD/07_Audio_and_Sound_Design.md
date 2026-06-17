@@ -59,16 +59,16 @@ The music dynamically responds to the match state using FMOD's **vertical layeri
 
 #### FMOD Parameter: `MatchIntensity` (float, 0.0 - 1.0)
 
-| Game State                   | `MatchIntensity` Value | Active Layers                                                          |
-| :--------------------------- | :--------------------: | :--------------------------------------------------------------------- |
-| **Pre-Match / Loading**      |          0.0           | Ambient pad only. Low drone.                                           |
-| **Early Game (0:00 - 1:00)** |          0.2           | + Subtle rhythmic pulse. Light percussion.                             |
-| **Mid Game (1:00 - 2:00)**   |          0.5           | + Melodic synth arpeggios. Mid percussion.                             |
-| **Late Game (2:00 - 2:45)**  |          0.7           | + Full drum kit. Bassline intensifies.                                 |
-| **Final 15 Seconds**         |          0.85          | + Stinger accents. Rising pitch tension.                               |
-| **Overtime (Sudden Death)**  |          1.0           | **All layers at full intensity.** Tempo increases 15%. Distorted bass. |
-| **Victory**                  |           —            | Triumphant stinger → fade to victory theme.                            |
-| **Defeat**                   |           —            | Somber descending stinger → quiet defeat theme.                        |
+| Game State                         | `MatchIntensity` Value | Active Layers                                                          |
+| :--------------------------------- | :--------------------: | :--------------------------------------------------------------------- |
+| **Pre-Expedition / Loading**       |          0.0           | Ambient pad only. Low drone.                                           |
+| **Early Expedition (0:00 - 1:00)** |          0.2           | + Subtle rhythmic pulse. Light percussion.                             |
+| **Mid Expedition (1:00 - 2:00)**   |          0.5           | + Melodic synth arpeggios. Mid percussion.                             |
+| **Late Expedition (2:00 - 2:45)**  |          0.7           | + Full drum kit. Bassline intensifies.                                 |
+| **Final 15 Seconds**               |          0.85          | + Stinger accents. Rising pitch tension.                               |
+| **Overtime (Sudden Death)**        |          1.0           | **All layers at full intensity.** Tempo increases 15%. Distorted bass. |
+| **Discovery Complete**             |           —            | Triumphant stinger → fade to discovery theme.                          |
+| **Expedition Recalled**            |           —            | Somber descending stinger → quiet recall theme.                        |
 
 #### FMOD Parameter: `TerritoryBalance` (float, -1.0 to 1.0)
 
@@ -82,15 +82,15 @@ The music dynamically responds to the match state using FMOD's **vertical layeri
 
 ### BGM by Context
 
-| Context                  | Style                          | BPM | Key Instruments                                                                                    |
-| :----------------------- | :----------------------------- | :-: | :------------------------------------------------------------------------------------------------- |
-| **Main Menu / Lab View** | Ambient Synthwave              | 90  | Analog synth pads, subtle hi-hats, reverb-heavy arpeggios. Feels high-tech, expensive, mysterious. |
-| **Deck Builder**         | Lo-fi Electronica              | 85  | Muted beats, warm bass, gentle chimes. Relaxed and contemplative.                                  |
-| **In-Match (Base)**      | Electronic / Hybrid Orchestral | 128 | Layered from ambient drone to full electronic orchestra. See adaptive system above.                |
-| **Overtime**             | Aggressive Electronic          | 148 | Distorted bass, rapid hi-hats, staccato strings. Heart-pounding urgency.                           |
-| **Victory Theme**        | Triumphant Synthwave           | 140 | Major key fanfare, brass stabs, rising synth lead. 8-second stinger + 20-second loop.              |
-| **Defeat Theme**         | Somber Ambient                 | 70  | Descending minor chord. Quiet. Brief. Not punishing.                                               |
-| **Shop / Cosmetics**     | Upbeat Chiptune-Synth          | 110 | Playful, bouncy. Encourages browsing.                                                              |
+| Context                         | Style                          | BPM | Key Instruments                                                                            |
+| :------------------------------ | :----------------------------- | :-: | :----------------------------------------------------------------------------------------- |
+| **Main Menu / Starship Bridge** | Ambient Synthwave              | 90  | Analog synth pads, subtle hi-hats, reverb-heavy arpeggios. Feels vast, mysterious, cosmic. |
+| **Kit Builder**                 | Lo-fi Electronica              | 85  | Muted beats, warm bass, gentle chimes. Relaxed and contemplative.                          |
+| **Expedition (Base)**           | Electronic / Hybrid Orchestral | 128 | Layered from ambient drone to full electronic orchestra. See adaptive system above.        |
+| **Overtime**                    | Aggressive Electronic          | 148 | Distorted bass, rapid hi-hats, staccato strings. Heart-pounding urgency.                   |
+| **Discovery Complete Theme**    | Triumphant Synthwave           | 140 | Major key fanfare, brass stabs, rising synth lead. 8-second stinger + 20-second loop.      |
+| **Expedition Recalled Theme**   | Somber Ambient                 | 70  | Descending minor chord. Quiet. Brief. Not punishing.                                       |
+| **Galactic Market / Gear**      | Upbeat Chiptune-Synth          | 110 | Playful, bouncy. Encourages browsing.                                                      |
 
 ---
 
@@ -160,11 +160,11 @@ Example: Converting 5 pieces
 
 ## Ambient Audio
 
-| Context              | Ambience Description                                                                                                   |
-| :------------------- | :--------------------------------------------------------------------------------------------------------------------- |
-| **Main Menu (Lab)**  | Distant ventilation hum, soft electrical buzz, occasional distant footsteps on metal, subtle beeping of lab equipment. |
-| **In-Match (Board)** | Low-frequency lab drone, occasional pressurized gas release, distant containment alarms (very subtle).                 |
-| **Overtime**         | Ambience cuts to near-silence, replaced by heartbeat-like bass pulse and emergency alarm undertone.                    |
+| Context                            | Ambience Description                                                                                        |
+| :--------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Main Menu (Starship Bridge)**    | Distant engine hum, soft console beeps, occasional star-chart projector whir, subtle comms chatter.         |
+| **Expedition (Planetary Surface)** | Low-frequency alien wind, occasional seismic rumbles, distant creature calls, subtle scanner pings.         |
+| **Overtime**                       | Ambience cuts to near-silence, replaced by heartbeat-like bass pulse and emergency scanner alarm undertone. |
 
 ---
 
@@ -186,17 +186,17 @@ Example: Converting 5 pieces
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 stateDiagram-v2
-    [*] --> MainMenu_BGM
-    MainMenu_BGM --> Loading_Transition: Match Found
-    Loading_Transition --> InMatch_BGM: Match Start
+    [*] --> StarshipBridge_BGM
+    StarshipBridge_BGM --> Loading_Transition: Expedition Rivals Detected
+    Loading_Transition --> Expedition_BGM: Expedition Start
 
-    InMatch_BGM --> Overtime_BGM: Overtime triggered
-    InMatch_BGM --> Victory_Stinger: Win
-    InMatch_BGM --> Defeat_Stinger: Loss
+    Expedition_BGM --> Overtime_BGM: Overtime triggered
+    Expedition_BGM --> DiscoveryComplete_Stinger: Discovery Complete
+    Expedition_BGM --> ExpeditionRecalled_Stinger: Expedition Recalled
 
-    Overtime_BGM --> Victory_Stinger: Win
-    Overtime_BGM --> Defeat_Stinger: Loss
-    Overtime_BGM --> Draw_Stinger: Draw
+    Overtime_BGM --> DiscoveryComplete_Stinger: Discovery Complete
+    Overtime_BGM --> ExpeditionRecalled_Stinger: Expedition Recalled
+    Overtime_BGM --> Stalemate_Stinger: Stalemate
 
     Victory_Stinger --> Results_BGM: After stinger
     Defeat_Stinger --> Results_BGM: After stinger
