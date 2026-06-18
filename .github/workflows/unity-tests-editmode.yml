@@ -76,6 +76,9 @@ jobs:
         shell: bash
         run: git lfs pull
 
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+
       - name: Run Edit Mode tests
         uses: ./.github/actions/unity-test
         with:
