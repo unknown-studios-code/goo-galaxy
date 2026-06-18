@@ -6,11 +6,11 @@
 
 The inherently repetitive nature of a 61-hex board game leads to player fatigue over a 30-90 day lifecycle. The retention architecture must address three horizons:
 
-| Horizon        | Timeframe | Driver                        | Systems                                                |
-| :------------- | :-------- | :---------------------------- | :----------------------------------------------------- |
-| **Short-Term** | D1-D3     | Core loop satisfaction + FTUE | Tutorial, fast chests, first wins.                     |
-| **Mid-Term**   | D7-D14    | Progression + Social hooks    | Arena unlocks, Clan integration, Galaxy Pass.          |
-| **Long-Term**  | D30+      | Meta disruption + Community   | LiveOps events, Draft Mode, seasonal content, esports. |
+| Horizon        | Timeframe | Driver                        | Systems                                                           |
+| :------------- | :-------- | :---------------------------- | :---------------------------------------------------------------- |
+| **Short-Term** | D1-D3     | Core loop satisfaction + FTUE | Tutorial, fast capsules, first discoveries.                       |
+| **Mid-Term**   | D7-D14    | Progression + Social hooks    | Star System unlocks, Crew integration, Galaxy Pass.               |
+| **Long-Term**  | D30+      | Meta disruption + Community   | Galactic Phenomena, Blind Discovery, Expedition Cycles, Symposia. |
 
 ### Engagement Loop
 
@@ -18,19 +18,19 @@ The inherently repetitive nature of a 61-hex board game leads to player fatigue 
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 flowchart LR
     subgraph "Daily Loop (5-15 min)"
-        D1["Log In"] --> D2["Collect Free Chest"]
-        D2 --> D3["Complete 3 Daily Challenges"]
+        D1["Log In"] --> D2["Collect Daily Scan"]
+        D2 --> D3["Complete 3 Daily Contracts"]
         D3 --> D4["Play 5-10 Matches"]
-        D4 --> D5["Donate Cards to Clan"]
+        D4 --> D5["Share Samples with Crew"]
         D5 --> D6["Check Galaxy Pass Progress"]
     end
 
     subgraph "Weekly Loop (adds 30 min)"
-        W1["Complete 3 Weekly Challenges"] --> W2["Participate in Weekend Event"] --> W3["Clan Co-Op Goal Check"]
+        W1["Complete 3 Weekly Contracts"] --> W2["Participate in Galactic Phenomenon"] --> W3["Crew Objective Check"]
     end
 
-    subgraph "Seasonal Loop (4-week cycle)"
-        S1["New Galaxy Pass Season"] --> S2["Season Reset & Trophy Compression"] --> S3["New Card Release"] --> S4["Seasonal Tournament"]
+    subgraph "Expedition Cycle Loop (4-week cycle)"
+        S1["New Galaxy Pass Cycle"] --> S2["Cycle Reset & DP Archival"] --> S3["New Specimen Discovery"] --> S4["Cycle Symposium"]
     end
 
     D6 -->|"Feeds weekly goals"| W1
@@ -53,118 +53,118 @@ flowchart LR
     B --> C["Tutorial Match 1<br/>Deploy Subject Alpha<br/>(Clone only)"]
     C --> D["Tutorial Match 2<br/>Learn Jump mechanic<br/>+ first conversion"]
     D --> E["Tutorial Match 3<br/>Full match vs Easy AI<br/>(3 minutes)"]
-    E --> F["First Victory Chest<br/>(instant unlock)"]
-    F --> G["Deck Builder Intro<br/>(add Acid Crawler)"]
-    G --> H["First PvP Match<br/>(Arena 1)"]
+    E --> F["First Expedition Cache<br/>(instant unlock)"]
+    F --> G["Kit Builder Intro<br/>(add Acid Crawler)"]
+    G --> H["First PvP Expedition<br/>(Gloopiter)"]
 ```
 
-| Step         | Duration | Purpose                                     | Metric                       |
-| :----------- | :------: | :------------------------------------------ | :--------------------------- |
-| Tutorial 1   |  60 sec  | Teach Clone. One mechanic only.             | Completion rate target: >95% |
-| Tutorial 2   |  90 sec  | Teach Jump + Conversion. Show cause/effect. | Completion rate target: >90% |
-| Tutorial 3   | 180 sec  | Full match vs AI. Validate understanding.   | Completion rate target: >85% |
-| First Chest  |  10 sec  | Instant dopamine reward. Zero timer.        | —                            |
-| Deck Builder |  30 sec  | Show agency. Let player make first choice.  | —                            |
-| First PvP    |    —     | The real game begins.                       | D1 retention hinge point.    |
+| Step          | Duration | Purpose                                        | Metric                       |
+| :------------ | :------: | :--------------------------------------------- | :--------------------------- |
+| Tutorial 1    |  60 sec  | Teach Clone. One mechanic only.                | Completion rate target: >95% |
+| Tutorial 2    |  90 sec  | Teach Jump + Assimilation. Show cause/effect.  | Completion rate target: >90% |
+| Tutorial 3    | 180 sec  | Full expedition vs AI. Validate understanding. | Completion rate target: >85% |
+| First Capsule |  10 sec  | Instant dopamine reward. Zero timer.           | —                            |
+| Kit Builder   |  30 sec  | Show agency. Let Researcher make first choice. | —                            |
+| First PvP     |    —     | The real game begins.                          | D1 retention hinge point.    |
 
-> **Critical Rule:** No UI element, system, or feature is shown until the player needs it. The shop, clan system, Galaxy Pass, and cosmetics are progressively revealed as the player reaches each Arena threshold.
-
----
-
-## Daily & Weekly Challenge System
-
-### Daily Challenges (3 per day, refreshed at 00:00 UTC)
-
-| Challenge Type    | Example                                   | XP Reward | Gold Reward |
-| :---------------- | :---------------------------------------- | :-------: | :---------: |
-| **Win-Based**     | "Win 3 matches"                           |  100 XP   |   50 Gold   |
-| **Action-Based**  | "Convert 50 enemy hexes"                  |   75 XP   |   30 Gold   |
-| **Card-Specific** | "Deploy Bio-Phalanx 5 times"              |   75 XP   |   40 Gold   |
-| **Strategic**     | "Win a match using only Clone (no Jumps)" |  150 XP   |   80 Gold   |
-
-- Players can **re-roll 1 challenge per day** for free (encourages engagement even when a challenge feels unappealing).
-- Completing all 3 dailies awards a **Daily Bonus Chest** (equivalent to Silver Chest, instant unlock).
-
-### Weekly Challenges (3 per week, refreshed Monday 00:00 UTC)
-
-| Challenge Type | Example                          | XP Reward | Gold Reward |
-| :------------- | :------------------------------- | :-------: | :---------: |
-| **Endurance**  | "Win 20 matches this week"       |  500 XP   |  500 Gold   |
-| **Mastery**    | "Achieve 3 Domination victories" |  400 XP   |  400 Gold   |
-| **Social**     | "Donate 30 cards to your Lab"    |  300 XP   |  300 Gold   |
-
-- Completing all 3 weeklies awards a **Weekly Mega Chest** (equivalent to Platinum Chest).
+> **Critical Rule:** No UI element, system, or feature is shown until the Researcher needs it. The Galactic Market, Crew system, Galaxy Pass, and Expedition Gear are progressively revealed as the Researcher reaches each Star System threshold.
 
 ---
 
-## Laboratories (Clans / Social System)
+## Daily & Weekly Research Contracts
 
-### Clan Structure
+### Daily Contracts (3 per day, refreshed at 00:00 UTC)
 
-| Feature           | Details                                           |
-| :---------------- | :------------------------------------------------ |
-| **Clan Size**     | 50 members max                                    |
-| **Minimum Arena** | Arena 3 (unlocked at 600 Trophies)                |
-| **Roles**         | Leader → Co-Leader → Elder → Member               |
-| **Clan Badge**    | Custom icon + color. Displayed on player profile. |
+| Contract Type         | Example                                         | XP Reward | Stardust Reward |
+| :-------------------- | :---------------------------------------------- | :-------: | :-------------: |
+| **Discovery-Based**   | "Complete 3 expeditions"                        |  100 XP   |   50 Stardust   |
+| **Action-Based**      | "Assimilate 50 enemy sectors"                   |   75 XP   |   30 Stardust   |
+| **Specimen-Specific** | "Deploy Bio-Phalanx 5 times"                    |   75 XP   |   40 Stardust   |
+| **Strategic**         | "Win an expedition using only Clone (no Jumps)" |  150 XP   |   80 Stardust   |
+
+- Researchers can **re-roll 1 contract per day** for free.
+- Completing all 3 dailies awards a **Daily Bonus Capsule** (equivalent to Standard Capsule, instant unlock).
+
+### Weekly Expedition Milestones (3 per week, refreshed Monday 00:00 UTC)
+
+| Milestone Type | Example                               | XP Reward | Stardust Reward |
+| :------------- | :------------------------------------ | :-------: | :-------------: |
+| **Endurance**  | "Complete 20 expeditions this week"   |  500 XP   |  500 Stardust   |
+| **Mastery**    | "Achieve 3 Total Assimilations"       |  400 XP   |  400 Stardust   |
+| **Social**     | "Share 30 DNA Strands with your Crew" |  300 XP   |  300 Stardust   |
+
+- Completing all 3 weeklies awards a **Weekly Mega Capsule** (equivalent to Premium Capsule).
+
+---
+
+## Crews (Social System)
+
+### Crew Structure
+
+| Feature                 | Details                                              |
+| :---------------------- | :--------------------------------------------------- |
+| **Crew Size**           | 50 Researchers max                                   |
+| **Minimum Star System** | Cryo-9 (unlocked at 600 DP)                          |
+| **Roles**               | Captain → First Officer → Science Officer → Crewmate |
+| **Crew Badge**          | Custom icon + color. Displayed on Researcher ID.     |
 
 ### Social Features
 
-#### Card Donations
+#### Sample Sharing
 
-- Members can **request** specific card fragments (1 request every 8 hours).
-- Other members can **donate** fragments they own (earn 5 Gold + 1 XP per donation).
-- **Donation Limits:** 4 Common, 1 Rare per request. Epics and Legendaries are not donatable (to preserve their value).
+- Members can **request** specific DNA Strands (1 request every 8 hours).
+- Other members can **share** strands they own (earn 5 Stardust + 1 XP per share).
+- **Sharing Limits:** 4 Common, 1 Rare per request. Epics and Legendaries are not shareable (to preserve their value).
 
-#### Clan Chat
+#### Comms
 
-- Text chat with **age-aware restrictions**. Players under **16** use **pre-approved phrase chat only**. Players 16+ may use full text chat with filtering and moderation safeguards (see `10_Operations_Security_and_Legal.md`).
-- Replay sharing — members can share match replays directly in clan chat.
-- **Challenge Friends** — tap a clanmate's name to challenge them to a friendly match (no Trophies at stake).
+- Text chat with **age-aware restrictions**. Researchers under **16** use **pre-approved phrase chat only**. Researchers 16+ may use full text chat with filtering and moderation safeguards (see `10_Operations_Security_and_Legal.md`).
+- Expedition Log sharing — members can share replays directly in Comms.
+- **Challenge Crewmate** — tap a crewmate's name to challenge them to a friendly expedition (no DP at stake).
 
-#### Clan Administration & Moderation
+#### Crew Administration & Moderation
 
-| Role          | Permissions |
-| :------------ | :---------- |
-| **Leader**    | Invite or remove any non-leader member, edit clan settings, promote or demote roles, accept join requests, and disband the clan. |
-| **Co-Leader** | Invite members, remove Elders or Members, accept join requests, start clan activities, and moderate chat. |
-| **Elder**     | Invite members and help moderate replay sharing or phrase-chat misuse reports. |
-| **Member**    | Participate in chat, donations, co-op goals, and friendly challenges. |
+| Role                | Permissions                                                                                                                       |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------- |
+| **Captain**         | Invite or remove any non-captain member, edit crew settings, promote or demote roles, accept join requests, and disband the crew. |
+| **First Officer**   | Invite members, remove Science Officers or Crewmates, accept join requests, start crew activities, and moderate Comms.            |
+| **Science Officer** | Invite members and help moderate Expedition Log sharing or phrase-chat misuse reports.                                            |
+| **Crewmate**        | Participate in Comms, Sample Sharing, crew objectives, and friendly expeditions.                                                  |
 
-- If a Leader is inactive for **30 days**, leadership passes to the longest-tenured active Co-Leader.
-- Clan audit logs must record kicks, promotions, join approvals, and clan setting changes.
-- Under-16 chat uses phrase-only communication everywhere in the clan experience, including challenge invites and clan war coordination.
+- If a Captain is inactive for **30 days**, command passes to the longest-tenured active First Officer.
+- Crew audit logs must record kicks, promotions, join approvals, and crew setting changes.
+- Under-16 Comms uses phrase-only communication everywhere in the crew experience, including challenge invites and Expedition Race coordination.
 
-#### Co-Op Weekly Goals
+#### Crew Objectives
 
-Each week, the clan receives a **collective goal**:
+Each week, the crew receives a **collective goal**:
 
-| Goal Type           | Example                              | Reward (per member) |
-| :------------------ | :----------------------------------- | :------------------ |
-| **Conversion Goal** | "Collectively convert 100,000 hexes" | 200 Gold + 10 Gems  |
-| **Victory Goal**    | "Collectively win 500 matches"       | 300 Gold + 15 Gems  |
-| **Donation Goal**   | "Collectively donate 200 cards"      | 150 Gold + 5 Gems   |
+| Goal Type               | Example                                   | Reward (per member)          |
+| :---------------------- | :---------------------------------------- | :--------------------------- |
+| **Assimilation Goal**   | "Collectively assimilate 100,000 sectors" | 200 Stardust + 10 Nova Cores |
+| **Discovery Goal**      | "Collectively complete 500 expeditions"   | 300 Stardust + 15 Nova Cores |
+| **Sample Sharing Goal** | "Collectively share 200 DNA Strands"      | 150 Stardust + 5 Nova Cores  |
 
 - Progress bar is visible to all members. Social pressure drives participation.
-- Clans that fail to reach the goal receive nothing — creating natural attrition of inactive members.
+- Crews that fail to reach the goal receive nothing — creating natural attrition of inactive members.
 
-### Clan Wars (Post-Launch — Season 3+)
+### Expedition Races (Post-Launch — Season 3+)
 
 A weekly competitive format where clans face off:
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 flowchart LR
-    A["Preparation Day<br/>(24h)<br/>Build war decks"] --> B["Battle Day<br/>(24h)<br/>Each member plays<br/>1 attack match"]
-    B --> C["Results<br/>Clan with most<br/>victories wins"]
-    C --> D["War Chest<br/>Rewards scale<br/>with clan size"]
+    A["Preparation Day<br/>(24h)<br/>Build trial kits"] --> B["Trial Day<br/>(24h)<br/>Each member plays<br/>1 attack expedition"]
+    B --> C["Results<br/>Crew with most<br/>victories wins"]
+    C --> D["Rivalry Cache<br/>Rewards scale<br/>with crew size"]
 ```
 
 ---
 
 ## Time-Limited Events
 
-Events are constrained to **weekends (Friday 18:00 UTC → Sunday 23:59 UTC)** to generate cyclical urgency and FOMO. They do NOT affect the competitive ladder.
+Galactic Phenomena are constrained to **weekends (Friday 18:00 UTC → Sunday 23:59 UTC)** to generate cyclical urgency and FOMO. They do NOT affect the competitive ladder.
 
 ### 1. Stage Swap (Dynamic Environment)
 
@@ -192,17 +192,17 @@ Events are constrained to **weekends (Friday 18:00 UTC → Sunday 23:59 UTC)** t
 | **Mirror Match**   | Both players use the **same randomly generated deck**.          | Pure skill test. No deck advantage. Tests adaptability.                                        |
 | **Giant Mode**     | All conversion radii are doubled (1→2 hexes).                   | Massive territory swings. Single moves can flip 15+ pieces. Volatile Mass becomes devastating. |
 
-### 3. Draft Mode (Pure Skill)
+### 3. Blind Discovery (Pure Skill)
 
-| Property                | Details                                                                         |
-| :---------------------- | :------------------------------------------------------------------------------ |
-| **Frequency**           | Available every weekend (persistent event).                                     |
-| **Format**              | Players do NOT use personal decks. Both players receive the same server-seeded sequence of draft offers. |
-| **Level Normalization** | All cards normalized to **Tournament Standard (Level 9)**.                      |
-| **Draft Process**       | 8 rounds of paired offers. In each round, both players choose 1 card from the same presented pair for their own deck. Picks are **not exclusive** to the opponent. No duplicate card IDs are allowed within a player's final draft deck. |
-| **Reward**              | Draft-exclusive cosmetics + Gems. No chest drops (to avoid economy disruption). |
+| Property                | Details                                                                                                                                                                                                  |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Frequency**           | Available every weekend (persistent event).                                                                                                                                                              |
+| **Format**              | Researchers do NOT use personal Kits. Both receive the same server-seeded sequence of draft offers.                                                                                                      |
+| **Level Normalization** | All specimens normalized to **Tournament Standard (Level 9)**.                                                                                                                                           |
+| **Draft Process**       | 8 rounds of paired offers. In each round, both Researchers choose 1 specimen from the same presented pair. Picks are **not exclusive**. No duplicate specimen IDs within a Researcher's final draft Kit. |
+| **Reward**              | Blind Discovery-exclusive Expedition Gear + Nova Cores. No capsule drops (to avoid economy disruption).                                                                                                  |
 
-> **Purpose:** Combats P2W perception. Proves competitive integrity. Appeals to the "pure skill" audience — potential esports format.
+> **Purpose:** Combats P2W perception. Proves competitive integrity. Appeals to the "pure skill" audience — potential competitive research circuit format.
 
 ### Draft Eligibility Rules
 
@@ -262,16 +262,16 @@ gantt
 
 ---
 
-## Push Notification Strategy
+## Transmission Strategy (Push Notifications)
 
-| Trigger                    | Timing                           | Message Example                                     | Frequency Cap |
-| :------------------------- | :------------------------------- | :-------------------------------------------------- | :------------ |
-| **Chest Ready**            | When unlock timer completes      | "Your Gold Chest is ready! Open it now."            | Max 4/day     |
-| **Daily Challenges Reset** | 00:00 UTC + 2 hours              | "New challenges await, Researcher!"                 | 1/day         |
-| **Clan Activity**          | When donation request is pending | "Your labmates need Acid Crawler fragments!"        | Max 2/day     |
-| **Win Streak Lost**        | After 3+ consecutive losses      | — (NEVER notify on losses)                          | —             |
-| **Event Start**            | Friday 18:00 UTC                 | "Stage Swap weekend is live! Test your skills."     | 1/event       |
-| **Galaxy Pass Expiring**   | 3 days before season end         | "3 days left in Season X. Finish your Galaxy Pass!" | 1/season      |
-| **Re-engagement (Lapsed)** | After 3 days inactive            | "Your Goo misses you! Come back for a free chest."  | 1/week max    |
+| Trigger                       | Timing                            | Message Example                                                    | Frequency Cap |
+| :---------------------------- | :-------------------------------- | :----------------------------------------------------------------- | :------------ |
+| **Capsule Ready**             | When decapsulation completes      | "Your Enhanced Capsule is ready! Open it now."                     | Max 4/day     |
+| **Daily Contracts Reset**     | 00:00 UTC + 2 hours               | "New Research Contracts await, Researcher!"                        | 1/day         |
+| **Crew Activity**             | When Sample Share request pending | "Your crewmates need Acid Crawler DNA Strands!"                    | Max 2/day     |
+| **Breakthrough Chain Lost**   | After 3+ consecutive losses       | — (NEVER notify on losses)                                         | —             |
+| **Galactic Phenomenon Start** | Friday 18:00 UTC                  | "A Tectonic Shift is occurring this weekend! Join the expedition." | 1/event       |
+| **Galaxy Pass Expiring**      | 3 days before cycle end           | "3 days left in this Expedition Cycle. Finish your Galaxy Pass!"   | 1/cycle       |
+| **Re-engagement (Lapsed)**    | After 3 days inactive             | "The galaxy misses you, Researcher! Return for a Daily Scan."      | 1/week max    |
 
-> **Critical:** Never notify on negative events (losses, rank drops). Never exceed 4 notifications per day. Always offer a granular opt-out in Settings (per category, not all-or-nothing).
+> **Critical:** Never notify on negative events (expedition recalls, DP drops). Never exceed 4 transmissions per day. Always offer granular opt-out in Settings (per category, not all-or-nothing).

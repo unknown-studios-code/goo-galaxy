@@ -1,18 +1,18 @@
 # Mechanics & Core Gameplay
 
-## The Hexagonal Grid
+## The Planetary Surface (Hexagonal Grid)
 
-The game takes place on a finite, bounded hexagonal grid consisting of **61 hex tiles** arranged in a flat-top hexagon with a radius of 5 (i.e., 5 hexes from center to edge). The grid uses an **Axial Coordinate System (q, r)** for all spatial calculations.
+The game takes place on a finite, bounded hexagonal grid consisting of **61 sectors** arranged in a flat-top hexagon with a radius of 5 (i.e., 5 sectors from center to edge). Each sector represents a scanned region of the planetary surface. The grid uses an **Axial Coordinate System (q, r)** for all spatial calculations.
 
-### Board Layout
+### Planetary Layout
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 graph TD
-    subgraph "Hex Grid - 61 Tiles (Radius 5)"
+    subgraph "Planetary Surface - 61 Sectors (Radius 5)"
         direction TB
-        A["P1 Deploy Zone<br/>(Starting Corner)"] --- CENTER["Central<br/>Contest Zone"]
-        CENTER --- B["P2 Deploy Zone<br/>(Opposite Corner)"]
+        A["P1 Landing Zone<br/>(Starting Corner)"] --- CENTER["Central<br/>Contested Zone"]
+        CENTER --- B["P2 Landing Zone<br/>(Opposite Corner)"]
     end
     style A fill:#DCEBF7,color:#4E4A57,stroke:#B7C8D9
     style B fill:#F7E1E8,color:#4E4A57,stroke:#BFA9B5
@@ -21,12 +21,12 @@ graph TD
 
 ### Coordinate System (Axial q, r)
 
-The grid is stored as a `Dictionary<Vector2Int, HexTile>` using axial coordinates. The center hex is `(0, 0)`.
+The planetary surface is stored as a `Dictionary<Vector2Int, Sector>` using axial coordinates. The center sector is `(0, 0)`.
 
-**Distance formula between two hexes:**
+**Distance formula between two sectors:**
 $$d = \frac{|q_1 - q_2| + |r_1 - r_2| + |(q_1 + r_1) - (q_2 + r_2)|}{2}$$
 
-**Neighbor directions (6 adjacent hexes):**
+**Neighbor directions (6 adjacent sectors):**
 
 ```json
 {
@@ -103,13 +103,13 @@ Abilities trigger **upon landing**, and their efficacy depends on the movement t
 
 When a unit lands (via Clone or Jump), **all adjacent enemy units within 1-hex radius are converted** to the deploying player's faction. Conversion changes **ownership only**: the unit keeps its original card identity, passive/impact rules, and active status effects unless a specific card says otherwise. Specific exceptions:
 
-| Unit Type                | Conversion Behavior                                                                                                   |
-| :----------------------- | :-------------------------------------------------------------------------------------------------------------------- |
-| Standard (Subject Alpha) | Converted normally (1 adjacent event = flip).                                                                         |
+| Unit Type                | Conversion Behavior                                                                                                                                                                                                         |
+| :----------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standard (Subject Alpha) | Converted normally (1 adjacent event = flip).                                                                                                                                                                               |
 | Armored (Bio-Phalanx)    | Requires **2 separate** adjacent conversion events to flip. The first valid event strips armor only. The second valid event converts. Once stripped, armor does **not** regenerate unless a future card explicitly says so. |
-| Heavy (Apex Strain)      | Cannot be displaced by push/pull effects, but CAN be converted normally.                                              |
-| Frozen (Cryo-Stasis)     | **Cannot be converted** while frozen. Immune to all conversion for the duration.                                      |
-| Rooted (Plasmic Leaper)  | Converted normally. The root marker remains until that piece's controller completes their next successful deployment. |
+| Heavy (Apex Strain)      | Cannot be displaced by push/pull effects, but CAN be converted normally.                                                                                                                                                    |
+| Frozen (Cryo-Stasis)     | **Cannot be converted** while frozen. Immune to all conversion for the duration.                                                                                                                                            |
+| Rooted (Plasmic Leaper)  | Converted normally. The root marker remains until that piece's controller completes their next successful deployment.                                                                                                       |
 
 ### Action Timing Model (Real-Time)
 
@@ -162,6 +162,34 @@ If a player's Energy bar reaches the **10.0 cap**, excess energy is **wasted** (
 
 The same cap behavior remains active during **Overtime**. Faster regeneration increases pressure, but never increases maximum stored Energy.
 
+### Containment Breach Protocol (Catch-Up Bonus)
+
+To prevent early snowball scenarios where a small board-presence lead becomes irreversible, a **catch-up energy bonus** activates for the trailing player under specific conditions.
+
+| Parameter                      | Value                              | Description                                                           |
+| :----------------------------- | :--------------------------------- | :-------------------------------------------------------------------- |
+| **Activation Threshold**       | ≤ 40% of total troops on the board | Triggers when the player controls 40% or fewer of all live units.     |
+| **Regeneration Bonus**         | +15%                               | Energy regenerates 15% faster during the bonus window.                |
+| **Bonus Duration**             | 20 seconds                         | One activation lasts 20 seconds from the moment the threshold is met. |
+| **Cooldown**                   | 60 seconds                         | After the bonus expires, it cannot reactivate for 60 seconds.         |
+| **Effective Regen (Standard)** | 1 Energy / 2.43 sec                | Standard phase with catch-up active.                                  |
+| **Effective Regen (Overtime)** | 1 Energy / 1.22 sec                | Overtime phase with catch-up active.                                  |
+
+**Design Rationale:**
+
+- The +15% bonus is subtle — roughly one extra 1-Energy deployment every ~40 seconds of sustained disadvantage. It creates **hope and comeback windows** without rubber-banding the leading player's hard-earned advantage.
+- The ≤40% threshold ensures the bonus only fires when the gap is significant, not during normal back-and-forth play.
+- The 60-second cooldown prevents oscillating activation/deactivation during borderline states and stops players from gaming the system by intentionally staying below threshold.
+- This mechanic draws from proven comeback designs in Hearthstone (The Coin), Marvel Snap (risk/reward snapping), and fighting games (Ultra meter buildup on damage taken).
+
+**Visual & Audio Feedback:**
+
+- The Energy bar pulses with a subtle **amber/orange glow** while the bonus is active.
+- A brief **containment-breach alarm SFX** plays on activation (distinct from the Overtime siren).
+- A small status icon appears near the Energy bar for the duration.
+
+**Remote Tuning:** All four parameters (threshold percentage, regen bonus, duration, cooldown) are remotely tunable server-side without a client update. See `02_Mathematics_and_Balancing.md` for the full tunable parameter list.
+
 ---
 
 ## Deck Building & Hand Management
@@ -184,6 +212,37 @@ Each player brings a deck of **8 cards** into a match:
 - A **5th card** is visible in a "next" slot, showing what will enter the hand next.
 - Cards are drawn in a **fixed cycle order** (shuffled once at match start). After all 8 cards are played, the cycle repeats in the same order.
 - There is **no random draw** during a match — card order is deterministic after the initial shuffle, rewarding players who track their cycle.
+
+#### Sample Purge (Strategic Discard)
+
+Players may spend a small amount of Energy to discard a card from their hand and draw the next card in the cycle. This grants agency over hand composition while imposing a real resource cost.
+
+| Parameter               | Value                                          | Description                                                                                                        |
+| :---------------------- | :--------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| **Discard Cost**        | 0.5 Energy                                     | Half the cost of a Subject Alpha. A meaningful but not prohibitive tempo sacrifice.                                |
+| **Discard Destination** | End of the current cycle                       | The discarded card is placed at the back of the cycle queue and will return after all other cards have been drawn. |
+| **Draw Replacement**    | Immediate — next card in cycle enters the hand | The hand size remains constant at 4 cards.                                                                         |
+| **Usage Limit**         | None (Energy cost is the only limiter)         | Players may discard multiple times, but each costs 0.5 Energy.                                                     |
+| **Time to Regen Cost**  | 1.4 sec (Standard) / 0.7 sec (Overtime)        | How long it takes to regenerate the 0.5 Energy spent.                                                              |
+
+**Design Rationale:**
+
+- A bad opening hand (e.g., three 4+ Energy cards plus one 1-Energy card) currently has no counterplay. Sample Purge gives players a **meaningful choice**: sacrifice tempo now for a better hand later.
+- At 0.5 Energy, the cost is low enough to be usable 2-3 times per match without crippling the player, but high enough to prevent degenerate cycling strategies.
+- Placing the discarded card at the end of the cycle (rather than destroying it) preserves the deterministic cycle-tracking skill layer and ensures no card is permanently lost.
+- This mechanic mirrors best practices from Slay the Spire (card removal at a cost), Legends of Runeterra (toss/predict), and competitive TCGs where hand management is a core skill differentiator.
+
+**UI Implementation:**
+
+- **Swipe Up:** Drag a card upward from the hand toward the top of the screen to discard it. A confirmation glow appears before the Energy is spent.
+- **Purge Button:** A small biohazard icon on each card in hand (accessible via long-press or visible on hover) triggers discard.
+- **Animation:** The discarded card dissolves with a biohazard-disposal particle effect and the replacement card slides in from the "next" slot.
+
+**Strategic Impact:**
+
+- Cycle decks (low average Energy) benefit most, as they can afford more discards to dig for key cards.
+- Burst decks (high average Energy) must weigh discard cost carefully — 0.5 Energy may delay their big play by a critical second.
+- Adds a skill-testing layer: knowing when to fix a bad hand vs. playing suboptimally to preserve Energy.
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
@@ -276,10 +335,18 @@ stateDiagram-v2
 - The screen edges glow red. Music tempo increases.
 - **Win Condition:** The first player to establish a troop-count lead and **hold it for 3 consecutive seconds** wins. If no player holds a lead for 3 seconds when the timer expires, the player with more troops wins.
 
-#### 5. Domination (Instant Win)
+#### 5. Domination (Instant Win with Bonus)
 
 - If at **any point** during the match, a player successfully converts or eliminates **every single enemy piece**, the match immediately ends as a **Domination Victory**.
-- Domination grants bonus Trophies and a special victory animation.
+- **Domination Trophy Bonus:** Winning by Domination applies a **+50% multiplier** to the base Trophy gain ($M_{domination} = 1.5$). This rewards aggressive, risk-taking play over conservative timeout wins. See `02_Mathematics_and_Balancing.md` for the updated Trophy formula.
+- A **special victory animation** plays: the winning player's faction color floods the entire board in a radial wave, accompanied by a triumphant fanfare and a "DOMINATION" banner.
+- Domination victories are tracked as a player statistic and featured on the profile.
+
+**Design Rationale:**
+
+- Pure Domination is rare in high-level play (experienced opponents rarely lose every piece). The +50% Trophy bonus creates a **meaningful incentive** to pursue the complete wipe rather than safely running out the clock with a lead.
+- The risk/reward calculus: going for Domination often means overextending and risking a counter-attack. The bonus makes that gamble mathematically interesting.
+- This draws from fighting game "Perfect" bonuses and Clash Royale's 3-crown victories — spectacle moments that are memorable, shareable, and aspirational.
 
 #### 6. Draw
 

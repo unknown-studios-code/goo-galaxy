@@ -6,18 +6,18 @@ Goo Galaxy is built on **Unity 6 LTS**, using a GameObject/MonoBehaviour archite
 
 ### Technology Stack
 
-| Component             | Technology                    | Rationale                                                                              |
-| :-------------------- | :---------------------------- | :------------------------------------------------------------------------------------- |
-| **Engine**            | Unity 6 LTS                   | Mature mobile pipeline, URP support, broad tooling ecosystem.                          |
-| **Language**          | C# (.NET Standard 2.1)        | Native Unity scripting language with strong testability for deterministic systems.     |
-| **Networking**        | Netcode for GameObjects (NGO) | Official Unity networking stack; fits server-authoritative board actions well.         |
+| Component             | Technology                     | Rationale                                                                                                 |
+| :-------------------- | :----------------------------- | :-------------------------------------------------------------------------------------------------------- |
+| **Engine**            | Unity 6 LTS                    | Mature mobile pipeline, URP support, broad tooling ecosystem.                                             |
+| **Language**          | C# (.NET Standard 2.1)         | Native Unity scripting language with strong testability for deterministic systems.                        |
+| **Networking**        | Netcode for GameObjects (NGO)  | Official Unity networking stack; fits server-authoritative board actions well.                            |
 | **Session Services**  | Unity Multiplayer Services SDK | Preferred integration layer for sessions, Lobby, Relay, and Matchmaker in new Unity multiplayer projects. |
-| **Backend**           | Unity Cloud / PlayFab         | Player identity, progression, economy, telemetry aggregation, and live config.         |
-| **Audio**             | FMOD Studio                   | Adaptive music and scalable event-based audio integration.                             |
-| **Analytics**         | GameAnalytics + Firebase      | Product KPIs, retention funneling, event instrumentation, and segmentation.            |
-| **CI/CD**             | Unity Cloud Build + Fastlane  | Mobile build automation and distribution to TestFlight / Google Play Internal Testing. |
-| **Version Control**   | Git + Git LFS                 | Clean source control for code plus large binary asset handling.                        |
-| **Scripting Backend** | IL2CPP                        | Mobile-ready performance profile and required iOS build path.                          |
+| **Backend**           | Unity Cloud / PlayFab          | Player identity, progression, economy, telemetry aggregation, and live config.                            |
+| **Audio**             | FMOD Studio                    | Adaptive music and scalable event-based audio integration.                                                |
+| **Analytics**         | GameAnalytics + Firebase       | Product KPIs, retention funneling, event instrumentation, and segmentation.                               |
+| **CI/CD**             | Unity Cloud Build + Fastlane   | Mobile build automation and distribution to TestFlight / Google Play Internal Testing.                    |
+| **Version Control**   | Git + Git LFS                  | Clean source control for code plus large binary asset handling.                                           |
+| **Scripting Backend** | IL2CPP                         | Mobile-ready performance profile and required iOS build path.                                             |
 
 ---
 
@@ -331,7 +331,7 @@ flowchart LR
     MM -->|"Assign both players"| GS["Dedicated Game Server<br/>Runs authoritative match state"]
     GS <-->|"ServerRpc / ClientRpc<br/>via NGO"| P1
     GS <-->|"ServerRpc / ClientRpc<br/>via NGO"| P2
-    GS --> DB["Backend DB<br/>(Profiles, decks, trophies)"]
+    GS --> DB["Backend DB<br/>(Profiles, kits, DP)"]
     GS --> AN["Analytics<br/>(GameAnalytics)"]
 ```
 
@@ -447,3 +447,76 @@ Goo Galaxy should use a lightweight **GitHub Flow** model: a single stable `main
 - Ship internal builds, QA builds, and tagged releases from `main`.
 - Do not keep a long-lived `develop` branch.
 - Do not create separate `release/*` branches unless a publishing platform forces a temporary stabilization branch.
+
+---
+
+## Network Simulation & Quality of Experience (QoE)
+
+### Alpha QA: Network Condition Testing
+
+Multiplayer on mobile devices operates under highly variable network conditions (3G/4G/5G, public Wi-Fi, tunnels, elevators). The Alpha phase must validate that the game remains playable under real-world conditions, not just ideal lab settings.
+
+**Tool:** Unity Transport Network Simulator (built into the Unity Transport package). This allows QA to inject controlled latency, jitter, and packet loss without physical hardware.
+
+### QoE Thresholds
+
+| Tier         | Latency Range |  Jitter  | Packet Loss | Player Experience                                                      |  HUD Indicator  |
+| :----------- | :-----------: | :------: | :---------: | :--------------------------------------------------------------------- | :-------------: |
+| **Ideal**    |   < 100 ms    | < 10 ms  |   < 0.5%    | Responsive. Client prediction feels instant.                           | 🟢 Green Wi-Fi  |
+| **Good**     |  100-200 ms   | 10-30 ms |   0.5-2%    | Client prediction covers the gap. Minor ghosting on fast deploys.      | 🟡 Yellow Wi-Fi |
+| **Playable** |  200-300 ms   | 30-50 ms |    2-5%     | Noticeable delay. "Poor Connection" warning shown to player.           | 🟠 Orange Wi-Fi |
+| **Poor**     |   > 300 ms    | > 50 ms  |    > 5%     | Match pauses. Reconnect prompt offered. If unresolved in 30s, forfeit. |  🔴 Red Wi-Fi   |
+
+### Network Health Indicator (HUD)
+
+A small Wi-Fi icon in the top-right corner of the match HUD shows the player's current connection quality using the color tiers above. This is a **cosmetic-only client-side indicator** — the server is always authoritative regardless of what the client displays.
+
+- Tapping the icon opens a tooltip with the current latency in milliseconds.
+- If the connection drops to **Poor** for more than 5 seconds, the icon pulses and a "Reconnecting..." overlay appears.
+
+### Alpha Test Matrix
+
+| Test Scenario               | Parameters                 | Duration per Tester | Success Criteria                               |
+| :-------------------------- | :------------------------- | :-----------------: | :--------------------------------------------- |
+| **Ideal Wi-Fi**             | <50ms latency, 0% loss     |      3 matches      | Baseline for comparison                        |
+| **4G Mobile Data**          | 50-150ms, variable jitter  |      5 matches      | All matches complete without disconnect        |
+| **3G / Weak Signal**        | 150-300ms, 2-5% loss       |      3 matches      | Matches remain playable (QoE ≥ Playable)       |
+| **Wi-Fi with Interference** | 50-200ms spikes, 1-3% loss |      3 matches      | No disconnects; client prediction masks jitter |
+| **NAT Traversal Failure**   | Relay fallback             |      1 session      | Relay connection succeeds within 10s           |
+
+---
+
+## Official Folder & Assembly Convention
+
+The project follows a **feature-oriented runtime layout** where code lives under `Assets/Scripts/Runtime/{Feature}/` and authored data lives under `Assets/Data/{Feature}/`. The following conventions are the **official project standard** and must be followed for all new content.
+
+### Runtime Code Convention
+
+```
+Assets/
+└── Scripts/
+    └── Runtime/
+        ├── Board/          # GooGalaxy.Runtime.Board.asmdef
+        ├── Bootstrap/      # GooGalaxy.Runtime.Bootstrap.asmdef
+        ├── Cards/          # GooGalaxy.Runtime.Cards.asmdef
+        ├── HUD/            # GooGalaxy.Runtime.HUD.asmdef
+        ├── Input/          # GooGalaxy.Runtime.Input.asmdef
+        ├── Match/          # GooGalaxy.Runtime.Match.asmdef
+        ├── Networking/     # GooGalaxy.Runtime.Networking.asmdef
+        ├── Progression/    # GooGalaxy.Runtime.Progression.asmdef
+        └── Shared/         # GooGalaxy.Runtime.Shared.asmdef
+```
+
+### Key Rules
+
+| Rule                                                            | Explanation                                                                                                                                                             |
+| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`Scripts/` is an organizational container, not a namespace.** | The folder name `Scripts` has no semantic meaning to Unity. Assembly boundaries are defined solely by `.asmdef` files.                                                  |
+| **One `.asmdef` per feature folder.**                           | Each folder under `Scripts/Runtime/` contains exactly one Assembly Definition asset that declares its dependencies.                                                     |
+| **`Runtime.Shared` stays small and stable.**                    | It contains only contracts, interfaces, shared structs/enums, and cross-feature helpers. It must NOT depend on any other feature assembly.                              |
+| **Feature assemblies own their domain.**                        | `Board` owns hex grid logic. `Cards` owns card runtime logic. `Match` orchestrates gameplay flow. No circular dependencies.                                             |
+| **Authored data is NOT code.**                                  | `Assets/Data/` holds `ScriptableObject` assets and JSON configs. It is the canonical source of truth for design-tunable values.                                         |
+| **New features add new top-level folders.**                     | When adding a new feature domain (e.g., Audio, Social, LiveOps), create both `Assets/Scripts/Runtime/{Feature}/` and `Assets/Data/{Feature}/` with their own `.asmdef`. |
+| **Editor code is separate.**                                    | Editor-only tooling lives under `Assets/Editor/{ToolDomain}/`. Never reference editor assemblies from runtime assemblies.                                               |
+
+> **Why this matters:** This convention prevents the common Unity anti-pattern of sprawling `Core/`, `Managers/`, and `UI/` folders that accumulate unrelated code. Feature ownership stays clear, dependency graphs stay auditable, and new contributors can locate code without tribal knowledge.

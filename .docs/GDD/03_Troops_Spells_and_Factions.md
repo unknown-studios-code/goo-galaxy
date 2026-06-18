@@ -1,15 +1,15 @@
-# Troops, Spells & Factions
+# Specimens, Protocols & Factions
 
 ## Design Philosophy
 
-Introducing asymmetrical troops into a spatial domination game risks disrupting the mathematical purity of the board. To preserve tactical depth, all abilities are constrained by two rules:
+Introducing asymmetrical specimens into a spatial domination game risks disrupting the mathematical purity of the planetary surface. To preserve tactical depth, all abilities are constrained by two rules:
 
 1. **Abilities only trigger upon landing.** No persistent auras or ongoing effects (except explicitly defined temporary status effects).
 2. **The $P_v \propto E^2$ budget is absolute.** Every card's total impact must fit within its Power Value budget (see `02_Mathematics_and_Balancing.md`).
 
 ---
 
-## Base Troop Roster
+## Base Specimen Roster
 
 ### 1. Subject Alpha
 
@@ -60,17 +60,17 @@ Introducing asymmetrical troops into a spatial domination game risks disrupting 
 
 ### 3. Bio-Phalanx
 
-| Property                  | Value                                                                                                                                                                                                                |
-| :------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Energy Cost**           | 3                                                                                                                                                                                                                    |
-| **Rarity**                | Rare                                                                                                                                                                                                                 |
-| **Type**                  | Defensive Anchor                                                                                                                                                                                                     |
-| **Conversion Radius**     | 1 hex (standard)                                                                                                                                                                                                     |
-| **Can Clone**             | Yes                                                                                                                                                                                                                  |
-| **Can Jump**              | Yes                                                                                                                                                                                                                  |
+| Property                  | Value                                                                                                                                                                                                                                                                                                                                                                       |
+| :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Energy Cost**           | 3                                                                                                                                                                                                                                                                                                                                                                           |
+| **Rarity**                | Rare                                                                                                                                                                                                                                                                                                                                                                        |
+| **Type**                  | Defensive Anchor                                                                                                                                                                                                                                                                                                                                                            |
+| **Conversion Radius**     | 1 hex (standard)                                                                                                                                                                                                                                                                                                                                                            |
+| **Can Clone**             | Yes                                                                                                                                                                                                                                                                                                                                                                         |
+| **Can Jump**              | Yes                                                                                                                                                                                                                                                                                                                                                                         |
 | **Passive**               | **Armored Membrane** — Requires **2 distinct adjacent conversion events** to be flipped. The first valid conversion attempt strips the armor only. The second valid conversion attempt converts the piece. Armor does **not** regenerate after being stripped unless a future card explicitly restores it. Visual indicator: armored state shows a translucent shield aura. |
-| **Base Conversion Power** | 100                                                                                                                                                                                                                  |
-| **Armor HP**              | 1 layer (stripped by first conversion event)                                                                                                                                                                         |
+| **Base Conversion Power** | 100                                                                                                                                                                                                                                                                                                                                                                         |
+| **Armor HP**              | 1 layer (stripped by first conversion event)                                                                                                                                                                                                                                                                                                                                |
 
 **Design Rationale:** Solves the inherent fragility of borders in Ataxx. A Bio-Phalanx anchors a defensive line, forcing the opponent to commit **multiple resources** (at least 2 units or 1 unit + 1 conversion chain) to breach a specific sector.
 
@@ -161,9 +161,9 @@ Introducing asymmetrical troops into a spatial domination game risks disrupting 
 
 ---
 
-## Spells
+## Protocols
 
-Spells manipulate the board state without permanently occupying space. Their high costs and lack of board presence contribution ensure they are tactical tools, not primary win conditions.
+Protocols manipulate the planetary surface state without permanently occupying space. Their high costs and lack of surface presence contribution ensure they are tactical tools, not primary win conditions.
 
 ### 1. Cryo-Stasis
 
@@ -204,7 +204,7 @@ Spells manipulate the board state without permanently occupying space. Their hig
 
 ## New Expansion Prototypes
 
-These cards are proposed for the second design pass because they add missing forms of **counterplay, tempo control, and map interaction** without violating the existing $P_v \propto E^2$ budget.
+These specimens are proposed for the second design pass because they add missing forms of **counterplay, tempo control, and surface interaction** without violating the existing $P_v \propto E^2$ budget.
 
 ### 7. Quarantine Drone
 
@@ -250,7 +250,7 @@ These cards are proposed for the second design pass because they add missing for
 
 ---
 
-## New Spell Prototypes
+## New Protocol Prototypes
 
 ### 3. Purge Pulse
 
@@ -316,7 +316,7 @@ graph LR
 
 ---
 
-## Deck Archetypes
+## Kit Archetypes
 
 ### 1. Cycle / Swarm
 
