@@ -1,10 +1,10 @@
 # Feature Task Template
 
-Use for new gameplay/user-facing functionality. Replace all placeholder content with real implementation details.
+Use for new gameplay/user-facing functionality. Adapt sections as needed — the goal is a complete, reviewer-ready design, not rigid adherence to every subsection.
 
 ---
 
-```markdown
+````markdown
 # [Feature Title - Specific and Implementation-Focused]
 
 ### 📝 Description
@@ -14,6 +14,8 @@ Use for new gameplay/user-facing functionality. Replace all placeholder content 
 ---
 
 ### ✅ Definition of Done
+
+_Adapt the list below — add, remove, or reorder items to fit the task._
 
 1. [Create specific file/component with exact path]
 2. [Implement specific functionality]
@@ -30,44 +32,70 @@ Use for new gameplay/user-facing functionality. Replace all placeholder content 
 
 ### ⚙️ Technical Refinement
 
-**Core Scripts:**
+**Architecture:** _(recommended — establishes the pattern and assembly placement)_
+
+[One-line pattern description. Example: "Humble Object Pattern — all grid logic lives in pure C# classes under `GooGalaxy.Runtime.Board`. MonoBehaviours in Task 16 will observe this domain layer."]
+
+**Core Scripts:** _(add when creating new files)_
 
 - `Assets/Scripts/Runtime/[Feature]/[FileName].cs` - [Script responsibility]
-- `Assets/Scripts/Runtime/[Feature]/[FileName].cs` - [Script responsibility]
 
-**Key Prefabs/Assets:**
+**Key Prefabs/Assets:** _(add when creating or modifying assets)_
 
 - `Assets/Data/[Feature]/[Asset].asset` - [Asset purpose]
 - `Assets/Prefabs/[Path]/[Prefab].prefab` - [Prefab purpose]
 
-**Inspector Values:**
+**Inspector Values:** _(add when exposing fields in the Unity Inspector)_
 
 - In `[Component].cs`, expose `[type] [FieldName] = [default]` (description)
-- In `[Config]`, add `[field]` field (range: [min]-[max])
 
 **Implementation Notes:**
 
 - Use `[specific API/pattern]` for [specific purpose]
-- Apply `[specific Unity attribute/pattern]` to [specific targets]
-- Use `[specific service, event, or session flow]` when coordinating runtime state changes
 - [Additional implementation guidance]
 
-**Dependencies:**
+**Assembly Dependencies:** _(add when crossing assembly boundaries)_
 
-- Requires `[Runtime Service/Feature]` from **GOOT-X or GOOM-X**
-- Requires `[Asset/Data]` to have `[specific property]`
+```
+GooGalaxy.Runtime.[Feature]
+├── references: GooGalaxy.Runtime.Shared  ([types used])
+├── does NOT reference: [assemblies intentionally excluded]
+└── InternalsVisibleTo: GooGalaxy.Runtime.Tests.EditMode
+```
+
+**Test Coverage:** _(add specific test files and scenarios)_
+
+- `Assets/Scripts/Tests/EditMode/[TestFileName].cs` — [Specific scenario covered]
+
+**Edge Cases:** _(optional — add if the feature has non-obvious scenarios)_
+
+| Scenario                | Behavior            |
+| ----------------------- | ------------------- |
+| [Edge case description] | [Expected behavior] |
+
+**Performance Budget:** _(optional — include when introducing runtime operations)_
+
+| Metric                  | Target         | Rationale         |
+| ----------------------- | -------------- | ----------------- |
+| [Method/operation name] | [target value] | [why this target] |
+
+**Naming Convention:** _(optional — add when introducing new terms or conventions)_
+
+| Term           | Meaning              | Notes                |
+| -------------- | -------------------- | -------------------- |
+| [Term in code] | [What it represents] | [Additional context] |
 
 ---
 
 ### ⚠️ Potential Risks
 
-- 🔴 **Performance Risk:** [Risk description]
+_List risks relevant to this task. Use categories appropriate to the work (performance, edge case, integration, testing, etc.). Risk count varies — some tasks have 1, others have 5._
+
+_Choose the emoji color based on the risk: 🔴 critical (breaks builds/crashes), 🟠 high (degrades core flow), 🟡 medium (edge case or future concern), 🟢 low (cosmetic or unlikely), 🔵 informational (team knowledge, future-proofing)._
+
+- 🔴 **[Risk Category]:** [Risk description]
   - Mitigation: [How to address]
-- 🟡 **Edge Case:** [Risk description]
-  - Mitigation: [How to address]
-- 🟠 **Integration Risk:** [Risk description]
-  - Mitigation: [How to address]
-- 🔵 **Testing Challenge:** [Risk description]
+- 🟡 **[Risk Category]:** [Risk description]
   - Mitigation: [How to address]
 
 ---
@@ -76,22 +104,28 @@ Use for new gameplay/user-facing functionality. Replace all placeholder content 
 
 - **🎨 Design Files:**
   - [Behavior Flow Diagram](URL)
-  - [Reference Video](URL)
 - **📚 Documentation:**
-  - [Unity 6 or package documentation](URL)
   - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
+  - [Unity 6 or package documentation](URL)
 - **🌐 External Resources:**
   - [Reference Implementation](URL)
-```
+````
 
 ---
 
-## Feature Task Quality Checks
+## Quality Checks
+
+_These are guidelines, not hard gates. Use judgment._
 
 - [ ] Description focuses on user-facing behavior
-- [ ] Definition of Done includes code, tests, docs, and PR workflow (10+ items typical)
-- [ ] File paths are exact and follow project structure (`Assets/Scripts/Runtime/[Feature]/[FileName].cs`)
+- [ ] Definition of Done adapted to fit the task (not copy-pasted from template)
+- [ ] File paths are exact and follow project structure
+- [ ] Technical Refinement starts with Architecture pattern
 - [ ] Implementation Notes include algorithm choices and performance considerations
-- [ ] Dependencies list specific tasks/systems (with GOOT-X, GOOM-X, or system names)
-- [ ] Risks are implementation-specific and categorized
-- [ ] Performance targets included when relevant (for example `60 FPS stable` or `<5 KB/s per player`)
+- [ ] Assembly Dependencies shown when crossing assembly boundaries
+- [ ] Test Coverage lists specific files and scenarios
+- [ ] Risks are implementation-specific (not generic) and categorized with emoji (🔴🟠🟡🟢🔵) matching severity
+- [ ] Performance Budget included for performance-sensitive features
+- [ ] PR workflow items (Branch, PR, Review) close the Definition of Done
+- [ ] Sections marked optional are omitted when they don't apply
+- [ ] Final document is self-contained — a reviewer can understand it without reading other task docs

@@ -2,7 +2,9 @@
 
 ## The Planetary Surface (Hexagonal Grid)
 
-The game takes place on a finite, bounded hexagonal grid consisting of **61 sectors** arranged in a flat-top hexagon with a radius of 5 (i.e., 5 sectors from center to edge). Each sector represents a scanned region of the planetary surface. The grid uses an **Axial Coordinate System (q, r)** for all spatial calculations.
+The game takes place on a finite, bounded hexagonal grid consisting of **61 sectors** arranged in a flat-top hexagon with 5 sectors from center to edge (center + 4 concentric rings). Each sector represents a scanned region of the planetary surface. The grid uses an **Axial Coordinate System (q, r)** for all spatial calculations.
+
+> **Implementation Note:** The grid follows the Red Blob Games axial convention where `GridRadius = 4` (4 rings beyond the center) produces 61 sectors via the formula `1 + 3 × N × (N + 1)`. The GDD term "5 sectors from center to edge" counts inclusively (1 center + 4 rings). In code, always use N=4 for hex generation. See `001_Hex_Grid_Foundation.md` for the reference implementation.
 
 ### Planetary Layout
 

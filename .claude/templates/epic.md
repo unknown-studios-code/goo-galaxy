@@ -1,6 +1,6 @@
 # Epic Template
 
-Copy this template structure when creating an Epic. Replace all placeholder content with real project-specific information.
+Use when creating an Epic — a large body of work spanning multiple stories. Epics are stakeholder-facing: keep language non-technical and focused on outcomes. Adapt sections as needed.
 
 ---
 
@@ -9,7 +9,7 @@ Copy this template structure when creating an Epic. Replace all placeholder cont
 
 ### 🎯 Strategic Goal
 
-[Write a 2-3 sentence "elevator pitch" explaining what this epic achieves and why it matters. Should be understandable by anyone, including non-technical stakeholders.]
+[2-3 sentence "elevator pitch" explaining what this epic achieves and why it matters. Understandable by anyone, including non-technical stakeholders.]
 
 ---
 
@@ -27,9 +27,11 @@ Copy this template structure when creating an Epic. Replace all placeholder cont
 
 ### 💡 Value Hypothesis
 
-- **We believe that by** [ACTION/CHANGE]
-- **We will achieve** [OUTCOME/BENEFIT]
-- **This will be measured by** [METRIC/KPI]
+[Describe the expected cause-and-effect. Format is flexible — use what communicates best.]
+
+- **We believe that** [ACTION/CHANGE]
+- **Will result in** [OUTCOME/BENEFIT]
+- **Measured by** [METRIC/KPI]
 
 ---
 
@@ -39,40 +41,43 @@ Copy this template structure when creating an Epic. Replace all placeholder cont
 
 1. [Specific feature, deliverable, or work item]
 2. [Specific feature, deliverable, or work item]
-3. [Specific feature, deliverable, or work item]
 
 **Out of Scope:**
 
 - [What is explicitly NOT being addressed]
-- [What is explicitly NOT being addressed]
+
+---
+
+### ⚙️ Architecture Notes _(optional — add when the epic spans multiple assemblies or systems)_
+
+- **Assemblies affected:** [List of asmdefs]
+- **Data/Assets affected:** [List of folders]
+- **Cross-cutting concerns:** [Networking, persistence, analytics, etc.]
 
 ---
 
 ### 📈 Success Criteria
 
+_Include quantitative metrics, qualitative acceptance criteria, or both — whichever fits the epic._
+
 **Quantitative Metrics:**
 
 - **Metric 1:** [MEASUREMENT with target value]
-- **Metric 2:** [MEASUREMENT with target value]
-- **Metric 3:** [MEASUREMENT with target value]
 
 **Qualitative Acceptance Criteria:**
 
 1. [Testable acceptance criterion]
 2. [Testable acceptance criterion]
-3. [Testable acceptance criterion]
 
 ---
 
 ### ⚠️ Potential Risks
 
-- 🔴 **Technical Risk:** [Risk description]
-  - Mitigation: [How to address or reduce risk]
-- 🟡 **Dependency Risk:** [Risk description]
-  - Mitigation: [How to address or reduce risk]
-- 🟠 **Scope Risk:** [Risk description]
-  - Mitigation: [How to address or reduce risk]
-- 🔵 **Timeline Risk:** [Risk description]
+_List relevant risks. Epic-level risks focus on scope, dependencies, timelines, and technical unknowns._
+
+_Choose the emoji color based on the risk: 🔴 critical (threatens epic completion), 🟠 high (significant delay or scope increase), 🟡 medium (manageable with mitigation), 🟢 low (minor concern), 🔵 informational (team/external dependency awareness)._
+
+- 🔴 **[Risk Category]:** [Risk description]
   - Mitigation: [How to address or reduce risk]
 
 ---
@@ -89,17 +94,16 @@ Copy this template structure when creating an Epic. Replace all placeholder cont
 
 ---
 
-## Epic Quality Checks
+## Quality Checks
 
-Before presenting the Epic, verify:
+_These are guidelines, not hard gates._
 
-- [ ] Strategic Goal is a clear 2-3 sentence elevator pitch
-- [ ] Problem statement includes quantifiable impact if possible
-- [ ] Value Hypothesis follows "We believe... we will achieve... measured by..." format
-- [ ] Scope clearly separates IN SCOPE vs OUT OF SCOPE with specific items
-- [ ] Success Criteria includes both quantitative metrics AND qualitative acceptance
-- [ ] All metrics are SMART (Specific, Measurable, Achievable, Relevant, Time-bound)
-- [ ] Risks are categorized with emoji (🔴🟡🟠🔵) and include mitigation when possible
-- [ ] References include design files, documentation, and external resources
-- [ ] Language is non-technical and stakeholder-friendly
-- [ ] All emoticons and markdown formatting preserved
+- [ ] Strategic Goal is a clear elevator pitch (non-technical)
+- [ ] Problem statement explains who it's for and why it matters
+- [ ] Value Hypothesis connects action → outcome → measurement
+- [ ] Scope clearly separates IN SCOPE vs OUT OF SCOPE
+- [ ] Architecture Notes identifies affected assemblies when applicable
+- [ ] Success Criteria include measurable outcomes (quantitative, qualitative, or both)
+- [ ] Risks focus on epic-level concerns and are categorized with emoji (🔴🟠🟡🟢🔵) matching severity
+- [ ] References include design files and documentation
+- [ ] Language is stakeholder-friendly (minimal technical jargon)

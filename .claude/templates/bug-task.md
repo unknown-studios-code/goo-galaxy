@@ -1,6 +1,6 @@
 # Bug Task Template
 
-Use to fix identified defects and problems. Replace all placeholder content with real bug details.
+Use to fix identified defects and problems. Adapt sections as needed — some bugs are simple one-liners that don't need every section; others are complex regressions that need full detail.
 
 ---
 
@@ -11,35 +11,31 @@ Use to fix identified defects and problems. Replace all placeholder content with
 
 **Steps to Reproduce:**
 
-1. [Exact step with specific scene/file]
-2. [Exact step with specific action]
-3. [Exact step with specific input]
-4. [Exact step with specific observation point]
+1. [Step with specific scene/file/action]
+2. [Step with specific action]
+3. [Step with specific observation point]
 
 **Expected Behavior:**
 
-[Describe what SHOULD happen in detail]
+[Describe what SHOULD happen]
 
 **Actual Behavior:**
 
 [Describe what ACTUALLY happens, including error messages]
 
-**Environment:**
+**Environment:** _(include what's relevant — not all fields are needed for every bug)_
 
 - **Unity Version:** [e.g., 6000.3.11f1]
-- **Relevant Packages/Services:**
-  - [package name] [version]
-  - [package name] [version]
 - **Build Target:** [e.g., Android, iOS, Editor Play Mode]
-- **Device Specs:** [OS, CPU, GPU, RAM if relevant]
 - **Commit Hash:** `[hash]` (branch: `[branch-name]`)
 - **Reproducibility:** [100% / Intermittent with frequency]
+- **Packages/Services:** [if relevant]
 
 ---
 
 ### Root Cause Analysis
 
-[After investigation, document WHY the bug occurs. Technical explanation of the underlying issue.]
+[After investigation, document WHY the bug occurs. For simple bugs, a single sentence is enough.]
 
 **Root cause:** [Brief summary of the fundamental cause]
 
@@ -47,56 +43,44 @@ Use to fix identified defects and problems. Replace all placeholder content with
 
 ### ✅ Definition of Done
 
+_Adapt the list below — add, remove, or reorder items to fit the bug._
+
 1. [Specific fix applied to specific file]
-2. Bug no longer reproducible following original steps (tested X+ times)
-3. [Specific expected behavior now works]
-4. No errors in Console
-5. [Memory/resource cleanup verified]
-6. Fix tested on all relevant targets: [Android, iOS, Editor Play Mode]
-7. Regression test added to [test file path]
-8. Verified with [stress test scenario]
-9. PR includes detailed explanation of fix and root cause
-10. Branch created and link added to Notion task property "Branch"
-11. PR created, reviewed, approved, and merged
+2. Bug no longer reproducible following original steps
+3. No errors in Console
+4. Regression test added to [test file path]
+5. Fix tested on relevant targets: [Android, iOS, Editor Play Mode]
+6. Branch created and link added to Notion task property "Branch"
+7. PR created, reviewed, approved, and merged
 
 ---
 
-### 🔧 Implementation Plan
+### ⚙️ Technical Refinement
 
-**Step 1: [Fix Step Title]**
+**Architecture:** _(recommended — which assembly/domain is affected)_
 
-- Open `[file path]`
-- [Specific change to make]
-- [Rationale for this change]
+[Example: "Bug is in `GooGalaxy.Runtime.Board` — `ResolveConversions` method. Fix is local to Board."]
 
-**Step 2: [Additional Fix Step]**
+**Fix Steps:** _(use step-by-step, narrative, or grouped format — whichever fits the bug best)_
 
-- In `[file/method]`, add check: `[specific code/logic]`
-- [Prevents specific issue]
+- **Step 1: [Title]** — [File to modify, change to make, rationale]
+- **Step 2: [Title]** — [File to modify, change to make, rationale]
 
-**Step 3: [Create Regression Test]**
+**Regression Test:**
 
 - Create `[test file path]`
-- Test case: [describe test scenario]
+- Test case: [describe what the test validates]
 - Use `[Test]` attribute for Unity Test Runner
-
-**Step 4: [Validate Resource Cleanup]**
-
-- Open [Profiler/Tool] (Window > Analysis > [Tool])
-- Capture snapshot [before/after scenario]
-- Verify [no leaked resources]
 
 ---
 
 ### ⚠️ Potential Risks
 
-- 🔴 **Side Effect Risk:** [Risk description]
-  - Mitigation: [How to address]
-- 🟡 **Regression Risk:** [Risk description]
-  - Mitigation: [How to address]
-- 🟠 **Performance Risk:** [Risk description]
-  - Mitigation: [How to address]
-- 🔵 **Platform Risk:** [Risk description]
+_List risks relevant to this bug. Simple fixes may have no risks — that's fine._
+
+_Choose the emoji color based on the risk: 🔴 critical (could cause new crash/regression), 🟠 high (affects core gameplay), 🟡 medium (edge case), 🟢 low (cosmetic side effect), 🔵 informational (platform-specific concern)._
+
+- 🔴 **[Risk Category]:** [Risk description]
   - Mitigation: [How to address]
 
 ---
@@ -104,21 +88,27 @@ Use to fix identified defects and problems. Replace all placeholder content with
 ### 🔗 References
 
 - **🐛 Bug Tracking:**
-  - [Notion Bug Report](URL)
   - [Console Log Screenshot](URL)
   - [Profiler Snapshot](URL)
 - **📚 Documentation:**
   - [Relevant Unity Documentation](URL)
   - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
+- **🌐 External Resources:**
+  - [Reference Implementation or Related Fix](URL)
 ```
 
 ---
 
-## Bug Task Quality Checks
+## Quality Checks
 
-- [ ] Reproduction steps are exact and detailed (any developer can reproduce)
-- [ ] Expected vs Actual behavior clearly contrasted
-- [ ] Environment info complete (versions, platform, commit hash, reproducibility %)
+_These are guidelines, not hard gates. Simple bugs need fewer checks._
+
+- [ ] Reproduction steps are clear enough for another developer to follow
+- [ ] Expected vs Actual behavior contrasted
+- [ ] Environment info includes what's relevant (version, platform, commit, reproducibility)
 - [ ] Root Cause Analysis explains WHY (not just WHAT)
-- [ ] Regression test required in Definition of Done
-- [ ] Fix tested across multiple platforms if applicable
+- [ ] Regression test added (for logic bugs; not always needed for asset/config fixes)
+- [ ] Fix tested on affected platforms
+- [ ] Technical Refinement identifies affected assembly/domain
+- [ ] Risks section can be empty if the fix has no side effects; when present, risks are categorized with emoji (🔴🟠🟡🟢🔵) matching severity
+- [ ] PR workflow items close the Definition of Done
