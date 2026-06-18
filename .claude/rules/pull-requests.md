@@ -10,8 +10,8 @@ Follow these rules whenever drafting, reviewing, or creating a pull request for 
 4. Read `.claude/templates/pr-template.md`.
 5. Generate the PR body from that template.
 6. Assign labels using the mapping rules below.
-7. Create the PR with `gh pr create`, targeting `main` unless the user explicitly asks for a different base.
-8. Apply or adjust labels with `gh pr edit` when needed.
+7. Create the PR using **GitHub MCP first**, targeting `main` unless the user explicitly asks for a different base. Fall back to `gh pr create` only if GitHub MCP is unavailable or fails.
+8. Apply or adjust labels with **GitHub MCP first**. Fall back to `gh pr edit` only if GitHub MCP is unavailable or fails.
 9. Update related Notion records with the PR URL using Notion MCP after PR creation.
 
 ## Repository Context
@@ -22,12 +22,31 @@ Follow these rules whenever drafting, reviewing, or creating a pull request for 
 - Refer to gameplay domains and systems using Goo Galaxy names: `board`, `cards`, `match`, `networking`, `hud`, `input`, `progression`, `bootstrap`, and `shared`.
 - Do not describe the project using old Spellwright or DOTS-specific architecture unless the actual change explicitly touches legacy documentation.
 
-## GitHub CLI
+## GitHub Operations
+
+IMPORTANT: Always prefer GitHub MCP tools for PR operations. Only fall back to `gh` CLI when GitHub MCP is unavailable or returns an error.
+
+### Primary: GitHub MCP
+
+Use GitHub MCP tools to:
+
+- Create pull requests (`create_pull_request`)
+- Update pull requests (`update_pull_request`)
+- List, read, and manage PRs, issues, labels, and reviews
+- Read repository files and metadata
+
+GitHub MCP operates directly against the GitHub API with full authenticated access.
+
+### Fallback: GitHub CLI (`gh`)
+
+If GitHub MCP is unavailable or fails:
 
 - Create pull requests with `gh pr create`.
 - Update labels, title, or body after creation with `gh pr edit`.
 - Use the current branch as the PR head unless the user explicitly asks for something else.
 - Prefer passing explicit `--base`, `--head`, `--title`, and `--body-file` values when creating the PR.
+
+Always log which method was used and why the primary method was skipped when falling back to `gh`.
 
 ## PR Title Format
 

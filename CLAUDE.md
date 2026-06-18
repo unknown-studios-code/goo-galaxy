@@ -46,7 +46,7 @@ Game design documents are in `.docs/GDD/`. For networking, sessions, or multipla
 ## Conventions
 
 - **Commits:** Conventional Commits with mandatory scope. Automated commits MUST set `HUSKY=0`. See `.claude/rules/commit-messages.md`.
-- **Pull Requests:** Conventional Commits titles, `gh pr create` targeting `main`, PR body from `.claude/templates/pr-template.md`. See `.claude/rules/pull-requests.md`.
+- **Pull Requests:** Conventional Commits titles, targeting `main`, PR body from `.claude/templates/pr-template.md`. Use GitHub MCP first; fall back to `gh` CLI. See `.claude/rules/pull-requests.md`.
 - **Task Tracking:** Notion MCP for GOOE/GOOS/GOOT/GOOM task IDs. See `.claude/rules/notion-mcp.md`.
 - **Code Style:** CSharpier formatting (config in `.csharpierrc.json`), EditorConfig (`.editorconfig`).
 - **Language:** All PR bodies, commit messages, and code comments in English.
@@ -63,6 +63,7 @@ Game design documents are in `.docs/GDD/`. For networking, sessions, or multipla
 
 This project benefits from these MCP servers (configured at user level, not in this repo):
 
+- **GitHub** — PR creation, label management, repository operations (primary)
 - **Notion** — task/story/epic lookup and property updates
 - **Figma** — design references and asset extraction
 
