@@ -1,10 +1,10 @@
 # User Story Template
 
-Copy this template structure when creating a User Story. Replace all placeholder content with real project-specific information.
+Use when creating a User Story — a single, coherent piece of work that delivers value to a user. Stories bridge product intent and technical implementation: keep the user story non-technical, then use Technical Refinement for implementation details. Adapt sections as needed.
 
 ---
 
-```markdown
+````markdown
 # [Story Title - Clear, Action-Oriented]
 
 ### 👤 User Story
@@ -17,63 +17,62 @@ Copy this template structure when creating a User Story. Replace all placeholder
 
 ### ✅ Acceptance Criteria
 
-1. [Observable, testable behavior that proves this story is complete]
-2. [Observable, testable behavior that proves this story is complete]
-3. [Observable, testable behavior that proves this story is complete]
-4. [Observable, testable behavior that proves this story is complete]
-5. [Observable, testable behavior that proves this story is complete]
+_Observable, testable behaviors that prove this story is complete. Number varies — typically 3-7._
+
+1. [Observable, testable behavior]
+2. [Observable, testable behavior]
+3. [Observable, testable behavior]
 
 ---
 
 ### ⚙️ Technical Refinement
 
-**Components Needed:**
+**Components Needed:** _(add when introducing new data structures)_
 
 - `ComponentName` (purpose: what data it represents)
-- `ComponentName` (purpose: what data it represents)
 
-**Systems Needed:**
+**Systems Needed:** _(add when introducing new runtime systems)_
 
 - `SystemName` (responsibility: what it does, not how)
-- `SystemName` (responsibility: what it does, not how)
 
-**Data Flow:**
+**Data Flow:** _(optional — add when multiple systems interact in sequence)_
+
 ```
-
 [Source]
 ↓
 [Transformation Step] (description)
 ↓
-[Next Step] (description)
-↓
 [Final Output]
-
 ```
 
 **Key Architectural Decisions:**
 
 - **Decision 1:** [Decision description]
   - **Rationale:** [Why this approach]
-- **Decision 2:** [Decision description]
-  - **Rationale:** [Why this approach]
+
+**Assembly Dependencies:** _(add when crossing assembly boundaries)_
+
+```
+GooGalaxy.Runtime.[Feature]
+├── references: GooGalaxy.Runtime.Shared  ([types used])
+├── does NOT reference: [assemblies intentionally excluded]
+└── InternalsVisibleTo: GooGalaxy.Runtime.Tests.EditMode
+```
 
 **Integration Points:**
 
 - [How this story connects to other systems/stories]
 - [Dependencies on other stories (GOOS-X)]
-- [Unity packages used]
 
 ---
 
 ### ⚠️ Potential Risks
 
-- 🔴 **Technical Risk:** [Risk description]
-  - Mitigation: [How to address or reduce risk]
-- 🟡 **Dependency Risk:** [Risk description]
-  - Mitigation: [How to address or reduce risk]
-- 🟠 **Knowledge Risk:** [Risk description]
-  - Mitigation: [How to address or reduce risk]
-- 🔵 **Scope Risk:** [Risk description]
+_List risks relevant to this story. Risk count varies — some stories have 1, others have 4._
+
+_Choose the emoji color based on the risk: 🔴 critical (blocks story completion), 🟠 high (threatens sprint delivery), 🟡 medium (edge case, dependency), 🟢 low (cosmetic, unlikely), 🔵 informational (knowledge gap, documentation need)._
+
+- 🔴 **[Risk Category]:** [Risk description]
   - Mitigation: [How to address or reduce risk]
 
 ---
@@ -81,30 +80,30 @@ Copy this template structure when creating a User Story. Replace all placeholder
 ### 🔗 References
 
 - **🎨 Design Files:**
-    - [Architecture Diagram](URL)
-    - [UI Mockup](URL)
+  - [Architecture Diagram](URL)
+  - [UI Mockup](URL)
 - **📚 Documentation:**
   - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
   - [Unity 6, NGO, or MPS reference](URL)
 - **🌐 External Resources:**
-    - [Reference Implementation](URL)
-```
+  - [Reference Implementation](URL)
+````
 
 ---
 
-## Story Quality Checks
+## Quality Checks
 
-Before presenting the Story, verify:
+_These are guidelines, not hard gates._
 
 - [ ] User story follows "As a... I want... So that..." format
 - [ ] Acceptance criteria are behavioral, testable, and focus on outcomes
-- [ ] Components section lists data structures with clear purposes (WHAT, not HOW)
-- [ ] Systems section lists behaviors with clear responsibilities (WHAT, not HOW)
-- [ ] Data flow diagram shows conceptual transformations (not function calls)
+- [ ] Components section describes data structures with clear purposes (WHAT, not HOW)
+- [ ] Systems section describes behaviors with clear responsibilities (WHAT, not HOW)
+- [ ] Data flow diagram shows conceptual transformations (when included)
 - [ ] Architectural decisions include rationale (WHY, not just WHAT)
+- [ ] Assembly Dependencies shown when crossing assembly boundaries
 - [ ] Integration points identify dependencies on other stories
-- [ ] Risks are categorized with emoji (🔴🟡🟠🔵) and include mitigation
+- [ ] Risks are categorized with emoji (🔴🟠🟡🟢🔵) matching severity and include mitigation
 - [ ] References include design files, documentation, and external resources
-- [ ] NO implementation details (no code snippets, no file paths, no line numbers)
 - [ ] Uses correct Goo Galaxy terminology (runtime service, presenter, ScriptableObject, prefab, scene)
-- [ ] All emoticons and markdown formatting preserved
+- [ ] Code snippets limited to type signatures and structural examples — not full method bodies

@@ -1,10 +1,10 @@
 # Tech Task Template
 
-Use for refactorings, optimizations, and internal technical improvements. Replace all placeholder content with real implementation details.
+Use for refactorings, optimizations, and internal technical improvements. The step structure is a guideline — for tasks that don't fit sequential steps (e.g., data pipelines, test suites), use a narrative or grouped structure. Adapt sections as needed.
 
 ---
 
-```markdown
+````markdown
 # [Tech Title - Clear Technical Objective]
 
 ### 🎯 Technical Objective
@@ -16,93 +16,101 @@ Use for refactorings, optimizations, and internal technical improvements. Replac
 
 ### ✅ Definition of Done
 
+_Adapt the list below — add, remove, or reorder items to fit the task._
+
 1. [Specific measurable outcome]
 2. [Specific measurable outcome with performance target]
-3. [Backward compatibility requirement]
-4. [Verification method]
-5. [Test requirement]
-6. [Documentation update]
-7. Branch created following naming convention and link added to Notion task property "Branch"
-8. PR created, reviewed, approved, and merged
+3. [Verification method]
+4. [Test requirement]
+5. [Documentation update]
+6. Branch created following naming convention and link added to Notion task property "Branch"
+7. PR created, reviewed, approved, and merged
 
 ---
 
 ### ⚙️ Technical Refinement
 
-**Step 1: [Step Title]**
+**Architecture:** _(recommended — establishes the pattern and assembly placement)_
 
-- [Specific file to modify with path]
-- [Specific change to make]
-- [Keep unchanged aspects]
+[One-line pattern description.]
 
-**Step 2: [Step Title]**
+**Implementation Steps:** _(use step-by-step, narrative, or grouped format — whichever fits the task best)_
 
-- [Specific file to modify with path]
-- [Specific API change (old → new)]
-- [Affected files to update]
+_Step format example:_
 
-**Step 3: [Step Title]**
+- **Step 1: [Title]** — [Specific files to modify, changes to make, rationale]
+- **Step 2: [Title]** — [Specific files to modify, changes to make, rationale]
 
-- [Specific files to update]
-- [Query/filter changes]
-- [Affected systems list]
-
-**Step 4: [Performance Validation]**
+_Performance validation (include when relevant):_
 
 - Open Unity Profiler (Window > Analysis > Profiler)
 - Navigate to [specific test scene]
 - Measure [specific metric]
 - Target: [specific target value]
 
-**Step 5: [Compatibility Testing]**
+**Assembly Dependencies:** _(add when crossing assembly boundaries)_
 
-- [Load/verify specific assets]
-- [Verify specific behaviors]
-- [Check specific UI elements]
+```
+GooGalaxy.Runtime.[Feature]
+├── references: GooGalaxy.Runtime.Shared  ([types used])
+├── does NOT reference: [assemblies intentionally excluded]
+└── InternalsVisibleTo: GooGalaxy.Runtime.Tests.EditMode
+```
 
-**Step 6: [Documentation Updates]**
+**Test Coverage:** _(add specific test files and scenarios)_
 
-- Add section in [documentation path] about [topic]
-- Document when to use [pattern/approach]
+- `Assets/Scripts/Tests/EditMode/[TestFileName].cs` — [Specific scenario covered]
 
-**Performance Impact:**
+**Performance Impact:** _(include when the change affects performance)_
 
 - Before: [metric with value]
 - After: [metric with improved value]
-- **[X]x improvement** in [specific area]
+
+**Performance Budget:** _(optional — include when introducing new runtime operations)_
+
+| Metric           | Target         | Rationale         |
+| ---------------- | -------------- | ----------------- |
+| [Operation name] | [target value] | [why this target] |
 
 ---
 
 ### ⚠️ Potential Risks
 
-- 🔴 **Migration Risk:** [Risk description]
+_List risks relevant to this task. Use categories appropriate to the work (migration, testing, performance, team knowledge, rollback, etc.)._
+
+_Choose the emoji color based on the risk: 🔴 critical (breaks builds/crashes), 🟠 high (degrades core flow), 🟡 medium (edge case or future concern), 🟢 low (cosmetic or unlikely), 🔵 informational (team knowledge, future-proofing)._
+
+- 🔴 **[Risk Category]:** [Risk description]
   - Mitigation: [How to address]
-  - Rollback: [Rollback strategy]
-- 🟡 **Testing Coverage:** [Risk description]
-  - Mitigation: [How to address]
-- 🟠 **Performance Regression:** [Risk description]
-  - Mitigation: [How to address]
-- 🔵 **Team Knowledge:** [Risk description]
-  - Mitigation: [How to address]
+  - Rollback: [Rollback strategy — include for risky changes]
 
 ---
 
 ### 🔗 References
 
+- **🎨 Design Files:**
+  - [Behavior Flow Diagram](URL)
 - **📚 Documentation:**
-  - [Unity 6 or package documentation](URL)
   - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
+  - [Unity 6 or package documentation](URL)
 - **🌐 External Resources:**
-  - [Technical Talk/Article](URL)
-```
+  - [Reference Implementation](URL)
+````
 
 ---
 
-## Tech Task Quality Checks
+## Quality Checks
+
+_These are guidelines, not hard gates. Use judgment._
 
 - [ ] Technical Objective explains WHAT + WHY with quantifiable improvement
-- [ ] Definition of Done includes performance metrics (before/after)
-- [ ] Technical Refinement provides step-by-step plan
-- [ ] Performance Impact section shows concrete improvement ("10x faster")
-- [ ] Rollback strategy included for risky changes
-- [ ] Documentation updates included in DoD
+- [ ] Definition of Done adapted to fit the task (not copy-pasted from template)
+- [ ] Technical Refinement starts with Architecture pattern
+- [ ] Implementation steps are clear and followable
+- [ ] Performance impact quantified when applicable (before/after)
+- [ ] Assembly Dependencies shown when crossing assembly boundaries
+- [ ] Test Coverage lists specific files and scenarios
+- [ ] Risks are categorized with emoji (🔴🟠🟡🟢🔵) matching severity; rollback strategy included for risky changes
+- [ ] PR workflow items close the Definition of Done
+- [ ] Sections marked optional are omitted when they don't apply
+- [ ] Final document is self-contained — a reviewer can understand it without reading other task docs
