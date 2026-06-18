@@ -57,7 +57,7 @@ runs:
 
     - name: Build Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac != 'true' }}
-      uses: game-ci/unity-builder@v4
+      uses: game-ci/unity-builder@v5
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
@@ -69,7 +69,7 @@ runs:
 
     - name: Build Android player
       if: ${{ inputs.android-export-type != '' }}
-      uses: game-ci/unity-builder@v4
+      uses: game-ci/unity-builder@v5
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
@@ -82,7 +82,7 @@ runs:
 
     - name: Build macOS-backed Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac == 'true' }}
-      uses: game-ci/unity-builder@v4
+      uses: game-ci/unity-builder@v5
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
