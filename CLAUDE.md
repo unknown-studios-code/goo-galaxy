@@ -1,7 +1,7 @@
 # Goo Galaxy — Claude Code Project Instructions
 
 @package.json
-@.claude/templates/pr-template.md
+@.claude/skills/pull-requests/templates/pr-template.md
 
 ## Project Identity
 
@@ -45,9 +45,10 @@ Game design documents are in `.docs/GDD/`. For networking, sessions, or multipla
 
 ## Conventions
 
-- **Commits:** Conventional Commits with mandatory scope. Automated commits MUST set `HUSKY=0`. See `.claude/rules/commit-messages.md`.
-- **Pull Requests:** Conventional Commits titles, targeting `main`, PR body from `.claude/templates/pr-template.md`. Use GitHub MCP first; fall back to `gh` CLI. See `.claude/rules/pull-requests.md`.
-- **Task Tracking:** Notion MCP for GOOE/GOOS/GOOT/GOOM task IDs. See `.claude/rules/notion-mcp.md`.
+- **Commits:** Conventional Commits with mandatory scope. Automated commits MUST set `HUSKY=0`. See `.claude/skills/commit-messages/SKILL.md`.
+- **Pull Requests:** Conventional Commits titles, targeting `main`, PR body from `.claude/skills/pull-requests/templates/pr-template.md`. Use GitHub MCP first; fall back to `gh` CLI. See `.claude/skills/pull-requests/SKILL.md`.
+- **Task Design:** Create and refine tasks, stories, and epics using templates in `.claude/skills/task-refinement/templates/`. See `.claude/skills/task-refinement/SKILL.md`.
+- **Task Tracking:** Notion MCP for GOOE/GOOS/GOOT/GOOM task IDs. See `.claude/skills/task-tracking/SKILL.md`.
 - **Code Style:** CSharpier formatting (config in `.csharpierrc.json`), EditorConfig (`.editorconfig`).
 - **Language:** All PR bodies, commit messages, and code comments in English.
 
@@ -56,8 +57,8 @@ Game design documents are in `.docs/GDD/`. For networking, sessions, or multipla
 - Base branch is `main`
 - Short-lived topic branches
 - Commits use `type(scope): subject` format with Goo Galaxy scopes
-- Automated commits bypass Husky hooks via `$env:HUSKY = "0"` in PowerShell
-- PowerShell is this project's shell — no bash-style inline env vars
+- Automated commits bypass Husky hooks via `HUSKY=0` (bash) or `$env:HUSKY = "0"` (PowerShell)
+- Use the correct HUSKY=0 syntax for the active shell (see commit-messages skill)
 
 ## MCP Tools
 
