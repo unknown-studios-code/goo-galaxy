@@ -1,17 +1,10 @@
----
-description: "Use when writing commit messages, creating git commits, or suggesting commit text for this repository. Enforces Conventional Commits, Commitizen-compatible formatting, Goo Galaxy scopes, footer rules, and HUSKY=0 for automated commits."
-name: "Commit Message Standards"
----
-
 # Git Commit Message Standards
 
 Follow these rules whenever generating a commit message or creating a commit in this repository.
 
 ## Required Format
 
-Use this structure:
-
-```text
+```
 <type>(<scope>): <subject>
 
 [optional body]
@@ -29,37 +22,22 @@ Rules:
 
 ## Allowed Types
 
-- `feat`: a new feature.
-- `fix`: a bug fix.
-- `docs`: documentation only changes.
-- `style`: changes that do not affect the meaning of the code.
-- `refactor`: a code change that neither fixes a bug nor adds a feature.
-- `perf`: a code change that improves performance.
-- `test`: adding missing tests or correcting existing tests.
-- `build`: changes that affect the build system or external dependencies.
-- `ci`: changes to CI configuration files and scripts.
-- `chore`: other changes that do not modify source or test files.
-- `revert`: reverts a previous commit.
+- `feat`: a new feature (MINOR version bump)
+- `fix`: a bug fix (PATCH bump)
+- `docs`: documentation only changes
+- `style`: changes that do not affect the meaning of the code
+- `refactor`: a code change that neither fixes a bug nor adds a feature
+- `perf`: a code change that improves performance (PATCH bump)
+- `test`: adding missing tests or correcting existing tests
+- `build`: changes that affect the build system or external dependencies
+- `ci`: changes to CI configuration files and scripts
+- `chore`: other changes that do not modify source or test files
+- `revert`: reverts a previous commit
 
-Use `feat` for MINOR version bumps. Use `fix` or `perf` for PATCH bumps.
-
-## Preferred Goo Galaxy Scopes
+## Goo Galaxy Scopes
 
 Prefer scopes that match the current project structure:
-
-- `bootstrap`
-- `board`
-- `cards`
-- `hud`
-- `input`
-- `match`
-- `networking`
-- `progression`
-- `shared`
-- `tests`
-- `docs`
-- `build`
-- `ci`
+`bootstrap`, `board`, `cards`, `hud`, `input`, `match`, `networking`, `progression`, `shared`, `tests`, `docs`, `build`, `ci`
 
 If none of these fit, choose the smallest clear subsystem name and keep it lowercase.
 
@@ -67,37 +45,34 @@ If none of these fit, choose the smallest clear subsystem name and keep it lower
 
 Do:
 
-- Use imperative mood such as `add`, `fix`, `change`, `remove`.
-- Start with lowercase.
-- Keep it specific.
-- Keep it under 72 characters.
+- Use imperative mood: `add`, `fix`, `change`, `remove`
+- Start with lowercase
+- Keep it specific
+- Keep it under 72 characters
 
-Do not:
+Don't:
 
-- Use past tense such as `added` or `fixed`.
-- Capitalize the first word.
-- End with a period.
-- Use vague text such as `update code` or `fix bug`.
+- Use past tense (`added`, `fixed`)
+- Capitalize the first word
+- End with a period
+- Use vague text (`update code`, `fix bug`)
 
 ## Body Rules
 
 Add a body when the change is complex, breaking, spans multiple related changes, or needs historical context.
 
-Body rules:
-
 - Leave one blank line after the subject.
 - Wrap lines at 72 characters.
-- Explain what changed and why it changed.
+- Explain what changed and why.
 - Use bullet points when multiple points improve clarity.
 - Start bullet points with uppercase.
 - Do not repeat the subject.
-- Do not focus on low-level implementation details.
 
 ## Organized Sections for Larger Commits
 
-For broader commits, use grouped sections in the body:
+For broader commits, use grouped sections:
 
-```text
+```
 <type>(<scope>): <subject>
 
 [short introductory paragraph]
@@ -113,13 +88,7 @@ Tests:
 [footer(s)]
 ```
 
-Common section names:
-
-- `Implementation:`
-- `Tests:`
-- `Performance:`
-- `Fixes:`
-- `Configuration:`
+Common section names: `Implementation:`, `Tests:`, `Performance:`, `Fixes:`, `Configuration:`
 
 ## Allowed Footers
 
@@ -131,10 +100,10 @@ Only use these footer labels:
 
 Identifier meanings:
 
-- `GOOE`: epic identifiers.
-- `GOOS`: story identifiers.
-- `GOOT`: standard task identifiers.
-- `GOOM`: MVP task identifiers.
+- `GOOE`: epic identifiers
+- `GOOS`: story identifiers
+- `GOOT`: standard task identifiers
+- `GOOM`: MVP task identifiers
 
 Footer rules:
 
@@ -143,25 +112,17 @@ Footer rules:
 - Include all relevant references when available.
 - Do not invent other footer labels.
 
-Examples:
-
-```text
-Implements: GOOT-42
-Part of: GOOS-5
-Related: GOOE-2, GOOT-15
-```
-
 ## Commit Examples
 
 Simple:
 
-```text
+```
 feat(board): add first turn state setup
 ```
 
 With body and footers:
 
-```text
+```
 fix(match): prevent null state during rematch flow
 
 Match restart could reuse an incomplete runtime state after a fast
@@ -174,7 +135,7 @@ Part of: GOOS-3
 
 Structured body:
 
-```text
+```
 feat(networking): add reconnect bootstrap flow
 
 Add a reconnect path that restores session bootstrap data before the
@@ -193,17 +154,13 @@ Part of: GOOS-8
 Related: GOOE-4, GOOT-39
 ```
 
-These section names must stay aligned with `.github/instructions/references/conventions.md`.
+## Agent Commit Rules — HUSKY=0
 
-## Agent Commit Rules
+IMPORTANT: When creating commits programmatically, always disable Husky and Commitizen hooks by setting `HUSKY=0`.
 
-When creating commits programmatically, always disable Husky and Commitizen hooks.
-The environment variable `HUSKY=0` prevents all git hooks from running.
+### PowerShell (this project's shell)
 
-### PowerShell (pwsh) — this project's shell
-
-PowerShell does not support bash-style inline environment variables (`VAR=value command`).
-Always set the variable explicitly before the git command:
+PowerShell does not support bash-style inline environment variables. Always set the variable explicitly:
 
 ```powershell
 # Single-line commit:
@@ -224,9 +181,7 @@ git commit --amend -m "updated message"
 HUSKY=0 git commit -m "type(scope): subject"
 ```
 
-### Operations That Require HUSKY=0
-
-All git operations that may trigger hooks must include `HUSKY=0`:
+### Operations Requiring HUSKY=0
 
 | Operation               | Example                                                           |
 | :---------------------- | :---------------------------------------------------------------- |
@@ -252,6 +207,5 @@ Before returning a commit message or creating a commit, verify:
 
 ## Ambiguity Handling
 
-If task or story identifiers are not provided, ask before adding footer references.
-
-If the user provides identifiers that do not match the `GOOE`, `GOOS`, `GOOT`, or `GOOM` patterns, ask whether the footer convention should be updated for this repository before committing.
+- If task or story identifiers are not provided, ask before adding footer references.
+- If identifiers don't match `GOOE`, `GOOS`, `GOOT`, or `GOOM` patterns, ask whether the footer convention should be updated before committing.

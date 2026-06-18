@@ -1,37 +1,28 @@
----
-description: "Use when drafting or creating GitHub pull requests, PR titles, PR bodies, labels, and task references for Goo Galaxy. Covers Conventional Commits PR titles, Goo Galaxy task IDs, the shared pr-template.md PR body template, English-only PR copy, GitHub Flow targeting main, and Notion MCP updates."
-name: "Pull Request Standards"
----
-
-# Pull Request Creation Standards
+# Pull Request Standards
 
 Follow these rules whenever drafting, reviewing, or creating a pull request for Goo Galaxy.
 
-## Workflow Overview
+## Workflow
 
 1. Identify the current branch, target branch, and task or story IDs.
-2. Fetch the task and story details with Notion MCP before writing the PR body.
+2. Fetch task and story details with Notion MCP before writing the PR body.
 3. Generate the PR title in Conventional Commits format.
-4. Read `.github/instructions/templates/pr-template.md`.
+4. Read `.claude/templates/pr-template.md`.
 5. Generate the PR body from that template.
 6. Assign labels using the mapping rules below.
-7. Create the PR with GitHub CLI using `gh pr create`, targeting `main` unless the user explicitly asks for a different base.
-8. Apply or adjust labels with GitHub CLI using `gh pr edit` when needed.
-9. Update the related Notion records with the PR URL using Notion MCP after PR creation.
+7. Create the PR with `gh pr create`, targeting `main` unless the user explicitly asks for a different base.
+8. Apply or adjust labels with `gh pr edit` when needed.
+9. Update related Notion records with the PR URL using Notion MCP after PR creation.
 
 ## Repository Context
-
-Use the current Goo Galaxy architecture and branch strategy when writing PRs:
 
 - Base branch is `main`.
 - The repository follows GitHub Flow with short-lived topic branches.
 - PR summaries must use the real feature-oriented structure from `Assets/Scripts/Runtime`, `Assets/Data`, `Assets/Prefabs`, `Assets/Scenes`, `Assets/Settings`, and `Assets/Editor`.
-- Refer to gameplay domains and systems using Goo Galaxy names such as `board`, `cards`, `match`, `networking`, `hud`, `input`, `progression`, `bootstrap`, and `shared`.
+- Refer to gameplay domains and systems using Goo Galaxy names: `board`, `cards`, `match`, `networking`, `hud`, `input`, `progression`, `bootstrap`, and `shared`.
 - Do not describe the project using old Spellwright or DOTS-specific architecture unless the actual change explicitly touches legacy documentation.
 
-## GitHub CLI Usage
-
-Use GitHub CLI for PR operations.
+## GitHub CLI
 
 - Create pull requests with `gh pr create`.
 - Update labels, title, or body after creation with `gh pr edit`.
@@ -40,9 +31,7 @@ Use GitHub CLI for PR operations.
 
 ## PR Title Format
 
-All PR titles must follow this format:
-
-```text
+```
 <type>(<scope>): <subject>
 ```
 
@@ -53,41 +42,15 @@ Rules:
 - `subject` is mandatory, lowercase, imperative, and must not end with a period.
 - Keep the subject under 72 characters.
 
-Allowed title types:
+**Allowed types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
-- `feat`: a new feature.
-- `fix`: a bug fix.
-- `docs`: documentation only changes.
-- `style`: changes that do not affect the meaning of the code.
-- `refactor`: a code change that neither fixes a bug nor adds a feature.
-- `perf`: a code change that improves performance.
-- `test`: adding missing tests or correcting existing tests.
-- `build`: changes that affect the build system or external dependencies.
-- `ci`: changes to CI configuration files and scripts.
-- `chore`: other changes that do not modify source or test files.
-- `revert`: reverts a previous commit.
-
-Prefer Goo Galaxy scopes such as:
-
-- `bootstrap`
-- `board`
-- `cards`
-- `hud`
-- `input`
-- `match`
-- `networking`
-- `progression`
-- `shared`
-- `tests`
-- `docs`
-- `build`
-- `ci`
+**Goo Galaxy scopes:** `bootstrap`, `board`, `cards`, `hud`, `input`, `match`, `networking`, `progression`, `shared`, `tests`, `docs`, `build`, `ci`
 
 These title rules must remain compatible with the PR Check workflow.
 
 ## Template Selection
 
-Use `.github/instructions/templates/pr-template.md` as the PR body source.
+Use `.claude/templates/pr-template.md` as the PR body source.
 
 Inside that template, choose exactly one task-type section:
 
@@ -108,12 +71,10 @@ Rules:
 
 ## Task And Story IDs
 
-Use the current repository identifiers:
-
-- `GOOE`: epic identifiers.
-- `GOOS`: story identifiers.
-- `GOOT`: standard task identifiers.
-- `GOOM`: MVP task identifiers.
+- `GOOE`: epic identifiers
+- `GOOS`: story identifiers
+- `GOOT`: standard task identifiers
+- `GOOM`: MVP task identifiers
 
 Rules:
 
@@ -124,9 +85,7 @@ Rules:
 
 ## Notion MCP Usage
 
-When a PR references work tracked in Notion, use Notion MCP rather than any legacy Notion skill flow.
-
-Use Notion MCP to:
+When a PR references work tracked in Notion, use Notion MCP tools to:
 
 - Fetch the task page.
 - Fetch the parent story page.
@@ -135,17 +94,15 @@ Use Notion MCP to:
 - Pull priority, type, and linked references.
 - Update the task page with the PR URL after the PR is created.
 
-Do not mention or rely on Notion skills in the PR workflow.
-
 ## Labels
 
 Assign 3 to 5 labels when the repository label set supports them.
 
-### Labels (3-5 required)
+### Label Categories
 
-**Type (1):** `type: feat`, `type: fix`, `type: docs`, `type: style`, `type: refactor`, `type: perf`, `type: test`, `type: build`, `type: ci`, `type: chore`, `type: revert`
+**Type (1 required):** `type: feat`, `type: fix`, `type: docs`, `type: style`, `type: refactor`, `type: perf`, `type: test`, `type: build`, `type: ci`, `type: chore`, `type: revert`
 
-**Priority (1):** `priority: critical`, `priority: high`, `priority: medium`, `priority: low`
+**Priority (1 required):** `priority: critical`, `priority: high`, `priority: medium`, `priority: low`
 
 **Context (1-2):**
 
@@ -163,20 +120,6 @@ Assign 3 to 5 labels when the repository label set supports them.
 - Add at most 1 optional status label when it materially helps reviewers.
 - If the repository labels do not exist exactly as written, use the closest available labels and say so.
 
-### Type Label Heuristics
-
-- Title type `feat` -> `type: feat`
-- Title type `fix` -> `type: fix`
-- Title type `docs` -> `type: docs`
-- Title type `style` -> `type: style`
-- Title type `refactor` -> `type: refactor`
-- Title type `perf` -> `type: perf`
-- Title type `test` -> `type: test`
-- Title type `build` -> `type: build`
-- Title type `ci` or changes under `.github/workflows/` -> `type: ci`
-- Title type `chore` -> `type: chore`
-- Title type `revert` -> `type: revert`
-
 ### Priority Label Source
 
 - Prefer the task priority fetched from Notion MCP.
@@ -193,9 +136,9 @@ Assign 3 to 5 labels when the repository label set supports them.
 - Use concrete file paths, metrics, and validation notes when available.
 - Keep references aligned with Goo Galaxy architecture and actual repo paths.
 
-## Files Section Rules
+## Files Section
 
-Prefer the real Goo Galaxy structure when describing file changes. Group changes under paths such as:
+Group changes under real Goo Galaxy paths:
 
 - `Assets/Scripts/Runtime/Board/`
 - `Assets/Scripts/Runtime/Cards/`
@@ -214,15 +157,15 @@ Prefer the real Goo Galaxy structure when describing file changes. Group changes
 - `Assets/Settings/`
 - `Assets/Editor/`
 
-Do not fabricate old folder structures such as `Assets/Scripts/Components/Common/` or generic architecture buckets that do not exist in this repository.
+Do not fabricate old folder structures or generic architecture buckets that do not exist in this repository.
 
-## Definition Of Done Rules
+## Definition Of Done
 
 - Copy the real acceptance criteria from Notion MCP whenever available.
 - Mark items as completed only when the work is actually done.
 - If the task is not complete, prefer a draft PR or stop and ask before generating a misleading done checklist.
 
-## References Rules
+## References
 
 - Always include the Notion task link and story link when available.
 - Include relevant repository documentation when it materially helps reviewers.
@@ -237,7 +180,7 @@ Before creating or returning a PR draft, verify:
 - Scope is present and specific.
 - Subject is lowercase, imperative, has no period, and is under 72 characters.
 - Type is one of the allowed PR Check values.
-- Body uses `.github/instructions/templates/pr-template.md`.
+- Body uses `.claude/templates/pr-template.md`.
 - Task and story IDs use `GOOT`, `GOOM`, `GOOS`, and `GOOE` correctly.
 - Exactly one task-type section remains in the final PR body.
 - Definition of Done is copied from Notion MCP when available.
