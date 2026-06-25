@@ -12,6 +12,7 @@ root = true
 # 1.1 All files
 [*]
 charset = utf-8
+max_line_length = 160
 indent_style = space
 indent_size = 2
 end_of_line = lf
@@ -37,6 +38,7 @@ indent_size = 2
 # 1.6 Unity UI Toolkit files
 [*.{uxml,uss}]
 indent_size = 2
+max_line_length = 120
 
 # 1.7 XML project and config files
 [*.{csproj,vbproj,props,targets,ruleset,config,nuspec,resx,vsixmanifest,vsct}]
@@ -49,6 +51,11 @@ indent_size = 2
 # 1.9 YAML files
 [*.{yml,yaml}]
 indent_size = 2
+
+# 1.10 Unity assets and binaries
+[*.{png,jpg,jpeg,gif,ico,exe,dll,so,zip,unity,meta,prefab,asset,mat,anim,controller,cubemap}]
+trim_trailing_whitespace = false
+insert_final_newline = false
 
 ##################################################################################################
 # SECTION 2: C# FORMATTING RULES
@@ -162,12 +169,12 @@ csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = false:suggestion
 
 # 3.8 Expression-bodied members
-csharp_style_expression_bodied_properties = true:suggestion
-csharp_style_expression_bodied_accessors = true:suggestion
-csharp_style_expression_bodied_indexers = true:suggestion
-csharp_style_expression_bodied_lambdas = true:suggestion
-csharp_style_expression_bodied_local_functions = true:suggestion
-csharp_style_expression_bodied_methods = false:silent
+csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+csharp_style_expression_bodied_accessors = when_on_single_line:suggestion
+csharp_style_expression_bodied_indexers = when_on_single_line:suggestion
+csharp_style_expression_bodied_lambdas = when_on_single_line:suggestion
+csharp_style_expression_bodied_local_functions = when_on_single_line:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
 csharp_style_expression_bodied_constructors = false:silent
 csharp_style_expression_bodied_operators = false:silent
 

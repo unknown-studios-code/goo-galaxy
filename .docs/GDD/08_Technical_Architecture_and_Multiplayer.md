@@ -2,7 +2,7 @@
 
 ## Engine & Foundation
 
-Goo Galaxy is built on **Unity 6 LTS**, using a GameObject/MonoBehaviour architecture with a deterministic rules layer for board simulation. The match board is bounded (61 hexes on the primary map), making it a good fit for authoritative server validation without requiring heavy ECS-style infrastructure in the MVP.
+Goo Galaxy is built on **Unity 6 LTS**, following a **SOLID + MVP (Model-View-Presenter)** architecture grounded in **GameObject/MonoBehaviour** composition. All gameplay systems are plain C# classes assembled on GameObjects. The board simulation uses a deterministic rules layer that runs independently from presentation, keeping the match bounded (61 hexes on the primary map) and server-authoritative validation straightforward. Feature domains are separated into assemblies with clear dependency direction (`Shared` ← everyone else), and each domain owns its Models, Presenters, and Views inline — not in separate technical buckets.
 
 ### Technology Stack
 
@@ -23,24 +23,20 @@ Goo Galaxy is built on **Unity 6 LTS**, using a GameObject/MonoBehaviour archite
 
 ## Project Folder Structure
 
-The repository now follows a feature-oriented runtime layout plus explicit content, data, and technical settings roots. This keeps gameplay code, authored data, and production assets separate without requiring a large future migration.
+The repository follows a feature-oriented runtime layout plus explicit content, data, and technical settings roots. This keeps gameplay code, authored data, and production assets separate.
+
+> **On-demand rule:** Subfolders under `Assets/Scripts/Runtime/` are created only when a feature domain needs code. The three runtime assemblies present today are `Board`, `Networking`, and `Shared`. Additional feature assemblies (match orchestration, card logic, HUD, input, progression, etc.) are scaffolded when their respective systems are implemented — not pre-allocated. The same applies to `Data/` and `Prefabs/` subfolders: each is created alongside the feature it serves.
 
 ```text
 Assets/
 ├── Art/
-│   ├── Models/                 # Source and in-game models grouped by gameplay domain
+│   ├── Models/                 # Source and in-game models
 │   └── Sprites/                # 2D gameplay, UI, and VFX sprite libraries
 ├── Audio/
 │   ├── Music/                  # Long-form music tracks and adaptive stems
 │   ├── SFX/                    # Gameplay, card, match, and UI sound effects
 │   └── VO/                     # Voice-over and announcer content
-├── Data/
-│   ├── Board/                  # Board configs, tile definitions, map catalogs
-│   ├── Cards/                  # Card definitions, balance sheets, catalogs
-│   ├── Match/                  # Match rules, queue configs, flow settings
-│   ├── Networking/             # Runtime payload schemas and networking config SOs
-│   ├── Progression/            # Meta progression data and live-tuned config
-│   └── Shared/                 # Cross-feature registries and global config assets
+├── Data/                       # Authored ScriptableObject assets (subfolders created per feature on demand)
 ├── Editor/                     # Editor-only tooling and custom workflows
 │   ├── Automation/             # Batch tasks, generators, setup scripts
 │   ├── Build/                  # Build orchestration and release helpers
@@ -51,93 +47,65 @@ Assets/
 │   ├── Validation/             # Project validation and content checks
 │   └── Windows/                # EditorWindow tools and dashboards
 ├── Plugins/                    # Third-party SDKs and native/plugin dependencies
-├── Prefabs/
-│   ├── Board/                  # Board shells, presenters, and gameplay board prefabs
-│   ├── Cards/                  # Unit and spell prefab variants
-│   ├── HUD/                    # Reusable HUD screens and widgets
-│   ├── Match/                  # Match flow and scene-level runtime prefabs
-│   └── Shared/                 # Cross-feature reusable runtime prefabs
-├── Resources/                  # Minimal runtime path-loaded assets only
-│   ├── Bootstrap/              # Startup config, third-party bootstrap assets
-│   ├── Shared/                 # Fallbacks and lightweight registries
-│   └── UI/                     # Theme defaults and emergency UI fallback assets
+│   └── Roslyn/                 # Roslyn analyzer DLLs for code quality
+├── Prefabs/                    # Reusable runtime prefabs (subfolders created per feature on demand)
 ├── Scenes/
 │   ├── Bootstrap/              # Startup and service boot scenes
 │   ├── Gameplay/               # Production gameplay scenes
 │   └── Sandbox/                # Test and iteration scenes used during development
 ├── Scripts/
 │   ├── Runtime/
-│   │   ├── Board/              # Board simulation, views, commands, board services
-│   │   ├── Bootstrap/          # App startup flow and runtime composition root
-│   │   ├── Cards/              # Card runtime logic, authoring bridges, factories
-│   │   ├── HUD/                # HUD presenters, components, views, services
-│   │   ├── Input/              # Input adapters and interaction intent layer
-│   │   ├── Match/              # Match orchestration, rules flow, systems
-│   │   ├── Networking/         # NGO integration, session flow, sync systems
-│   │   ├── Progression/        # Meta progression runtime feature code
-│   │   └── Shared/             # Shared runtime services, contracts, and helpers
+│   │   ├── Board/              # GooGalaxy.Runtime.Board — board simulation, hex logic, tile views
+│   │   ├── Networking/         # GooGalaxy.Runtime.Networking — NGO integration, session flow, sync
+│   │   └── Shared/             # GooGalaxy.Runtime.Shared — cross-feature contracts, helpers, services
 │   └── Tests/
 │       ├── EditMode/           # Unit tests for deterministic logic and data validation
 │       └── PlayMode/           # Integration tests for scene and networking flows
 └── Settings/
-    ├── Input/                 # Input actions and control maps
-    ├── Networking/            # NGO runtime config assets
-    ├── Profiles/              # Volume and other engine profile assets
-    └── Rendering/             # URP pipeline assets and render templates
+    ├── Input/                  # Input actions and control maps
+    ├── Networking/             # NGO runtime config assets
+    ├── Profiles/               # Volume and other engine profile assets
+    └── Rendering/              # URP pipeline assets and render templates
 ```
 
 ### Folder Responsibilities
 
-| Folder        | Responsibility                                                                                                                                                                |
-| :------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Art**       | Stores visual content used by gameplay and UI. Keep source art grouped by use case, not by importer convenience.                                                              |
-| **Audio**     | Stores music, SFX, and VO outside `Resources` so clips are referenced intentionally through prefabs, scenes, or authored data.                                                |
-| **Data**      | Holds authored gameplay data such as `ScriptableObject` definitions, balance sheets, registries, and config assets. This is the canonical home for design-owned runtime data. |
-| **Editor**    | Contains editor-only tooling used to validate, import, build, and inspect project content. It should never contain runtime gameplay logic.                                    |
-| **Plugins**   | Contains third-party packages and native dependencies that should stay isolated from game-authored content.                                                                   |
-| **Prefabs**   | Holds reusable runtime object graphs grouped by feature so prefab ownership stays aligned with gameplay domains.                                                              |
-| **Resources** | Reserved for the small set of assets that must be loaded by path at startup or used as lightweight fallbacks. This folder must stay intentionally small.                      |
-| **Scenes**    | Separates startup, production gameplay, and sandbox scenes so build flow and iteration flow do not get mixed together.                                                        |
-| **Scripts**   | Holds runtime code organized by feature plus isolated test assemblies. The structure favors composition and domain ownership over generic technical buckets.                  |
-| **Settings**  | Stores technical project assets such as input maps, rendering pipeline assets, networking config, and engine profiles.                                                        |
+| Folder       | Responsibility                                                                                                                                                                  |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Art**      | Visual content grouped by use case (`Models/`, `Sprites/`). Not organized by importer convenience.                                                                              |
+| **Audio**    | Music, SFX, and VO stored outside `Resources` — referenced intentionally through prefabs, scenes, or authored data.                                                             |
+| **Data**     | Authored `ScriptableObject` definitions, balance sheets, registries, and config assets. The canonical home for design-tunable values. Subfolders created per feature on demand. |
+| **Editor**   | Editor-only tooling (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows). Never contains runtime gameplay logic.                                      |
+| **Plugins**  | Third-party SDKs and native dependencies isolated from game-authored content. Currently hosts Roslyn analyzers.                                                                 |
+| **Prefabs**  | Reusable runtime object graphs. Subfolders created per feature on demand.                                                                                                       |
+| **Scenes**   | Separates startup (`Bootstrap/`), production gameplay (`Gameplay/`), and sandbox iteration scenes (`Sandbox/`).                                                                 |
+| **Scripts**  | Runtime code organized by feature domain (`Board`, `Networking`, `Shared`) plus isolated test assemblies (`EditMode/`, `PlayMode/`). New feature folders added on demand.       |
+| **Settings** | Technical project assets: input maps, URP pipeline assets, networking config, engine profiles.                                                                                  |
 
-> **Repository Reality:** The current workspace already follows this feature-oriented `Assets` layout. Add new content inside these roots instead of reintroducing generic buckets like `Core`, `Managers`, `UI`, or large catch-all `Resources` folders.
+> **Repository Reality:** The current workspace follows this feature-oriented `Assets` layout. Add new content inside these roots. Do not reintroduce generic buckets like `Core`, `Managers`, `UI`, or large catch-all `Resources` folders.
 
-> **Implementation Reminder:** The repo currently contains the runtime asmdef shells but not the final dependency wiring. Before gameplay implementation begins in earnest, explicitly wire assembly references and point the EditMode/PlayMode test assemblies at the runtime assemblies they validate.
+> **On-demand scaffolding:** When a new feature domain needs code (e.g., `Cards`, `Match`, `HUD`), create both the runtime assembly folder (`Assets/Scripts/Runtime/{Feature}/` with its `.asmdef`) and the data folder (`Assets/Data/{Feature}/`) in the same changeset. Prefab and test folders follow when the feature has prefabs or tests to place.
 
 ### Assembly Definitions
+
+The runtime assembly graph follows a strict dependency direction: **`Shared` ← everything else**. `Shared` has zero dependencies on other feature assemblies. Cross-feature references (e.g., match orchestration depending on board logic) are wired only when both assemblies exist.
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 graph TD
-    SHARED["GooGalaxy.Runtime.Shared<br/>(contracts, shared services,<br/>cross-feature helpers)"]
-    BOARD["GooGalaxy.Runtime.Board<br/>(board simulation, cells,<br/>board feature logic)"] --> SHARED
-    CARDS["GooGalaxy.Runtime.Cards<br/>(card runtime logic,<br/>factories, authoring bridges)"] --> SHARED
-    MATCH["GooGalaxy.Runtime.Match<br/>(match orchestration,<br/>flow, gameplay systems)"] --> SHARED
-    INPUT["GooGalaxy.Runtime.Input<br/>(player interaction adapters<br/>and input intent layer)"] --> SHARED
-    HUD["GooGalaxy.Runtime.HUD<br/>(presenters, widgets,<br/>HUD services)"] --> SHARED
-    NET["GooGalaxy.Runtime.Networking<br/>(NGO integration,<br/>session and sync)"] --> SHARED
-    PROG["GooGalaxy.Runtime.Progression<br/>(meta progression runtime<br/>feature logic)"] --> SHARED
-    BOOT["GooGalaxy.Runtime.Bootstrap<br/>(startup composition root<br/>and boot flow)"] --> SHARED
-    BOOT --> MATCH
-    BOOT --> NET
-    MATCH --> BOARD
-    MATCH --> CARDS
-    MATCH --> INPUT
-    MATCH --> HUD
-    MATCH --> NET
-    HUD --> CARDS
-    NET --> BOARD
-    NET --> MATCH
-    DATA["Assets/Data<br/>(authoring source of truth<br/>for gameplay config)"] --> BOARD
-    DATA --> CARDS
-    DATA --> MATCH
-    DATA --> PROG
-    ESHARED["GooGalaxy.Editor.Shared<br/>(shared editor helpers)"]
-    ETOOLS["Editor Tooling Assemblies<br/>(Automation, Build, Importing,<br/>Inspectors, Menus, Validation, Windows)"] --> ESHARED
+    SHARED["Runtime.Shared<br/>(contracts, shared services,<br/>cross-feature helpers)"]
+    BOARD["Runtime.Board<br/>(board simulation, hex logic,<br/>tile views)"] --> SHARED
+    NET["Runtime.Networking<br/>(NGO integration,<br/>session and sync)"] --> SHARED
+    FEATURE["Future Feature Assemblies<br/>(match orchestration, card logic,<br/>HUD, input, progression,<br/>bootstrap, etc.)"] --> SHARED
+    FEATURE --> BOARD
+    FEATURE --> NET
+    DATA["Assets/Data<br/>(authored ScriptableObject configs,<br/>created per feature on demand)"] --> BOARD
+    DATA --> FEATURE
+    ESHARED["Editor.Shared<br/>(shared editor helpers)"]
+    ETOOLS["Editor Tooling<br/>(Automation, Build, Importing,<br/>Inspectors, Menus, Validation, Windows)"] --> ESHARED
 ```
 
-> **Dependency Rule:** `Runtime.Shared` stays small and stable. Feature assemblies own their domain logic. `Match` orchestrates gameplay flow, `Networking` owns transport-facing concerns, `HUD` renders state and emits intents, and authored assets in `Assets/Data` remain the source of truth for tunable content.
+> **Dependency Rule:** `Runtime.Shared` stays small and stable — contracts, interfaces, shared enums, and cross-feature helpers. It never depends on other feature assemblies. Each feature assembly owns its domain logic, and authored assets in `Assets/Data` remain the single source of truth for tunable content.
 
 ---
 
@@ -230,7 +198,7 @@ classDiagram
     BoardRuntimeService ..> PlayCardCommand
 ```
 
-> **Placement Rule:** In the real project, these classes do not need to inherit from a single "manager" family. The intent is feature ownership: board logic lives under `Assets/Scripts/Runtime/Board`, match orchestration under `Assets/Scripts/Runtime/Match`, card runtime logic under `Assets/Scripts/Runtime/Cards`, and authored definitions under `Assets/Data`.
+> **Placement Rule:** These classes illustrate domain ownership boundaries, not inheritance hierarchies. Board logic lives under `Assets/Scripts/Runtime/Board`, authored definitions under `Assets/Data`, and future domains (match orchestration, card logic, HUD, etc.) follow the same pattern — created on demand. Each domain follows SOLID + MVP: Models hold data/state, Views (UI Toolkit) render and emit events, Presenters handle logic between them — all composed via `MonoBehaviour` GameObjects.
 
 ---
 
@@ -492,31 +460,30 @@ The project follows a **feature-oriented runtime layout** where code lives under
 
 ### Runtime Code Convention
 
+Feature assemblies are created on demand. Currently only these exist:
+
 ```
 Assets/
 └── Scripts/
     └── Runtime/
         ├── Board/          # GooGalaxy.Runtime.Board.asmdef
-        ├── Bootstrap/      # GooGalaxy.Runtime.Bootstrap.asmdef
-        ├── Cards/          # GooGalaxy.Runtime.Cards.asmdef
-        ├── HUD/            # GooGalaxy.Runtime.HUD.asmdef
-        ├── Input/          # GooGalaxy.Runtime.Input.asmdef
-        ├── Match/          # GooGalaxy.Runtime.Match.asmdef
         ├── Networking/     # GooGalaxy.Runtime.Networking.asmdef
-        ├── Progression/    # GooGalaxy.Runtime.Progression.asmdef
         └── Shared/         # GooGalaxy.Runtime.Shared.asmdef
 ```
 
+When a feature needs code, create the folder + `.asmdef` together under `Assets/Scripts/Runtime/{Feature}/`. The naming convention is `GooGalaxy.Runtime.{Feature}`. Examples of future feature domains: match orchestration, card/deck logic, UI Toolkit HUD, input interpretation, meta progression, and bootstrap initialization — each created when needed, not before.
+
 ### Key Rules
 
-| Rule                                                            | Explanation                                                                                                                                                             |
-| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`Scripts/` is an organizational container, not a namespace.** | The folder name `Scripts` has no semantic meaning to Unity. Assembly boundaries are defined solely by `.asmdef` files.                                                  |
-| **One `.asmdef` per feature folder.**                           | Each folder under `Scripts/Runtime/` contains exactly one Assembly Definition asset that declares its dependencies.                                                     |
-| **`Runtime.Shared` stays small and stable.**                    | It contains only contracts, interfaces, shared structs/enums, and cross-feature helpers. It must NOT depend on any other feature assembly.                              |
-| **Feature assemblies own their domain.**                        | `Board` owns hex grid logic. `Cards` owns card runtime logic. `Match` orchestrates gameplay flow. No circular dependencies.                                             |
-| **Authored data is NOT code.**                                  | `Assets/Data/` holds `ScriptableObject` assets and JSON configs. It is the canonical source of truth for design-tunable values.                                         |
-| **New features add new top-level folders.**                     | When adding a new feature domain (e.g., Audio, Social, LiveOps), create both `Assets/Scripts/Runtime/{Feature}/` and `Assets/Data/{Feature}/` with their own `.asmdef`. |
-| **Editor code is separate.**                                    | Editor-only tooling lives under `Assets/Editor/{ToolDomain}/`. Never reference editor assemblies from runtime assemblies.                                               |
+| Rule                                                            | Explanation                                                                                                                                                              |
+| :-------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`Scripts/` is an organizational container, not a namespace.** | The folder name `Scripts` has no semantic meaning to Unity. Assembly boundaries are defined solely by `.asmdef` files.                                                   |
+| **One `.asmdef` per feature folder.**                           | Each folder under `Scripts/Runtime/` contains exactly one Assembly Definition asset that declares its dependencies.                                                      |
+| **`Runtime.Shared` stays small and stable.**                    | It contains only contracts, interfaces, shared structs/enums, and cross-feature helpers. It must NOT depend on any other feature assembly.                               |
+| **Feature assemblies own their domain.**                        | Board owns hex grid logic. Match orchestration owns gameplay flow. Card logic owns deck/specimen runtime. No circular dependencies.                                      |
+| **Authored data is NOT code.**                                  | `Assets/Data/` holds `ScriptableObject` assets and JSON configs. It is the canonical source of truth for design-tunable values. Subfolders created per feature.          |
+| **New features are scaffolded on demand.**                      | When a feature domain needs code, create `Assets/Scripts/Runtime/{Feature}/` with its `.asmdef` and `Assets/Data/{Feature}/` together. Don't pre-allocate empty folders. |
+| **Editor code is separate.**                                    | Editor-only tooling lives under `Assets/Editor/{ToolDomain}/`. Never reference editor assemblies from runtime assemblies.                                                |
+| **GameObject/MonoBehaviour + SOLID + MVP.**                     | Each domain uses plain C# classes composed on `MonoBehaviour` GameObjects. Models hold data, Views (UI Toolkit) render, Presenters mediate.                              |
 
-> **Why this matters:** This convention prevents the common Unity anti-pattern of sprawling `Core/`, `Managers/`, and `UI/` folders that accumulate unrelated code. Feature ownership stays clear, dependency graphs stay auditable, and new contributors can locate code without tribal knowledge.
+> **Why this matters:** This convention prevents the common Unity anti-pattern of sprawling `Core/`, `Managers/`, and `UI/` folders that accumulate unrelated code. Feature ownership stays clear, dependency graphs stay auditable, and new contributors can locate code without tribal knowledge. The SOLID + MVP pattern keeps each domain independently testable — Models can be unit-tested without Unity, Presenters can be tested with mocked Views, and Views stay thin.
