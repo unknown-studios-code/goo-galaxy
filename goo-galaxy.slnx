@@ -1,6 +1,7 @@
 ﻿<Solution>
+  <Project Path="GooGalaxy.Runtime.Shared.csproj" />
   <Project Path="GooGalaxy.Runtime.Tests.EditMode.csproj" />
   <Project Path="GooGalaxy.Runtime.Networking.csproj" />
-  <Project Path="GooGalaxy.Runtime.Shared.csproj" />
+  <Project Path="GooGalaxy.Tests.PlayMode.csproj" />
   <Project Path="GooGalaxy.Runtime.Board.csproj" />
 </Solution>

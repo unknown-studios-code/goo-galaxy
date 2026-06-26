@@ -9,7 +9,10 @@
   "precompiledReferences": [
     "nunit.framework.dll"
   ],
-  "references": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "VContainer"
+  ],
   "versionDefines": [],
   "allowUnsafeCode": false,
   "autoReferenced": false,
