@@ -7,8 +7,7 @@
   "precompiledReferences": [],
   "references": [
     "GooGalaxy.Runtime.Shared",
-    "GooGalaxy.Runtime.Board",
-    "GooGalaxy.Runtime.Match"
+    "GooGalaxy.Runtime.Board"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,

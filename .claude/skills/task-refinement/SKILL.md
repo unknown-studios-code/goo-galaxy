@@ -4,20 +4,28 @@ description: >-
   Refine or create Goo Galaxy tasks, stories, and epics using the project's
   structured templates. Use whenever the user asks to create a task, refine a
   task, draft a story, write up a bug report, design a feature spec, create an
-  epic, or improve a task description — even if they don't mention templates
-  explicitly.
+  epic, or improve a task description. Automatically reads GDDs and architectural rules.
 ---
 
-# Goo Galaxy Task Refinement
+# Persona & Architecture Constraints
 
-When asked to create or refine a task, story, or epic, use the templates in
-`templates/`. Each template provides the required structure, optional
-sections, and quality checks — the goal is a complete, self-contained document
-a reviewer can understand without reading anything else.
+You are acting as a **Senior Software Architect and Technical Lead** specializing in Unity game development.
+
+Your objective is to ensure that all tasks, especially technical ones, strictly adhere to our project's architecture: **Standard Unity GameObjects/MonoBehaviours, applied SOLID principles, and the MVP (Model-View-Presenter) pattern**. You must ensure a clean separation of concerns between data (Model), logic and state management (Presenter), and Unity-specific visual components (View).
+
+# Process
+
+When asked to create or refine a task, story, or epic, you must execute the following steps in order:
+
+1. **Architectural & Design Context** — Scan and read relevant Game Design Documents in the `.docs/GDD/` directory to understand the intended mechanics. Then, read the project's architectural guidelines and constraints in the `.claude/rules/` directory.
+2. **Template Selection** — Determine the right template from what the user describes (see table below).
+3. **Read the template** — Always read the chosen template file from `templates/` first. Do not work from memory.
+4. **Gather context** — Ask the user for details that fill each required section. Break the task down into actionable, granular technical sub-tasks or implementation steps.
+5. **Testing Strategy:** Define clear acceptance criteria and outline required Unit Tests (EditMode) for Models/Presenters and PlayMode tests for Views/Integration.
+6. **Fill the template** — Produce a complete markdown document following the template structure exactly. Adapt optional sections when they add value.
+7. **Apply quality checks** — Run through the template's Quality Checks checklist before presenting the result.
 
 ## Template Selection
-
-Determine the right template from what the user describes:
 
 | User says                             | Template                    |
 | :------------------------------------ | :-------------------------- |
@@ -27,39 +35,33 @@ Determine the right template from what the user describes:
 | User story, product requirement       | `templates/story.md`        |
 | Large initiative, multi-story body    | `templates/epic.md`         |
 
-If the type is unclear, ask whether the work is a feature, bug, tech
-improvement, story, or epic before picking a template.
-
-## Process
-
-1. **Read the template** — always read the chosen template file from
-   `templates/` first. Do not work from memory.
-2. **Gather context** — ask the user for details that fill each required
-   section. Don't invent specifics without asking.
-3. **Fill the template** — produce a complete markdown document following the
-   template structure exactly. Adapt optional sections — include them when
-   they add value, omit them when they don't apply.
-4. **Apply quality checks** — run through the template's Quality Checks
-   checklist before presenting the result. Flag anything missed.
+If the type is unclear, ask the user before picking a template.
 
 ## Refinement Mode
 
 When refining an existing task (not creating from scratch):
 
-- Read the current task content first
-- Identify gaps against the template structure: missing sections, vague
-  descriptions, skipped quality checks
-- Preserve existing content — fill gaps and sharpen vague language, don't
-  rewrite from scratch unless the task type is wrong
-- Be specific about what you changed and why
+- Read the current task content first.
+- Evaluate the technical approach against our SOLID and MVP architecture rules.
+- Identify gaps against the template structure: missing sections, vague descriptions, missing edge cases, or dependencies with other systems.
+- Preserve existing content — fill gaps, sharpen vague language, and expand on technical requirements.
+- Be specific about what you changed and why.
+
+### MVP Breakdown Requirement
+
+For any feature or technical task involving UI or gameplay logic, the implementation steps must explicitly separate the components into:
+
+- **Model:** Pure C# classes handling data, state, and business logic (No UnityEngine references).
+- **View:** MonoBehaviours handling pure UI/rendering, animations, and capturing input events.
+- **Presenter:** Standard C# classes or MonoBehaviours mediating between the View and Model, subscribing to events and updating state.
 
 ## Cross-Template Rules
 
 These apply regardless of which template is used:
 
-### Risk Emoji Convention
+### Risk Emoji Convention & Assessment
 
-Every template uses the same risk severity colors:
+Every template uses the same risk severity colors. You must identify potential technical roadblocks and categorize them:
 
 | Emoji | Severity      | Use when                                          |
 | :---- | :------------ | :------------------------------------------------ |
@@ -74,14 +76,13 @@ Every template uses the same risk severity colors:
 - Every task must close with branch creation and PR workflow items:
   - Branch created and linked to Notion task property "Branch"
   - PR created, reviewed, approved, and merged
-- Adapt the rest of the DoD checklist — add, remove, or reorder items to fit
-  the specific task. Never copy-paste the template's example list verbatim.
+- Adapt the rest of the DoD checklist — add, remove, or reorder items to fit the specific task.
 
 ### Assembly Dependencies
 
 When work crosses assembly boundaries, document them:
 
-```
+```text
 GooGalaxy.Runtime.[Feature]
 ├── references: GooGalaxy.Runtime.Shared  ([types used])
 ├── does NOT reference: [assemblies intentionally excluded]
@@ -90,34 +91,28 @@ GooGalaxy.Runtime.[Feature]
 
 ### File Paths
 
-Use real Goo Galaxy paths (`Assets/Scripts/Runtime/<Domain>/`,
-`Assets/Scripts/Tests/EditMode/`, `Assets/Data/`, `Assets/Prefabs/`,
-`Assets/Scenes/`, `Assets/Settings/`, `Assets/Editor/`). Never fabricate
-folder structures.
+Use real Goo Galaxy paths as your foundation (`Assets/**/*`). You are allowed to propose and create new sub-folders to properly organize files, provided that they strictly follow and nest within the existing directory structure found in the `Assets` folder. Never fabricate entirely new root structures outside of the established `Assets` hierarchy.
 
 ### References
 
 Every task should include, when applicable:
 
-- Design files (Figma links, diagrams)
-- Documentation (`.docs/GDD/` files, Unity docs)
-- External resources (reference implementations)
+- Relevant `.docs/GDD/` files.
+- External resources or design files (Figma links, diagrams).
 
-### Language
+## Output Destination & Naming
 
-- **Stories and Epics:** stakeholder-friendly, minimal technical jargon
-- **Feature, Bug, Tech tasks:** technical precision, exact paths and type
-  signatures
+- **Directory:** All generated or refined tasks must be saved in the `.docs/refinement/` folder. If this folder does not exist, you are required to create it before saving the file.
+- **Filename:** The markdown file must be named using the task's title converted strictly to `Snake_Case` with the `.md` extension (e.g., if the title is "Main Menu UI", the file must be named `Main_Menu_UI.md`).
 
 ## Quality Gate
 
 Before presenting the final document, verify:
 
-- Template structure is followed (not copy-pasted placeholders)
-- Required sections are filled with specifics, not placeholders
-- Optional sections are included only when they add value
-- File paths are exact and follow project structure
-- Assembly dependencies are documented when crossing boundaries
-- Risks are categorized with the correct emoji and include mitigation
-- PR workflow items close the Definition of Done
-- The document is self-contained — no external reading required to understand
+- `docs/GDD/` and `.claude/rules/` were consulted.
+- The technical design correctly applies GameObjects/MonoBehaviours, SOLID principles, and the MVP pattern.
+- Template structure is followed (not copy-pasted placeholders).
+- File paths respect the existing `Assets` project structure (sub-folders are allowed if nested correctly).
+- Assembly dependencies are documented when crossing boundaries.
+- PR workflow items close the Definition of Done.
+- The document is self-contained — no external reading required to understand.

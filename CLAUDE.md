@@ -1,71 +1,100 @@
-# Goo Galaxy — Claude Code Project Instructions
+# CLAUDE.md
 
-@package.json
-@.claude/skills/pull-requests/templates/pr-template.md
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Identity
+## Project
 
-Goo Galaxy is a Unity 6 mobile strategy game. The repository follows **GitHub Flow** targeting `main` with short-lived topic branches, Conventional Commits, and Notion-tracked tasks.
+Goo Galaxy — real-time PvP mobile strategy game (Unity 6.3 LTS, URP 17.3). Hex-grid territorial domination (Ataxx/Heggagon-style) with asymmetrical deck-building and specimen deployment. Sentient alien slime sci-fi theme. Targets iOS and Android via IL2CPP.
 
-## Build & Test Commands
+## Commands
 
 ```bash
-# Restore .NET dependencies
-dotnet restore goo-galaxy.slnx
-
-# Build all projects
-dotnet build goo-galaxy.slnx
-
-# Run Edit Mode tests
-dotnet test GooGalaxy.Runtime.Tests.csproj
-
-# Format C# code
-dotnet csharpier .
+npm run check              # Run all formatters in check mode
+npm run format             # Auto-format everything
+npm run check:csharpier    # C# formatting check only
+npm run check:dotnet       # .NET formatting + analyzers check
+npm run check:prettier     # JSON/MD/YAML formatting check
 ```
 
-## Architecture
+Formatting is enforced in CI. Run `npm run format` before commits.
 
-Unity 6 project with runtime code under `Assets/Scripts/Runtime/`, organized by gameplay domain:
+`npm run prepare` (auto-runs on `npm install`) restores dotnet tools and sets up Husky hooks.
 
-| Domain      | Path                                  |
-| ----------- | ------------------------------------- |
-| Board       | `Assets/Scripts/Runtime/Board/`       |
-| Cards       | `Assets/Scripts/Runtime/Cards/`       |
-| HUD         | `Assets/Scripts/Runtime/HUD/`         |
-| Input       | `Assets/Scripts/Runtime/Input/`       |
-| Match       | `Assets/Scripts/Runtime/Match/`       |
-| Networking  | `Assets/Scripts/Runtime/Networking/`  |
-| Progression | `Assets/Scripts/Runtime/Progression/` |
-| Bootstrap   | `Assets/Scripts/Runtime/Bootstrap/`   |
-| Shared      | `Assets/Scripts/Runtime/Shared/`      |
+## Project Skills
 
-Tests live under `Assets/Scripts/Tests/EditMode/` and `Assets/Scripts/Tests/PlayMode/`.
+Project-specific Claude Code skills in `.claude/skills/`:
 
-Game design documents are in `.docs/GDD/`. For networking, sessions, or multiplayer architecture, reference `.docs/GDD/08_Technical_Architecture_and_Multiplayer.md`.
+- `commit-messages` — Conventional Commits formatting with tracker footers
+- `pull-requests` — PR creation with template bodies and label assignment
+- `task-refinement` — structured task/story/epic/bug templates
+- `task-tracking` — Notion task lookup/update via GOOE/GOOS/GOOT/GOOM IDs
 
-## Conventions
+Use these skills directly (e.g. `/commit-messages`, `/task-tracking`) rather than hand-formatting.
 
-- **Commits:** Conventional Commits with mandatory scope. Automated commits MUST set `HUSKY=0`. See `.claude/skills/commit-messages/SKILL.md`.
-- **Pull Requests:** Conventional Commits titles, targeting `main`, PR body from `.claude/skills/pull-requests/templates/pr-template.md`. Use GitHub MCP first; fall back to `gh` CLI. See `.claude/skills/pull-requests/SKILL.md`.
-- **Task Design:** Create and refine tasks, stories, and epics using templates in `.claude/skills/task-refinement/templates/`. See `.claude/skills/task-refinement/SKILL.md`.
-- **Task Tracking:** Notion MCP for GOOE/GOOS/GOOT/GOOM task IDs. See `.claude/skills/task-tracking/SKILL.md`.
-- **Code Style:** CSharpier formatting (config in `.csharpierrc.json`), EditorConfig (`.editorconfig`).
-- **Language:** All PR bodies, commit messages, and code comments in English.
+## Workflow
 
-## Git Workflow
+Feature work flows: Notion task (GOO\*) → branch → commits → PR → merge. Use project skills at each step to keep formatting and tracking consistent. Branch naming: `feat/GOOM-1`, `fix/GOOE-42`, etc.
 
-- Base branch is `main`
-- Short-lived topic branches
-- Commits use `type(scope): subject` format with Goo Galaxy scopes
-- Automated commits bypass Husky hooks via `HUSKY=0` (bash) or `$env:HUSKY = "0"` (PowerShell)
-- Use the correct HUSKY=0 syntax for the active shell (see commit-messages skill)
+## High-Level Architecture
 
-## MCP Tools
+```
+Assets/Scripts/Runtime/
+├── Board/         — Board simulation, tile views, hex logic, commands
+├── Networking/    — Netcode for GameObjects (NGO) integration, session flow
+└── Shared/        — Cross-feature contracts, helpers, services
+```
 
-This project benefits from these MCP servers (configured at user level, not in this repo):
+Each Runtime folder is a separate `.asmdef` assembly (`GooGalaxy.Runtime.<Feature>`), created on demand when a feature needs code. Future features (match orchestration, card logic, HUD, etc.) are scaffolded when needed, not pre-allocated. Editor tooling lives under `Assets/Editor/` with its own assemblies (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows).
 
-- **GitHub** — PR creation, label management, repository operations (primary)
-- **Notion** — task/story/epic lookup and property updates
-- **Figma** — design references and asset extraction
+**Key patterns** (detailed in `.claude/rules/unity-design-patterns.md`):
 
-No local MCP configuration is stored in this repository.
+- **StaticGameEvents** — centralized static event bus (Observer)
+- **UITKBaseClass** — Template Method base for all UI Toolkit views (MVP pattern)
+- **ServiceLocator / DependencyInjector** — runtime DI
+- **Enum-based state machines** — UI/view state (class-based for complex AI)
+- **Composition** — GameObjects assembled from focused components (MapTile + MapTileMilitary + …)
+- **ScriptableObject data** — authored config, not runtime state (suffix `*SO`/`*DataSO`)
+
+**Tech choices** (never deviate):
+
+- Unity Input System (new) — not legacy Input Manager
+- UI Toolkit — not uGUI (BEM naming, USS variables on `:root`, no hex colors)
+- `Awaitable` over coroutines for delays/sequencing (Unity 6+)
+- `UnityEngine.Pool.ObjectPool<T>` for frequent spawn/despawn
+- Netcode for GameObjects (NGO) + Unity Multiplayer Services
+
+## Design & Code Conventions
+
+**All detailed rules are in `.claude/rules/` — read them before writing C#:**
+
+| Rule file                           | Covers                                                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `unity-code-style.md`               | Formatting, naming, class organization, braces, fields, methods, async, pooling                       |
+| `unity-design-patterns.md`          | Observer, State, Template Method, Singleton, Service Locator, Composition, Factory, Command, Strategy |
+| `unity-performance-optimization.md` | Update loop rules, allocation avoidance, caching, physics, rendering, LINQ ban                        |
+| `unity-debugging.md`                | Diagnostic priority, null refs, lifecycle, Input System, physics, animation                           |
+| `unity-ui-toolkit.md`               | USS/CSS differences, BEM, data binding, MVP, custom elements, ListView                                |
+| `unity-project-configuration.md`    | Domain reload, Burst, asset presets, URP tiers, asmdefs                                               |
+
+Quick hits:
+
+- **Allman braces**, 160-char line width, 4-space indent, LF line endings
+- **`_camelCase`** private fields, **PascalCase** properties/methods/types
+- **No allocations in Update loops** — cache, pool, reuse
+- **No LINQ in hot paths**, no `Camera.main` every frame
+- **`Awaitable` Async suffix**, coroutines `Co` suffix
+- **Early returns** over nested `if`
+
+## Gotchas
+
+- **`.slnx`** — new .NET XML solution format; some IDE versions and external tools don't recognize it. If tooling complains, open the `.slnx` directly.
+- **Husky** — git hooks managed by Husky. If commits fail on format checks, run `npm run format` and retry.
+- **`dotnet tool restore`** — runs via `npm run prepare`. If `dotnet format` or `dotnet csharpier` fail with "tool not found," run it manually.
+
+## Conventional Commits
+
+PRs require Conventional Commits format: `type(scope): subject`. Scopes are mandatory. Types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert.
+
+## GDD
+
+Full game design doc in `.docs/GDD/` — 12 chapters covering mechanics, math/balance, specimens, economy, meta-game, art, audio, tech architecture, MVP roadmap, ops/legal. Read relevant chapters before designing features. Keep GDD chapters in sync when project structure changes.
