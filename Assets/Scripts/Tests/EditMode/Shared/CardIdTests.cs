@@ -13,8 +13,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             // GIVEN
             string nullString = null;
 
-            // WHEN // THEN
-            Assert.Throws<ArgumentNullException>(() => _ = new CardId(nullString));
+            // WHEN
+            void constructorCall() => _ = new CardId(nullString);
+
+            // THEN
+            Assert.Throws<ArgumentNullException>(constructorCall);
         }
 
         [Test]

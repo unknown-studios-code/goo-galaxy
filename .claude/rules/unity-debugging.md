@@ -5,442 +5,184 @@ paths:
 
 # Unity Debugging Guide
 
-> **Cross-references:**
->
-> - Code style & lifecycle → [unity-code-style.md](unity-code-style.md)
-> - Performance profiling → [unity-performance-optimization.md](unity-performance-optimization.md)
-> - UI Toolkit debugging → [unity-ui-toolkit.md](unity-ui-toolkit.md)
+## 1. Overview
 
-## Diagnostic Priority
+This document provides a systematic approach to diagnostics, debugging, and troubleshooting in Unity. By following standard execution orders and assertion-driven patterns, developers can quickly isolate bugs in serialization, timing, input, and performance.
 
-When investigating issues, check in this order:
+## 2. Cross-References
 
-1. **Console errors/warnings** — always start here.
-2. **Null reference exceptions** — most common Unity issue.
-3. **Serialization state** — Inspector values vs runtime values.
-4. **Lifecycle timing** — script execution order problems.
-5. **Scene/Prefab state** — missing references, disabled objects.
-6. **Physics/Rendering settings** — layer masks, culling, collision matrices.
+- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard lifecycle methods, event subscription syntax, and Awaitable rules)
+- **Performance Optimization** → [unity-performance-optimization.md](unity-performance-optimization.md) (CPU/GPU profiling and garbage reduction)
+- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (Debugging elements, picking modes, and USS bindings)
 
----
+## 3. Core Rules
 
-## Console Output
+- **Rule 1 (Diagnostic Priority):** Analyze issues in the following sequence: Console errors/warnings -> Null Reference exceptions -> Serialization state -> Lifecycle timing (script execution order) -> Scene/Prefab override state -> Physics/Rendering settings.
+- **Rule 2 (Null Reference & Component Verification):** Assert that all required serialized fields are assigned in `Awake()`. Use `[RequireComponent]` to guarantee sibling components. Use null-conditional (`?.`) accessors for optional fields.
+- **Rule 3 (Lifecycle & Script Execution Order):** Initialize internal state in `Awake()`. Subscribe to events in `OnEnable()`. Initialize cross-script references in `Start()`. Run physics in `FixedUpdate()`, game logic in `Update()`, camera movement in `LateUpdate()`, and unsubscribe in `OnDisable()`. Use `[DefaultExecutionOrder]` to resolve explicit timing issues.
+- **Rule 4 (Unity Null Checks vs. C# Pattern Matching):** Never use C# pattern matching (`is not null` or `is null`) to check for destroyed Unity `Object` derived instances. Unity's custom null check overrides the `==` operator to detect destroyed objects; pattern matching bypasses this.
+- **Rule 5 (Input System Diagnostics):** Subscribe to `InputSystem.onDeviceChange` to detect hardware modifications. Verify active action maps and bindings. Use the Input Debugger window for live device state validation.
+- **Rule 6 (Physics Diagnostics):** Draw debug rays (`Debug.DrawRay`) and log layers programmatically. Verify Layer Collision Matrix settings. Ensure rigidbodies are configured correctly (e.g., Continuous Collision Detection, IsKinematic settings). Implement correct signatures for trigger and collision methods.
+- **Rule 7 (Animation & Root Motion Debugging):** Cache parameter hashes (`Animator.StringToHash`). Log current states and parameters. Ensure animation event handlers are public with valid parameter signatures.
+- **Rule 8 (UI Toolkit and Audio Debugging):** Query elements programmatically to inspect hierarchy. Check element `pickingMode` if clicks are missed. Check spatial audio blend factors and ensure mixer values utilize decibels.
+- **Rule 9 (Asynchronous Flow & Memory Leaks):** Use `destroyCancellationToken` with async operations and verify lifecycle status immediately after every `await` point. Pair event subscriptions in `OnEnable` with unsubscriptions in `OnDisable`. Prevent duplicate coroutines by tracking active instances and stopping them before starting new ones.
+- **Rule 10 (ScriptableObject Safety):** Do not modify ScriptableObject values directly at runtime. Create runtime copies of template configurations using `Instantiate()`.
+- **Rule 11 (Platform Diagnostics):** Wrap editor-only code blocks in `#if UNITY_EDITOR` blocks. Use `System.Diagnostics.Debugger.Break()` to programmatically trigger debug pauses in connected IDEs.
 
-### Error Categories
+## 4. Code & Configuration Examples
 
-| Prefix                      | Typical Cause                                                          |
-| --------------------------- | ---------------------------------------------------------------------- |
-| `NullReferenceException`    | Unassigned SerializeField, destroyed object, wrong execution order     |
-| `MissingReferenceException` | Accessing object after `Destroy()`                                     |
-| `MissingComponentException` | `GetComponent<T>` returned null — component not attached or wrong type |
-| `IndexOutOfRangeException`  | Off-by-one, empty collection                                           |
-| `InvalidOperationException` | Modifying collection while iterating                                   |
-
-### Common Warnings
+### 🚫 Don't (Bad)
 
 ```csharp
-// "SendMessage cannot be called during Awake..."
-// → Defer to Start() or use Invoke/Coroutine
-
-// "The referenced script on this Behaviour is missing!"
-// → Script deleted or class name doesn't match filename
-
-// "You are trying to create a MonoBehaviour using the 'new' keyword"
-// → Use AddComponent<T>() or Instantiate()
-```
-
----
-
-## SerializeField & Inspector Debugging
-
-- `[SerializeField] private GameObject _target;` → visible in Inspector.
-- `private GameObject _target;` → **not** serialized (no SerializeField, no public).
-- `public GameObject target;` → serialized but exposed (avoid — use property instead).
-- `[HideInInspector] public GameObject target;` → serialized but hidden.
-
-### Runtime vs Editor Values
-
-```csharp
-private void OnValidate() => Debug.Log($"[Editor] _target assigned: {_target != null}");
-private void Awake() => Debug.Log($"[Runtime] _target assigned: {_target != null}");
-```
-
-### Prefab Override Issues
-
-When SerializeField appears assigned in Prefab but null at runtime:
-
-1. Check for scene instance override (bold in Inspector).
-2. Check if value cleared in prefab variant.
-3. Check if `OnValidate()` or `Reset()` clears the value.
-
----
-
-## Script Execution Order
-
-```
-Awake() → OnEnable() → Start() → FixedUpdate() → Update() → LateUpdate() → OnDisable() → OnDestroy()
-```
-
-- **Awake:** self-initialization, cache own components.
-- **OnEnable:** subscribe to events.
-- **Start:** references to other objects, initialization depending on others.
-- **FixedUpdate:** physics (fixed timestep).
-- **Update:** game logic (every frame).
-- **LateUpdate:** camera follow, post-processing.
-- **OnDisable:** unsubscribe.
-
-### Common Timing Issues
-
-| Symptom                     | Likely Cause                               | Solution                                      |
-| --------------------------- | ------------------------------------------ | --------------------------------------------- |
-| Reference null in `Awake()` | Other object not yet initialized           | Move to `Start()`                             |
-| Reference null in `Start()` | Object created later                       | Use events or null-checked `FindObjectOfType` |
-| Camera jitter               | Camera in `Update()`, target in `Update()` | Move camera to `LateUpdate()`                 |
-| Physics inconsistency       | Physics in `Update()`                      | Move to `FixedUpdate()`                       |
-| State resets unexpectedly   | Domain reload on/off mismatch              | Check Enter Play Mode Options                 |
-
-```csharp
-[DefaultExecutionOrder(-100)] public class GameManager : MonoBehaviour { }
-[DefaultExecutionOrder(100)]  public class UIManager : MonoBehaviour { }
-```
-
----
-
-## Null Reference Debugging
-
-### Patterns
-
-```csharp
-// Validate SerializeFields
-private void Awake()
+public class <BadDebug> : MonoBehaviour
 {
-    Debug.Assert(_playerTransform != null, "PlayerTransform not assigned!", this);
-}
+    private <Type> _reference;
 
-// Null-conditional for optional refs
-_optionalComponent?.DoSomething();
-
-// Explicit null check with error
-if (_requiredComponent == null)
-{
-    Debug.LogError($"Required component missing on {gameObject.name}", this);
-    enabled = false;
-    return;
-}
-```
-
-### GetComponent Failures
-
-```csharp
-// ❌ Only checks THIS object
-Rigidbody rb = GetComponent<Rigidbody>();
-
-// ✅ Specify scope
-Rigidbody rb = GetComponentInChildren<Rigidbody>();
-Rigidbody rb = GetComponentInParent<Rigidbody>();
-
-// ✅ Guarantee presence
-[RequireComponent(typeof(Rigidbody))]
-public class PhysicsController : MonoBehaviour { }
-```
-
-### Destroyed Object Access
-
-```csharp
-// Unity's fake null check catches destroyed objects:
-if (_enemy != null) { /* safe */ }
-
-// C# pattern does NOT:
-if (_enemy is not null) { /* WRONG — misses destroyed Unity objects */ }
-```
-
----
-
-## Input System Debugging
-
-### Device Connection
-
-```csharp
-private void OnEnable() => InputSystem.onDeviceChange += OnDeviceChange;
-private void OnDisable() => InputSystem.onDeviceChange -= OnDeviceChange;
-
-private void OnDeviceChange(InputDevice device, InputDeviceChange change)
-    => Debug.Log($"Device '{device.displayName}' {change}");
-```
-
-### PlayerInput Issues
-
-| Symptom                    | Check                            | Solution                                |
-| -------------------------- | -------------------------------- | --------------------------------------- |
-| No input response          | InputActionAsset assigned?       | Assign in Inspector or via code         |
-| Actions not firing         | Action map enabled?              | `actionMap.Enable()`                    |
-| Wrong device input         | Control scheme correct?          | Verify bindings for target device       |
-| Input works in Editor only | Input System package in build?   | Player Settings → Active Input Handling |
-| Duplicate events           | Multiple PlayerInput components? | Use single PlayerInput                  |
-
-- **Input Debugger:** Window → Analysis → Input Debugger (inspect devices, events, action states live).
-
----
-
-## Physics Debugging
-
-### Layer & Collision
-
-```csharp
-Debug.Log($"Layer: {gameObject.layer} ({LayerMask.LayerToName(gameObject.layer)})");
-Debug.DrawRay(origin, direction * maxDistance, Color.red, 2f);
-```
-
-Check **Edit → Project Settings → Physics** — verify collision matrix.
-
-### Rigidbody Issues
-
-| Symptom                   | Check                  | Solution                               |
-| ------------------------- | ---------------------- | -------------------------------------- |
-| No collision              | Rigidbody present?     | Add Rigidbody to at least one object   |
-| Collision but no callback | Trigger misconfigured? | Match OnCollision vs OnTrigger methods |
-| Objects pass through      | Kinematic + no CCD?    | Enable Continuous collision detection  |
-| Jittery movement          | Moving in Update()?    | Move physics in FixedUpdate()          |
-
-### Trigger vs Collision Methods
-
-```csharp
-// Colliders (IsTrigger = false)
-void OnCollisionEnter(Collision c) { }
-void OnCollisionStay(Collision c) { }
-void OnCollisionExit(Collision c) { }
-
-// Triggers (IsTrigger = true)
-void OnTriggerEnter(Collider other) { }
-void OnTriggerStay(Collider other) { }
-void OnTriggerExit(Collider other) { }
-
-// 2D variants: OnCollisionEnter2D, OnTriggerEnter2D, etc.
-```
-
----
-
-## Animation & Animator Debugging
-
-### State Debugging
-
-```csharp
-// Cache parameter hashes (required for performance)
-private static readonly int _speedHash = Animator.StringToHash("Speed");
-
-// Log current state
-var stateInfo = _animator.GetCurrentAnimatorStateInfo(0);
-Debug.Log($"State: {stateInfo.shortNameHash}, Time: {stateInfo.normalizedTime}");
-
-// List all parameters and values
-foreach (var param in _animator.parameters)
-    Debug.Log($"{param.name} ({param.type}) = {GetParamValue(param)}");
-```
-
-### Animation Event Requirements
-
-```csharp
-// Valid signatures:
-public void OnFootstep() { }
-public void OnFootstep(string sound) { }
-public void OnFootstep(float volume) { }
-public void OnFootstep(int index) { }
-public void OnFootstep(AnimationEvent evt) { }
-```
-
-### Root Motion Issues
-
-| Symptom              | Solution                                   |
-| -------------------- | ------------------------------------------ |
-| Character not moving | Enable Apply Root Motion on Animator       |
-| Jitter               | Don't mix root motion with script movement |
-| Wrong direction      | Check Bake Into Pose options               |
-
----
-
-## UI Toolkit Debugging
-
-```csharp
-// Element not found? List all:
-root.Query().ForEach(e => Debug.Log($"{e.GetType().Name}: {e.name}"));
-
-// Styles not applying? Check UI Toolkit Debugger (Window → UI Toolkit → Debugger)
-
-// Events not firing? Verify:
-button.pickingMode = PickingMode.Position;
-```
-
-For full UI Toolkit reference → [unity-ui-toolkit.md](unity-ui-toolkit.md).
-
----
-
-## Audio Debugging
-
-### Quick Checklist
-
-1. AudioClip assigned?
-2. Volume > 0?
-3. AudioListener in scene?
-4. AudioSource not muted?
-5. GameObject active?
-
-### Spatial Audio
-
-```csharp
-_audioSource.spatialBlend = 1f; // 0 = 2D, 1 = 3D
-// Mixer uses decibels (-80 to 0), not linear (0 to 1)
-float LinearToDecibel(float linear) => linear > 0 ? 20f * Mathf.Log10(linear) : -80f;
-```
-
----
-
-## Async & Coroutine Debugging
-
-### Coroutine Pitfalls
-
-```csharp
-// ❌ Multiple coroutines running → store and stop reference:
-private Coroutine _currentCoroutine;
-public void StartMyCoroutine()
-{
-    if (_currentCoroutine != null) StopCoroutine(_currentCoroutine);
-    _currentCoroutine = StartCoroutine(MyCoroutine());
-}
-```
-
-### Awaitable (Unity 6+ Preferred)
-
-```csharp
-// Auto-cancelled when destroyed:
-private async Awaitable DoSomethingAsync()
-{
-    await Awaitable.WaitForSecondsAsync(1f, destroyCancellationToken);
-    // Safe — won't execute if destroyed
-    transform.position = Vector3.zero;
-}
-
-// Custom cancellation:
-private CancellationTokenSource _cts;
-private async Awaitable DoWithCancellation()
-{
-    _cts = new CancellationTokenSource();
-    try
+    private void Awake()
     {
-        await Awaitable.WaitForSecondsAsync(5f, _cts.Token);
+        // ❌ Accessing external components in Awake (leads to race conditions)
+        _reference = FindObjectOfType<<Type>>();
+        _reference.Initialize();
     }
-    catch (OperationCanceledException) { Debug.Log("Cancelled"); }
+
+    private void OnCollisionEnter(Collider <Other>)
+    {
+        // ❌ Collision handler uses incorrect parameter type (Collider vs Collision)
+    }
+
+    private void Update()
+    {
+        // ❌ Pattern matching bypasses Unity's custom null check for destroyed objects
+        if (_reference is not null)
+        {
+            _reference.DoSomething();
+        }
+    }
 }
 ```
 
-### Awaitable vs Coroutine
-
-| Feature            | Coroutine            | Awaitable (Unity 6)        |
-| ------------------ | -------------------- | -------------------------- |
-| Cancellation       | Manual StopCoroutine | Built-in token             |
-| Return values      | No                   | Yes (`Awaitable<T>`)       |
-| Exception handling | Limited              | Full try/catch             |
-| Destruction safety | Manual check         | `destroyCancellationToken` |
-
----
-
-## Event System Debugging
-
-### Subscription Leaks
+### ✅ Do (Good)
 
 ```csharp
-// ❌ Memory leak:
-private void Start() => GameManager.OnGameOver += HandleGameOver;
-
-// ✅ Always pair subscribe/unsubscribe:
-private void OnEnable() => GameManager.OnGameOver += HandleGameOver;
-private void OnDisable() => GameManager.OnGameOver -= HandleGameOver;
-```
-
-| Symptom                    | Solution                                                            |
-| -------------------------- | ------------------------------------------------------------------- |
-| Event never fires          | Add `?.Invoke()`                                                    |
-| Event fires multiple times | Check for duplicate subscriptions — always unsubscribe in OnDisable |
-| NullReference on Invoke    | Use `?.Invoke()` pattern                                            |
-
----
-
-## ScriptableObject Runtime Issues
-
-```csharp
-// ❌ Modifies the ASSET in Editor:
-[SerializeField] private PlayerDataSO _playerData;
-private void TakeDamage(int d) => _playerData.health -= d;
-
-// ✅ Create runtime copy:
-private PlayerDataSO _runtimeData;
-private void Awake() => _runtimeData = Instantiate(_playerData);
-private void OnDestroy() { if (_runtimeData) Destroy(_runtimeData); }
-```
-
-| Symptom                      | Solution                                      |
-| ---------------------------- | --------------------------------------------- |
-| Changes persist after play   | `Instantiate()` for runtime copy              |
-| Multiple objects share state | Intentional? Keep. Otherwise: `Instantiate()` |
-| SO null at runtime           | Check Resources folder or Addressables        |
-
----
-
-## Transform & Hierarchy
-
-### Local vs World
-
-```csharp
-transform.position = new Vector3(0,0,0);    // World space
-transform.localPosition = new Vector3(0,0,0); // Parent-relative
-
-// SetParent behavior:
-transform.SetParent(newParent);        // Maintains world position
-transform.SetParent(newParent, false); // Maintains local position
-```
-
----
-
-## Performance Diagnostics
-
-```csharp
-using Unity.Profiling;
-private static readonly ProfilerMarker _updateMarker = new("MyScript.Update");
-private void Update() { using (_updateMarker.Auto()) { /* code */ } }
-```
-
-| Symptom      | Diagnostic          | Solution                       |
-| ------------ | ------------------- | ------------------------------ |
-| Frame drops  | Profiler → CPU      | Identify expensive methods     |
-| Memory grows | Profiler → Memory   | Check leaks, implement pooling |
-| GC spikes    | Profiler → GC Alloc | Reduce allocations in Update   |
-
----
-
-## Build-Only Issues
-
-Common "works in Editor, fails in build" causes:
-
-1. **Script stripping** — add `[Preserve]` or link.xml.
-2. **Assembly definitions** — missing .asmdef references.
-3. **Resources path** — case sensitivity on some platforms.
-4. **Editor-only code** — not wrapped in `#if UNITY_EDITOR`.
-
-```csharp
-#if UNITY_EDITOR
-    Debug.Log("Editor only");
-#elif UNITY_ANDROID
-    // Android-specific
-#endif
-```
-
----
-
-## Programmatic Breakpoints
-
-```csharp
-if (_health < 0)
+[RequireComponent(typeof(<Component>))]
+public class <GoodDebug> : MonoBehaviour
 {
-    Debug.LogError("Health negative — breaking");
-    System.Diagnostics.Debugger.Break(); // Pauses Rider/VS
+    [SerializeField] private <Type> _reference;
+
+    private <Component> _localComponent;
+
+    private void Awake()
+    {
+        // ✅ Self-initialization and component caching
+        _localComponent = GetComponent<<Component>>();
+
+        // ✅ Explicitly assert serialized dependencies
+        Debug.Assert(_reference != null, "Reference dependency missing!", this);
+    }
+
+    private void OnEnable()
+    {
+        // ✅ Clean event subscription
+        StaticEvents.OnAction += HandleAction;
+    }
+
+    private void OnDisable()
+    {
+        // ✅ Clean event unsubscription
+        StaticEvents.OnAction -= HandleAction;
+    }
+
+    private void Update()
+    {
+        // ✅ Proper Unity null check that handles destroyed objects
+        if (_reference != null)
+        {
+            _reference.DoSomething();
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // ✅ Trigger handler uses correct signature
+    }
+
+    private void HandleAction()
+    {
+        // ✅ Implementation goes here
+    }
 }
 ```
+
+### 🚫 Don't (Bad)
+
+```csharp
+public class <BadSOAndAsync> : MonoBehaviour
+{
+    [SerializeField] private PlayerDataSO _playerData; // SO Asset
+
+    private async void Start()
+    {
+        // ❌ Directly writing to SO asset modifies file in Editor
+        _playerData.health = 100;
+
+        await Awaitable.WaitForSecondsAsync(1f);
+        // ❌ Missing destroy token check; continues running even if object is destroyed
+        transform.position = Vector3.zero;
+    }
+}
+```
+
+### ✅ Do (Good)
+
+```csharp
+public class <GoodSOAndAsync> : MonoBehaviour
+{
+    [SerializeField] private PlayerDataSO _playerDataTemplate;
+
+    private PlayerDataSO _runtimeData;
+
+    private void Awake()
+    {
+        // ✅ Create instance copy to prevent editing the project asset
+        _runtimeData = Instantiate(_playerDataTemplate);
+    }
+
+    private async Awaitable Start()
+    {
+        _runtimeData.health = 100;
+
+        try
+        {
+            // ✅ Awaitable tracks lifetime cancellation
+            await Awaitable.WaitForSecondsAsync(1f, destroyCancellationToken);
+
+            // ✅ Guard check after asynchronous boundary
+            if (this == null || !isActiveAndEnabled) return;
+            transform.position = Vector3.zero;
+        }
+        catch (OperationCanceledException)
+        {
+            // ✅ Handle cancellation gracefully
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_runtimeData != null)
+        {
+            Destroy(_runtimeData);
+        }
+    }
+}
+```
+
+## 5. Quick Reference & Decision Matrix
+
+| Issue Category              | Common Cause                                           | Diagnostic / Solution                                                              |
+| :-------------------------- | :----------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| `NullReferenceException`    | Unassigned Inspector field / wrong execution timing    | Assert in `Awake()`, move initialization to `Start()`, or use `[RequireComponent]` |
+| `MissingReferenceException` | Accessing a Unity Object that was previously destroyed | Check with `_object != null` (do not use `is not null`)                            |
+| Jittery Movement            | Transform modifications executed in incorrect loop     | Run physics / rigidbody motion in `FixedUpdate()`, cameras in `LateUpdate()`       |
+| Event Fires Multiple Times  | Missing unsubscription or duplicate subscriptions      | Always unsubscribe in `OnDisable()`                                                |
+| SO Edits Persist            | Direct modification of a ScriptableObject Asset        | Create a runtime duplicate using `Instantiate()` in `Awake()`                      |
+| Programmatic Pauses         | Need to break execution at specific code points        | Call `System.Diagnostics.Debugger.Break()` when condition is met                   |

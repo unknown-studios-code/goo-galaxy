@@ -5,132 +5,63 @@ paths:
 
 # Unity Project Configuration
 
-> **Cross-references:** Code style → [unity-code-style.md](unity-code-style.md). Editor settings for faster iteration and consistent imports. **Target: Unity 6.3, URP 17.3.**
+## 1. Overview
 
-## Enter Play Mode Options
+This document defines standard project settings, editor preferences, and compilation options. Adhering to these guidelines ensures consistent asset imports, fast editor iteration, and optimal compile-time optimizations.
 
-**Edit → Project Settings → Editor**
+## 2. Cross-References
 
-| Setting                 | Value       | Why                                  |
-| ----------------------- | ----------- | ------------------------------------ |
-| Enter Play Mode Options | ✅ Enabled  | Customize reload behavior            |
-| Reload Domain           | ❌ Disabled | Skips C# domain reload (~2–5s saved) |
-| Reload Scene            | ❌ Disabled | Keeps scene state, faster iteration  |
+- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard practices for classes and ScriptableObjects)
+- **Debugging** → [unity-debugging.md](unity-debugging.md) (Checking runtime initialization issues)
 
-### Domain Reload Disabled: Required Patterns
+## 3. Core Rules
 
-Static fields **persist between play sessions**:
+- **Rule 1 (Enter Play Mode Options):** Enable "Enter Play Mode Options" and disable both "Reload Domain" and "Reload Scene" in Project Settings (Editor) to skip domain/scene reloads and speed up iteration.
+- **Rule 2 (Subsystem Static Field Reset):** Reset all static variables, static collections, and static event subscribers explicitly. Because domain reloading is disabled, static fields persist between play sessions in the Editor. Decorate the reset method with `[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]`.
+- **Rule 3 (Asset Pipeline refresh):** Disable "Auto Refresh" in Unity Preferences to prevent unwanted background compilations during editing. Trigger asset refreshes manually when switching back to the editor.
+- **Rule 4 (Burst Compiler Optimization):** Enable Burst compilation and select Synchronous Compilation in Project Settings (Burst AOT Settings) to avoid first-frame CPU stutters during runtime execution.
+- **Rule 5 (Import Settings Presets):** Store custom import presets for textures (Albedo, Normal, SingleSprite, SpriteAtlas) and audio assets (Music, Ambience, SFX, UI) under `Assets/Settings/Presets/`. Configure the Preset Manager to automatically apply these presets on import.
+- **Rule 6 (URP Quality Tiers):** Maintain rendering quality assets (Performant, Balanced, HighFidelity) under `Assets/Settings/Rendering/`. Route rendering volumes and post-processing profiles accordingly.
+- **Rule 7 (Assembly Compilation Boundaries):** Organize large logical subsystems using Assembly Definition files (`.asmdef`) to reduce recompilation scopes and enforce architectural boundaries.
+
+## 4. Code & Configuration Examples
+
+### 🚫 Don't (Bad)
 
 ```csharp
-// ❌ Won't reset on re-play
-private static int _playerCount = 0;
-
-// ✅ Reset explicitly
-[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-private static void ResetStatics() => _playerCount = 0;
+public class <BadConfig> : MonoBehaviour
+{
+    // ❌ Static variables are not reset; value carries over between play button presses
+    private static int _score = 0;
+    private static List<Transform> _cachedTransforms = new();
+}
 ```
 
-**Also affected:** static events (subscribers accumulate), singletons, static collections/caches.
+### ✅ Do (Good)
 
----
+```csharp
+public class <GoodConfig> : MonoBehaviour
+{
+    private static int _score = 0;
+    private static readonly List<Transform> _cachedTransforms = new();
 
-## Asset Pipeline
+    // ✅ Explicitly reset all statics on play mode startup
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        _score = 0;
+        _cachedTransforms.Clear();
+    }
+}
+```
 
-**Unity → Settings (macOS) / Edit → Preferences (Windows)**
+## 5. Quick Reference & Decision Matrix
 
-| Setting      | Value       |
-| ------------ | ----------- |
-| Auto Refresh | ❌ Disabled |
-
-Manual refresh: `Cmd+R` (macOS) / `Ctrl+R` (Windows).
-
----
-
-## Burst Compiler
-
-**Edit → Project Settings → Burst AOT Settings**
-
-| Setting                  | Value                            |
-| ------------------------ | -------------------------------- |
-| Enable Burst Compilation | ✅                               |
-| Synchronous Compilation  | ✅ (avoids first-frame stutters) |
-
----
-
-## Presets
-
-Location: `Assets/Settings/Presets/`
-
-### Texture Import
-
-| Preset                        | Use Case                         |
-| ----------------------------- | -------------------------------- |
-| `AlbedoTextureImporter`       | Diffuse/color (sRGB, compressed) |
-| `NormalTextureImporter`       | Normal maps (linear)             |
-| `SingleSpriteTextureImporter` | Individual UI sprites            |
-| `SpriteAtlasTextureImporter`  | Sprite atlas textures            |
-
-### Audio Import (`Assets/Settings/Presets/Audio/`)
-
-| Preset                  | Use Case                                   |
-| ----------------------- | ------------------------------------------ |
-| `MusicAudioImporter`    | Background music (streaming)               |
-| `AmbienceAudioImporter` | Environmental loops (compressed in memory) |
-| `SFXAudioImporter`      | Sound effects (decompress on load)         |
-| `UIAudioImporter`       | UI feedback (small, decompress on load)    |
-
-### Applying Presets
-
-- **Auto:** Edit → Project Settings → Preset Manager → add filter + assign preset.
-- **Manual:** Select asset → Inspector → preset icon → choose from dropdown.
-
-### Creating Presets
-
-Configure asset import settings → preset icon → Save Current To... → `Assets/Settings/Presets/`.
-
----
-
-## Rendering Configuration
-
-Location: `Assets/Settings/Rendering/`
-
-### URP Quality Tiers
-
-| Asset              | Target              |
-| ------------------ | ------------------- |
-| `URP-Performant`   | Mobile, low-end     |
-| `URP-Balanced`     | Mid-range (default) |
-| `URP-HighFidelity` | Desktop, high-end   |
-
-Each tier has a matching Renderer asset.
-
-### Volume Profiles
-
-| Asset                  | Purpose                         |
-| ---------------------- | ------------------------------- |
-| `DefaultVolumeProfile` | Global post-processing defaults |
-| `SampleSceneProfile`   | Scene-specific overrides        |
-
----
-
-## Assembly Definitions
-
-Currently using default assembly (all scripts in one). For larger projects, add `.asmdef` to:
-
-- Reduce recompilation scope
-- Enforce code boundaries
-- Speed iteration
-
----
-
-## Quick Reference
-
-| Setting         | Path                                         |
-| --------------- | -------------------------------------------- |
-| Enter Play Mode | Edit → Project Settings → Editor             |
-| Auto Refresh    | Unity → Settings (Preferences)               |
-| Burst           | Edit → Project Settings → Burst AOT Settings |
-| Quality Levels  | Edit → Project Settings → Quality            |
-| Preset Manager  | Edit → Project Settings → Preset Manager     |
-| URP Assets      | Assets/Settings/Rendering/                   |
-| Presets         | Assets/Settings/Presets/                     |
+| Configuration Category | Path / Location                          | Target Value / Practice                                                      |
+| :--------------------- | :--------------------------------------- | :--------------------------------------------------------------------------- |
+| Iteration Settings     | **Edit → Project Settings → Editor**     | Enter Play Mode = Enabled; Reload Domain = Disabled; Reload Scene = Disabled |
+| Preferences            | **Edit → Preferences → Asset Pipeline**  | Auto Refresh = Disabled                                                      |
+| Math Optimization      | **Edit → Project Settings → Burst AOT**  | Enable Burst = Enabled; Synchronous Comp. = Enabled                          |
+| Asset Presets          | `Assets/Settings/Presets/`               | Automate imports via Preset Manager filters                                  |
+| Rendering Quality      | `Assets/Settings/Rendering/`             | Assign Performant (low), Balanced (mid), HighFidelity (high)                 |
+| Code Compilation       | Subfolder roots (e.g. `Runtime/Shared/`) | Define assembly boundaries via `.asmdef` assets                              |

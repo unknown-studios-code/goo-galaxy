@@ -8,11 +8,9 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// </summary>
     public readonly struct CardId : IEquatable<CardId>
     {
-        private readonly string _value;
-
-        public string Value => _value ?? string.Empty;
-
         public static readonly CardId Empty = new(string.Empty);
+
+        private readonly string _value;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CardId"/> struct.
@@ -24,19 +22,16 @@ namespace GooGalaxy.Runtime.Shared.Types
             _value = value ?? throw new ArgumentNullException(nameof(value), "CardId cannot wrap a null string.");
         }
 
-        /// <summary>
-        /// Compares this instance with another <see cref="CardId"/> for equality.
-        /// </summary>
-        /// <param name="other">The other card identifier to compare.</param>
-        /// <returns>True if they represent the same identifier, otherwise false.</returns>
-        public bool Equals(CardId other)
-        {
-            if (ReferenceEquals(_value, other._value))
-            {
-                return true;
-            }
+        public string Value => _value ?? string.Empty;
 
-            return string.Equals(Value, other.Value, StringComparison.Ordinal);
+        public static bool operator ==(CardId left, CardId right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(CardId left, CardId right)
+        {
+            return !left.Equals(right);
         }
 
         /// <summary>
@@ -59,19 +54,18 @@ namespace GooGalaxy.Runtime.Shared.Types
         public override string ToString() => Value;
 
         /// <summary>
-        /// Operator overload for equality of two card identifiers.
+        /// Compares this instance with another <see cref="CardId"/> for equality.
         /// </summary>
-        public static bool operator ==(CardId left, CardId right)
+        /// <param name="other">The other card identifier to compare.</param>
+        /// <returns>True if they represent the same identifier, otherwise false.</returns>
+        public bool Equals(CardId other)
         {
-            return left.Equals(right);
-        }
+            if (ReferenceEquals(_value, other._value))
+            {
+                return true;
+            }
 
-        /// <summary>
-        /// Operator overload for inequality of two card identifiers.
-        /// </summary>
-        public static bool operator !=(CardId left, CardId right)
-        {
-            return !left.Equals(right);
+            return string.Equals(Value, other.Value, StringComparison.Ordinal);
         }
     }
 }

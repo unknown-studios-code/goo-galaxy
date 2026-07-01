@@ -1,4 +1,5 @@
 using System;
+using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ namespace GooGalaxy.Runtime.Shared.Events
     {
         public static event Action<MatchConfig> MatchStarted;
         public static event Action<int> PhaseChanged;
+        public static event Action<IBoardGrid> GridReady;
 
         /// <summary>
         /// Safely invokes the MatchStarted event.
@@ -26,6 +28,12 @@ namespace GooGalaxy.Runtime.Shared.Events
         public static void InvokePhaseChanged(int phase) => PhaseChanged?.Invoke(phase);
 
         /// <summary>
+        /// Safely invokes the GridReady event.
+        /// </summary>
+        /// <param name="grid">The hex grid instance.</param>
+        public static void InvokeGridReady(IBoardGrid grid) => GridReady?.Invoke(grid);
+
+        /// <summary>
         /// Clears all event delegates to prevent memory leaks in the editor when Domain Reload is disabled.
         /// Automatically called during Subsystem Registration.
         /// </summary>
@@ -34,6 +42,7 @@ namespace GooGalaxy.Runtime.Shared.Events
         {
             MatchStarted = null;
             PhaseChanged = null;
+            GridReady = null;
         }
     }
 }

@@ -9,10 +9,7 @@ namespace GooGalaxy.Runtime.Shared.Services
     /// </summary>
     public class GameLifetimeScope : LifetimeScope
     {
-        /// <summary>
-        /// Configures container bindings by registering types and existing components to the container.
-        /// </summary>
-        /// <param name="builder">The VContainer container builder.</param>
+        // Configures container bindings by registering types and existing components to the container.
         protected override void Configure(IContainerBuilder builder)
         {
             // Register systems and services explicitly here, for example:

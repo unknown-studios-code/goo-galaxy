@@ -5,419 +5,162 @@ paths:
 
 # Unity Performance Optimization
 
-> **Cross-references:**
->
-> - Object pooling → [unity-code-style.md](unity-code-style.md#object-pooling)
-> - Collections → [unity-code-style.md](unity-code-style.md#collections)
-> - Async/Awaitable → [unity-debugging.md](unity-debugging.md#async--coroutine-debugging)
-> - Design patterns → [unity-design-patterns.md](unity-design-patterns.md)
-> - UI Toolkit performance → [unity-ui-toolkit.md](unity-ui-toolkit.md#performance-tips)
+## 1. Overview
 
-## Unity 6 Notes
+This document defines performance optimization rules and constraints. Its primary objective is to eliminate garbage collection allocations in hot paths, optimize CPU overhead in update loops, and establish efficient rendering and physics practices.
 
-- **`Awaitable`** is more performant than coroutines for simple delays.
-- **`UnityEngine.Pool.ObjectPool<T>`** preferred over custom pooling.
-- **Burst compiler** + Jobs for math-heavy code.
-- **IL2CPP** has different perf characteristics than Mono — profile on target.
+## 2. Cross-References
 
----
+- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard object pooling syntax and collection initialization rules)
+- **Debugging** → [unity-debugging.md](unity-debugging.md) (Programmatic profiling and runtime diagnostic metrics)
+- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (UI rendering efficiency, pooling, and binding optimizations)
 
-## Review Priority
+## 3. Core Rules
 
-Check in this order:
+- **Rule 1 (Zero Allocations in Update Loops):** Never allocate memory in `Update()`, `FixedUpdate()`, or `LateUpdate()`. Prohibit the use of `new` for reference types, string concatenation/interpolation, LINQ operations, and uncached component queries (`FindObjectsByType`, `GetComponent`, `Camera.main`).
+- **Rule 2 (Component Caching):** Cache all local component references (e.g. `Transform`, `Rigidbody`, `Camera.main`) in `Awake()`. Do not fetch them repeatedly in update loops or properties.
+- **Rule 3 (Execution Throttling):** Throttle expensive logic using elapsed timers, distance checks, or staggered frame counts. Do not execute heavy calculations every frame.
+- **Rule 4 (Memory and Boxing Avoidance):** Initialize generic collections with a default capacity. Call `.Clear()` instead of instantiating new collections. Use generic collections strictly to prevent value-type boxing. Use `Span<T>` and `stackalloc` for low-lifetime temporary arrays.
+- **Rule 5 (Non-Allocating Physics APIs):** Use non-allocating physics query methods (e.g., `OverlapSphereNonAlloc`, `RaycastNonAlloc`) with pre-allocated buffers. Cache `LayerMask` hashes and use simple primitive colliders over mesh colliders.
+- **Rule 6 (Rendering & Material Instances):** Avoid accessing `Renderer.material` directly, as this creates a duplicate material instance. Use `MaterialPropertyBlock` for per-instance property modification. Cache shader property IDs using `Shader.PropertyToID()`.
+- **Rule 7 (LINQ & Closure Banishment):** Banish all LINQ methods and closure-allocating lambda functions from hot paths. Use explicit `for` or `foreach` loops for iterations. Prefer method groups over lambdas for event callbacks.
+- **Rule 8 (Coroutine Allocation Avoidance):** Cache `WaitForSeconds` yield instructions to prevent garbage collection allocation in coroutine loops. Prefer `Awaitable` for asynchronous delays.
+- **Rule 9 (Transform and Tag Optimizations):** Combine transform modifications using `transform.SetPositionAndRotation()`. Perform tag comparisons via `.CompareTag()` rather than direct string equivalence operators.
+- **Rule 10 (Profiler Markers):** Instrument critical update steps with `ProfilerMarker` blocks to analyze CPU overhead directly in the Unity Profiler.
 
-1. **Update loops** — allocations, expensive ops, unnecessary work
-2. **Physics** — `OverlapSphere`, Raycast frequency, collision matrix
-3. **Memory** — string concat, LINQ in hot paths, boxing
-4. **GetComponent/Find** — uncached lookups, per-frame calls
-5. **Rendering** — material instances, shader keywords, draw calls
+## 4. Code & Configuration Examples
 
----
-
-## Update Loop Rules
-
-### Never Allocate in Update/FixedUpdate/LateUpdate
-
-- ❌ `new` for reference types
-- ❌ String concatenation or interpolation
-- ❌ LINQ queries
-- ❌ `FindObjectOfType<T>()`, `GameObject.Find()`
-- ✅ Pre-allocate and `.Clear()` collections
-- ✅ Object pooling for frequent spawn/despawn
+### 🚫 Don't (Bad)
 
 ```csharp
-// ❌ Allocates every frame
-void Update()
+public class <BadPerf> : MonoBehaviour
 {
-    var enemies = FindObjectsOfType<Enemy>();
-    var nearby = new List<Enemy>();
-    string status = $"Enemies: {enemies.Length}";
-    foreach (var e in enemies.Where(e => e.IsAlive)) nearby.Add(e);
-}
-
-// ✅ Zero allocations
-private readonly List<Enemy> _cache = new(100);
-private readonly List<Enemy> _nearby = new(50);
-private readonly StringBuilder _sb = new(64);
-
-void Update()
-{
-    int count = FindObjectsByType<Enemy>(FindObjectsSortMode.None, _cache);
-    _nearby.Clear();
-    for (int i = 0; i < count; i++)
-        if (_cache[i].IsAlive) _nearby.Add(_cache[i]);
-    _sb.Clear().Append("Enemies: ").Append(count);
-}
-```
-
-### Cache References
-
-- Cache `Transform`, `Rigidbody`, `Camera.main` in `Awake()`.
-- Use dirty flags to recalculate only when state changes.
-- Use `[SerializeField]` for Inspector-assigned references (zero lookup cost).
-
-```csharp
-// ❌ Property access overhead every frame
-void Update() { Vector3 pos = transform.position; }
-
-// ✅ Cached
-private Transform _transform;
-private void Awake() => _transform = transform;
-```
-
-### Throttle Expensive Work
-
-```csharp
-// Time-based throttling
-private float _nextUpdate;
-void Update()
-{
-    if (Time.time < _nextUpdate) return;
-    _nextUpdate = Time.time + 0.1f;
-    ExpensiveOp();
-}
-
-// Staggered processing
-private int _index;
-private const int ItemsPerFrame = 10;
-void Update()
-{
-    int end = Mathf.Min(_index + ItemsPerFrame, _items.Count);
-    for (int i = _index; i < end; i++) ProcessItem(_items[i]);
-    _index = end >= _items.Count ? 0 : end;
-}
-```
-
----
-
-## Memory Management
-
-### Strings
-
-- ❌ `+` concatenation or `string.Format()` in hot paths.
-- ✅ `StringBuilder` for dynamic strings.
-- ✅ Cache formatted strings when values rarely change.
-
-```csharp
-// ❌
-_scoreText.text = "Score: " + _score;
-
-// ✅
-private readonly StringBuilder _sb = new(32);
-private int _lastScore = -1;
-private string _cachedText;
-void UpdateUI()
-{
-    if (_score != _lastScore)
+    private void Update()
     {
-        _sb.Clear().Append("Score: ").Append(_score);
-        _cachedText = _sb.ToString();
-        _lastScore = _score;
-    }
-    _scoreText.text = _cachedText;
-}
-```
+        // ❌ Scene scan, allocation, and LINQ in update loop
+        var enemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
+        var activeEnemies = enemies.Where(e => e.isActiveAndEnabled).ToList();
 
-### Collections
+        // ❌ String allocation and Camera.main scene lookup
+        string info = "Target: " + Camera.main.transform.position;
 
-- ✅ Initialize with capacity: `new List<Enemy>(100)`.
-- ✅ `.Clear()` over creating new instances.
-- ✅ `ListPool<T>`, `CollectionPool<T>` from `UnityEngine.Pool`.
-- ✅ `Span<T>` and `stackalloc` for small temp arrays.
-- ❌ `ToArray()`, `ToList()` in perf-critical code.
+        // ❌ Allocating physics overlap
+        Collider[] hits = Physics.OverlapSphere(transform.position, 10f);
 
-### Boxing
-
-- ❌ Value types in non-generic collections (`ArrayList`).
-- ❌ Passing value types as `object`.
-- ✅ Generic collections: `List<int>`, `Dictionary<int, string>`.
-
-```csharp
-// ❌ Boxing
-ArrayList old = new(); old.Add(42);
-// ✅ No boxing
-List<int> list = new(); list.Add(42);
-```
-
----
-
-## Object Pooling
-
-- ✅ `UnityEngine.Pool.ObjectPool<T>` (Unity 6 built-in).
-- ✅ `defaultCapacity` + `maxSize` based on expected usage.
-- ✅ Reset state in `actionOnRelease`.
-- ❌ `Instantiate`/`Destroy` for objects spawned more than a few times/sec.
-
-For full code example → [unity-code-style.md](unity-code-style.md#object-pooling)
-
----
-
-## Physics Optimization
-
-- ✅ Non-allocating methods: `RaycastNonAlloc`, `OverlapSphereNonAlloc`.
-- ✅ Cache `LayerMask` — don't call `LayerMask.GetMask()` every frame.
-- ✅ Prefer simple colliders (sphere, capsule, box) over mesh colliders.
-- ✅ Physics in `FixedUpdate()`, not `Update()`.
-- ✅ Configure collision matrix to disable unnecessary layer interactions.
-- ✅ `Raycast` with `maxDistance` + `QueryTriggerInteraction.Ignore`.
-
-```csharp
-// ❌
-Collider[] hits = Physics.OverlapSphere(pos, radius);
-
-// ✅
-private readonly Collider[] _buffer = new Collider[32];
-private LayerMask _enemyLayer;
-
-private void Awake() => _enemyLayer = LayerMask.GetMask("Enemy");
-
-private void FixedUpdate()
-{
-    int count = Physics.OverlapSphereNonAlloc(transform.position, _radius, _buffer, _enemyLayer);
-    for (int i = 0; i < count; i++) ProcessHit(_buffer[i]);
-}
-```
-
----
-
-## Rendering
-
-- ❌ `.material` creates instance → use `.sharedMaterial` when possible.
-- ✅ `MaterialPropertyBlock` for per-instance property changes (no allocation after first call).
-- ✅ Cache shader property IDs: `Shader.PropertyToID("_Color")`.
-- ✅ GPU instancing for many similar objects.
-
-```csharp
-// ❌ Creates material instance:
-GetComponent<Renderer>().material.color = Color.red;
-
-// ✅ MaterialPropertyBlock:
-private static readonly int ColorId = Shader.PropertyToID("_Color");
-private MaterialPropertyBlock _block;
-private Renderer _renderer;
-
-private void Awake()
-{
-    _renderer = GetComponent<Renderer>();
-    _block = new MaterialPropertyBlock();
-}
-
-private void SetColor(Color c)
-{
-    _renderer.GetPropertyBlock(_block);
-    _block.SetColor(ColorId, c);
-    _renderer.SetPropertyBlock(_block);
-}
-```
-
----
-
-## GetComponent & Find
-
-- ❌ **Never** `GetComponent<T>()` in Update — cache in `Awake()`.
-- ❌ `FindObjectOfType<T>()`, `GameObject.Find()` at runtime.
-- ✅ `[SerializeField]` for Inspector assignment (zero cost).
-- ✅ `TryGetComponent<T>(out T)` for null-safe lookups.
-- ✅ `[RequireComponent]` guarantees presence.
-
-```csharp
-[RequireComponent(typeof(Rigidbody))]
-public class PhysicsController : MonoBehaviour
-{
-    private Rigidbody _rb;
-    private void Awake() => _rb = GetComponent<Rigidbody>(); // Safe — RequireComponent guarantees
-}
-```
-
----
-
-## LINQ & Delegates
-
-- ❌ **Never LINQ in Update loops** — most methods allocate.
-- ❌ Lambda expressions in hot paths (allocate closures).
-- ✅ Explicit `for`/`foreach` loops.
-- ✅ Method groups over lambdas for event subscriptions.
-
-```csharp
-// ❌ LINQ in Update
-var active = _enemies.Where(e => e.IsActive).ToList();
-
-// ✅ Explicit loop, no allocation
-_active.Clear();
-for (int i = 0; i < _enemies.Count; i++)
-    if (_enemies[i].IsActive) _active.Add(_enemies[i]);
-
-// ❌ Allocates closure
-_button.clicked += () => OnClicked();
-
-// ✅ Method group
-_button.clicked += OnClicked;
-```
-
----
-
-## Async & Coroutine Patterns
-
-- ✅ Prefer `Awaitable` (Unity 6+) for delays.
-- ✅ Cache `WaitForSeconds` when using coroutines.
-- ❌ Don't `new WaitForSeconds()` in coroutine loops.
-- ✅ Check for destruction after await: `if (this == null) return;`.
-- ✅ Use `destroyCancellationToken` with Awaitable.
-
-```csharp
-// ❌ Allocates every iteration
-IEnumerator Bad() { while (true) { yield return new WaitForSeconds(0.1f); DoWork(); } }
-
-// ✅ Cached
-private readonly WaitForSeconds _wait = new(0.1f);
-IEnumerator Good() { while (true) { yield return _wait; DoWork(); } }
-
-// ✅ Better — Unity 6 Awaitable
-private async Awaitable PeriodicAsync(CancellationToken token)
-{
-    while (!token.IsCancellationRequested)
-    {
-        await Awaitable.WaitForSecondsAsync(0.1f, token);
-        if (this == null) return;
-        DoWork();
+        // ❌ Instantiates material copy
+        GetComponent<Renderer>().material.color = Color.red;
     }
 }
 ```
 
----
-
-## Data Structure Selection
-
-| Structure         | Use Case                                  |
-| ----------------- | ----------------------------------------- |
-| `Dictionary<K,V>` | O(1) key lookups                          |
-| `HashSet<T>`      | O(1) contains checks                      |
-| `List<T>`         | Ordered, frequent iteration, dynamic size |
-| Array             | Fixed size, frequent access               |
-| `Queue<T>`        | FIFO (command queues)                     |
-| `Stack<T>`        | LIFO (undo, state history)                |
-
----
-
-## Unity API Best Practices
-
-### Transform
+### ✅ Do (Good)
 
 ```csharp
-// ❌ Multiple operations
-transform.position = pos; transform.rotation = rot;
-// ✅ Combined
-transform.SetPositionAndRotation(pos, rot);
+[RequireComponent(typeof(Renderer))]
+public class <GoodPerf> : MonoBehaviour
+{
+    private static readonly int ColorId = Shader.PropertyToID("_Color");
+
+    [SerializeField] private float _radius = 10f;
+
+    private Camera _cachedCamera;
+    private Renderer _cachedRenderer;
+    private MaterialPropertyBlock _propBlock;
+    private LayerMask _targetLayer;
+    private float _nextUpdateTime;
+
+    private readonly List<Enemy> _enemyCache = new(32);
+    private readonly Collider[] _physBuffer = new Collider[16];
+
+    private void Awake()
+    {
+        // ✅ Pre-cache components and setup structures
+        _cachedCamera = Camera.main;
+        _cachedRenderer = GetComponent<Renderer>();
+        _propBlock = new MaterialPropertyBlock();
+        _targetLayer = LayerMask.GetMask("<LayerName>");
+    }
+
+    private void Update()
+    {
+        // ✅ Time-based throttling and early return
+        if (Time.time < _nextUpdateTime) return;
+        _nextUpdateTime = Time.time + 0.1f;
+
+        // ✅ Zero allocation list retrieval and iteration
+        int count = FindObjectsByType<Enemy>(FindObjectsSortMode.None, _enemyCache);
+        for (int i = 0; i < count; i++)
+        {
+            if (_enemyCache[i].isActiveAndEnabled)
+            {
+                <MethodName>(_enemyCache[i]);
+            }
+        }
+
+        // ✅ Non-allocating physics query
+        int hitCount = Physics.OverlapSphereNonAlloc(transform.position, _radius, _physBuffer, _targetLayer);
+    }
+
+    private void SetColor(Color <Value>)
+    {
+        // ✅ Modifying materials via MaterialPropertyBlock to prevent instances
+        _cachedRenderer.GetPropertyBlock(_propBlock);
+        _propBlock.SetColor(ColorId, <Value>);
+        _cachedRenderer.SetPropertyBlock(_propBlock);
+    }
+
+    private void <MethodName>(Enemy <Target>) { }
+}
 ```
 
-### Tag Comparison
+### 🚫 Don't (Bad)
 
 ```csharp
-// ❌ Allocates
-if (other.gameObject.tag == "Player")
-// ✅ No allocation
-if (other.CompareTag("Player"))
+public class <BadCoroutines> : MonoBehaviour
+{
+    private IEnumerator <MethodName>Co()
+    {
+        while (true)
+        {
+            // ❌ Allocates a new yield object every loop iteration
+            yield return new WaitForSeconds(0.5f);
+            <Step>();
+        }
+    }
+}
 ```
 
-### Camera.main
+### ✅ Do (Good)
 
 ```csharp
-// ❌ FindGameObjectWithTag every frame
-void Update() => Camera.main.WorldToScreenPoint(transform.position);
-// ✅ Cached
-private Camera _cam;
-private void Awake() => _cam = Camera.main;
+public class <GoodCoroutines> : MonoBehaviour
+{
+    private readonly WaitForSeconds _waitInstruction = new(0.5f);
+
+    private IEnumerator <MethodName>Co()
+    {
+        while (true)
+        {
+            // ✅ Reuses single cached yield instruction
+            yield return _waitInstruction;
+            <Step>();
+        }
+    }
+
+    private void <Step>() { }
+}
 ```
 
----
+## 5. Quick Reference & Decision Matrix
 
-## Profiler Markers
-
-```csharp
-using Unity.Profiling;
-
-private static readonly ProfilerMarker _marker = new("MySystem.Update");
-void Update() { using (_marker.Auto()) { /* code */ } }
-```
-
----
-
-## Anti-Pattern Checklist
-
-| Anti-Pattern                             | Impact   | Fix                      |
-| ---------------------------------------- | -------- | ------------------------ |
-| `GetComponent` in Update                 | **High** | Cache in Awake           |
-| `FindObjectOfType` at runtime            | **High** | Use references or events |
-| `new List<T>()` in Update                | **High** | Pre-allocate, Clear()    |
-| String concat in loops                   | Medium   | StringBuilder            |
-| `Camera.main` in Update                  | Medium   | Cache reference          |
-| LINQ in Update                           | Medium   | Explicit loops           |
-| `.material` instead of `.sharedMaterial` | Medium   | MaterialPropertyBlock    |
-| Lambda in event subscription             | Low      | Method group             |
-| `new WaitForSeconds` in coroutine loop   | Low      | Cache wait object        |
-
-### Code Smells in Update
-
-```csharp
-// 🔴 Red flags:
-GetComponent<T>()       // uncached lookup
-FindObjectOfType<T>()   // scene scan
-new List<T>()           // allocation
-string + string         // allocation
-$"interpolated"         // allocation
-.Where().Select().ToList() // LINQ
-Camera.main             // uncached
-Physics.OverlapSphere() // allocating version
-
-// 🟢 Preferred:
-_cachedComponent       // cached
-_list.Clear()          // reused
-_sb.Clear().Append()   // reused builder
-for (int i = 0; ...)    // explicit loop
-_cachedCamera          // cached
-Physics.OverlapSphereNonAlloc() // non-allocating
-```
-
----
-
-## Quick Reference
-
-**Always Do:**
-
-- Cache component references in Awake()
-- Pre-allocate collections with capacity
-- Use object pooling for frequent spawn/despawn
-- Non-allocating physics methods
-- Cache shader property IDs
-- Use ProfilerMarker
-- Use Awaitable over coroutines (Unity 6+)
-
-**Never Do:**
-
-- GetComponent/Find in Update loops
-- Allocate in Update loops
-- LINQ in Update loops
-- String concat in hot paths
-- Camera.main every frame
-- `new WaitForSeconds` in coroutine loops
-- `.material` when `.sharedMaterial` suffices
+| Operation Category | Avoid Pattern                               | Optimized Replacement                                 |
+| :----------------- | :------------------------------------------ | :---------------------------------------------------- |
+| Component Fetching | `GetComponent<T>()` in Update               | Cache in `Awake()` or use `[RequireComponent]`        |
+| Active Camera      | `Camera.main` inside Update loops           | Cache `Camera.main` in `Awake()`                      |
+| Collections        | `new List<T>()` in update loops             | Pre-allocate and reuse via `.Clear()`                 |
+| String Formatting  | `string + string` or `$""` in hot paths     | Use `StringBuilder` and cache formatted string        |
+| Physics Queries    | `Physics.OverlapSphere`                     | Use `Physics.OverlapSphereNonAlloc` with local buffer |
+| Material Property  | `Renderer.material.color = c`               | Use `MaterialPropertyBlock` with static shader IDs    |
+| Loop Filtering     | LINQ query (`Where`, `Select`, `ToList`)    | Explicit `for` loops filtering to pre-allocated List  |
+| Coroutine Wait     | `new WaitForSeconds(t)` inside loops        | Cache `WaitForSeconds` instances                      |
+| Object Instance    | `Instantiate` and `Destroy` inside gameplay | Implement `UnityEngine.Pool.ObjectPool<T>`            |
