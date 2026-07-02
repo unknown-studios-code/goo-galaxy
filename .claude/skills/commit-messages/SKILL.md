@@ -21,7 +21,7 @@ Every commit message must follow this structure:
 ```
 type(scope): subject
 
-[optional body]
+[body]
 
 [optional footer(s)]
 ```
@@ -32,6 +32,8 @@ type(scope): subject
 - **scope** is mandatory, lowercase, and must describe the affected area.
 - **subject** is mandatory, lowercase, imperative, and must not end with a period.
 - Subject must be under 72 characters.
+- **body** is mandatory and must explain what changed and why.
+- **organized sections** with bullet points are mandatory.
 - Separate subject, body, and footers with blank lines.
 
 ## Allowed Types
@@ -76,23 +78,24 @@ lowercase.
 - End with a period
 - Use vague text (`update code`, `fix bug`)
 
-## When to Add a Body
+## Mandatory Body
 
-Add a body when the change is complex, breaking, spans multiple related
-changes, or needs historical context.
+Every commit message must contain a body explaining what changed and why.
 
 Body rules:
 
 - Leave one blank line after the subject.
 - Wrap lines at 72 characters.
 - Explain what changed and why.
-- Use bullet points when multiple points improve clarity.
-- Start bullet points with uppercase.
+- Start bullet points with uppercase if used in the main body.
 - Do not repeat the subject.
 
-## Organized Sections for Larger Commits
+## Mandatory Organized Sections
 
-For broader commits, use grouped sections:
+Every commit message must contain at least one organized section with bullet points detailing the changes.
+The agent may choose which section titles fit the commit message context (the titles below are merely examples).
+
+Structure:
 
 ```
 type(scope): subject
@@ -100,12 +103,11 @@ type(scope): subject
 [short introductory paragraph]
 
 Implementation:
-- First grouped change
-- Second grouped change
+- First change description
+- Second change description
 
 Tests:
-- First testing change
-- Second testing change
+- First testing change description
 
 [footer(s)]
 ```
@@ -139,28 +141,7 @@ Footer rules:
 - If task or story identifiers are not provided, ask before adding footer references.
 - If identifiers don't match the expected patterns, ask whether the convention should be updated.
 
-## Examples
-
-Simple commit:
-
-```
-feat(board): add first turn state setup
-```
-
-With body and footers:
-
-```
-fix(match): prevent null state during rematch flow
-
-Match restart could reuse an incomplete runtime state after a fast
-disconnect and reconnect sequence. Resetting the state before the new
-setup keeps the rematch flow deterministic.
-
-Implements: GOOT-15
-Part of: GOOS-3
-```
-
-Structured body:
+## Example
 
 ```
 feat(networking): add reconnect bootstrap flow
@@ -245,7 +226,7 @@ Before returning a commit message or creating a commit, verify:
 - Scope is present and matches the affected Goo Galaxy module or subsystem.
 - Subject is imperative, lowercase, specific, and has no period.
 - Subject is under 72 characters.
-- Body explains what and why when needed.
-- Body lines wrap at 72 characters.
+- Body is present, explains what and why, and lines wrap at 72 characters.
+- At least one organized section with bullet points is present.
 - Footer only uses `Implements`, `Part of`, or `Related`.
 - Automated commits use `HUSKY=0`.

@@ -11,7 +11,10 @@
   ],
   "references": [
     "GooGalaxy.Runtime.Shared",
-    "VContainer"
+    "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Core",
+    "VContainer",
+    "UnityEngine.TestRunner"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Goo Galaxy — real-time PvP mobile strategy game (Unity 6.3 LTS, URP 17.3). Hex-grid territorial domination (Ataxx/Heggagon-style) with asymmetrical deck-building and specimen deployment. Sentient alien slime sci-fi theme. Targets iOS and Android via IL2CPP.
+Goo Galaxy — real-time PvP mobile strategy game (Unity 6.3.4f1 LTS, URP 17.3). Hex-grid territorial domination (Ataxx/Heggagon-style) with asymmetrical deck-building and specimen deployment. Sentient alien slime sci-fi theme. Targets iOS and Android via IL2CPP.
 
 ## Commands
 
@@ -70,6 +70,7 @@ Each Runtime folder is a separate `.asmdef` assembly (`GooGalaxy.Runtime.<Featur
 | Rule file                           | Covers                                                                                                |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `unity-code-style.md`               | Formatting, naming, class organization, braces, fields, methods, async, pooling                       |
+| `unity-code-documentation.md`       | XML comments rules, Unity inspector tooltips, self-documenting code, inline comments                  |
 | `unity-design-patterns.md`          | Observer, State, Template Method, Singleton, Service Locator, Composition, Factory, Command, Strategy |
 | `unity-performance-optimization.md` | Update loop rules, allocation avoidance, caching, physics, rendering, LINQ ban                        |
 | `unity-debugging.md`                | Diagnostic priority, null refs, lifecycle, Input System, physics, animation                           |
@@ -84,6 +85,8 @@ Quick hits:
 - **No LINQ in hot paths**, no `Camera.main` every frame
 - **`Awaitable` Async suffix**, coroutines `Co` suffix
 - **Early returns** over nested `if`
+- **XML Documentation** — write XML comments only for interfaces, abstract members, cross-assembly public APIs, and generic utilities/extensions (see [unity-code-documentation.md](.claude/rules/unity-code-documentation.md))
+- **Testing Pattern** — all tests must follow the GIVEN-WHEN-THEN structure using `// GIVEN`, `// WHEN`, and `// THEN` comments
 
 ## Gotchas
 

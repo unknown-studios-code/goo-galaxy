@@ -10,12 +10,6 @@ namespace GooGalaxy.Runtime.Tests.EditMode
 
         protected List<Vector2Int> PrimaryBoardCoordinates { get; private set; } = new();
 
-        [SetUp]
-        public virtual void SetUp()
-        {
-            PrimaryBoardCoordinates = CreateHexCoordinates(PrimaryBoardRadius);
-        }
-
         protected static List<Vector2Int> CreateHexCoordinates(int radius)
         {
             var coordinates = new List<Vector2Int>();
@@ -44,6 +38,12 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             where T : ScriptableObject
         {
             return Resources.Load<T>(resourcePath);
+        }
+
+        [SetUp]
+        public virtual void SetUp()
+        {
+            PrimaryBoardCoordinates = CreateHexCoordinates(PrimaryBoardRadius);
         }
     }
 }

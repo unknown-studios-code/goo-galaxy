@@ -1,0 +1,19 @@
+{
+  "name": "GooGalaxy.Runtime.Core",
+  "rootNamespace": "GooGalaxy.Runtime.Core",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Networking",
+    "VContainer"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

@@ -174,7 +174,7 @@ csharp_style_expression_bodied_accessors = when_on_single_line:suggestion
 csharp_style_expression_bodied_indexers = when_on_single_line:suggestion
 csharp_style_expression_bodied_lambdas = when_on_single_line:suggestion
 csharp_style_expression_bodied_local_functions = when_on_single_line:suggestion
-csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_methods = false:suggestion
 csharp_style_expression_bodied_constructors = false:silent
 csharp_style_expression_bodied_operators = false:silent
 
@@ -422,3 +422,6 @@ dotnet_diagnostic.IDE0059.severity = suggestion
 
 # 5.10 Unused expression value
 dotnet_diagnostic.IDE0058.severity = silent
+
+# 5.11 Namespace incompatibility
+dotnet_diagnostic.IDE0130.severity = none

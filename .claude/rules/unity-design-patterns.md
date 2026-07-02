@@ -5,411 +5,151 @@ paths:
 
 # Design Patterns for Unity
 
-> **Cross-references:**
->
-> - Code style & naming → [unity-code-style.md](unity-code-style.md)
-> - UI Toolkit patterns (MVP, data binding, Template Method) → [unity-ui-toolkit.md](unity-ui-toolkit.md)
-> - Performance anti-patterns → [unity-performance-optimization.md](unity-performance-optimization.md)
+## 1. Overview
 
-## SOLID Principles
+This document outlines structural, behavioral, and architectural patterns approved for use in the codebase. Adhering to these patterns ensures loose coupling, testability, and consistency.
 
-### Single Responsibility
+## 2. Cross-References
 
-- One reason to change per class. Break large classes into focused components.
-- This project applies SRP via [composition](#composition-over-inheritance) on MapTile.
+- **Code Style** → [unity-code-style.md](unity-code-style.md) (Align naming and event subscription syntax with these patterns)
+- **Performance Optimization** → [unity-performance-optimization.md](unity-performance-optimization.md) (Minimize allocations when implementing patterns)
+- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (Apply Template Method and MVP patterns in UI layouts)
 
-### Open/Closed
+## 3. Core Rules
 
-- Open for extension, closed for modification.
-- Use abstract bases so new types can be added without changing existing code.
+### SOLID Principles
 
-```csharp
-public abstract class Shape { public abstract float CalculateArea(); }
-public class Rectangle : Shape { public float Width, Height; public override float CalculateArea() => Width * Height; }
-public class Circle : Shape { public float Radius; public override float CalculateArea() => Radius * Radius * Mathf.PI; }
-```
+- **Single Responsibility (SRP):** Restrict classes to a single, focused concern. Decompose large behaviors into smaller components.
+- **Open/Closed (OCP):** Author code that is open for extension but closed for modification. Leverage abstract base classes and interfaces to support behavior extensions.
+- **Liskov Substitution (LSP):** Ensure derived classes can replace base classes without violating core behavior contracts or returning unexpected sentinel values.
+- **Interface Segregation (ISP):** Design small, cohesive, and feature-specific interfaces. Do not force classes to implement methods they do not require.
+- **Dependency Inversion (DIP):** Depend strictly on abstractions (interfaces) rather than concrete implementations. Query dependencies via the central Service Locator.
 
-### Liskov Substitution
+### Core Architectural Patterns
 
-- Subtypes must be substitutable for base types without breaking correctness.
-- Don't override methods in ways that violate base class expectations.
+- **Observer Pattern:** Implement a centralized static event bus (`StaticGameEvents`) for global broadcasting. Limit event triggering to dedicated static invoke methods inside the bus. Subscribe in `OnEnable()` and unsubscribe in `OnDisable()`.
+- **State Pattern:** Use Enum-based state machines for lightweight transitions (e.g., UI panels). Apply class-based state patterns when states have complex independent logic (e.g., AI behaviors or character controllers).
+- **Template Method Pattern:** Enforce view setup lifecycles by inheriting from `UITKBaseClass`. Inheritors must implement abstract hooks for initialization and callback setup.
+- **Singleton Pattern:** Limit Singleton usage to persistent, global manager components. Resolve instances via thread-safe static properties and destroy duplicate instances in `Awake()`.
+- **Service Locator / Dependency Injection:** Register runtime dependencies in the `ServiceLocator` registry during subsystem startup. Unregister or clear them on object destruction to avoid memory leaks.
+- **Composition over Inheritance:** Assemble GameObjects by composing multiple, highly focused Monobehaviour components (e.g., `MapTile` + `MapTileMilitary`) rather than deep inheritance hierarchies.
+- **Object Pooling:** Implement `UnityEngine.Pool.ObjectPool<T>` for high-frequency runtime spawning (e.g., projectiles, visual effects).
+- **Factory Pattern:** Centralize complex object instantiation and setup logic in factory classes.
+- **Command Pattern:** Wrap actions inside undoable command objects (`ICommand`) to support replaying, undoing, or queuing user inputs.
+- **Strategy Pattern:** Abstract algorithms or behaviors into interchangeable strategy interfaces to allow dynamic runtime configuration.
 
-```csharp
-// ✅ Derived classes honor the contract
-public abstract class Unit { public abstract int CalculateDamage(); }
+## 4. Code & Configuration Examples
 
-// ❌ Violates LSP — returns -1 when callers expect positive values
-public class RangedUnit : Unit { public override int CalculateDamage() => _ammo <= 0 ? -1 : _baseDamage; }
-```
-
-### Interface Segregation
-
-- No class should implement interfaces it doesn't use.
-- Prefer small, focused interfaces over large ones.
-- **Naming:** `I` prefix, PascalCase → [unity-code-style.md](unity-code-style.md#interfaces).
+### 🚫 Don't (Bad)
 
 ```csharp
-// ✅ Focused
-public interface IDamageable { void ApplyDamage(int amount); }
-public interface IHealable { void Heal(int amount); }
-
-// ❌ Forces implementers to handle capabilities they don't have
-public interface IEntity { void ApplyDamage(int); void Heal(int); void MoveTo(Vector3); void Attack(IEntity); }
-```
-
-### Dependency Inversion
-
-- Depend on abstractions (interfaces), not concrete classes.
-- This project uses a [Service Locator](#service-locator--dependency-injection) for runtime resolution.
-
-```csharp
-public interface IAudioService { void PlaySound(string clipName); }
-public class CombatController : MonoBehaviour
+// ❌ Violates Interface Segregation (ISP) by bundling unrelated actions
+public interface IEntity
 {
-    private IAudioService _audioService;
-    private void Awake() => _audioService = ServiceLocator.Resolve<IAudioService>();
-}
-```
-
----
-
-## Project Patterns (Used in This Codebase)
-
-Match these when generating new code:
-
-| Pattern                                                   | Location                                      | Purpose                             |
-| --------------------------------------------------------- | --------------------------------------------- | ----------------------------------- |
-| [Observer](#observer-pattern)                             | `StaticGameEvents.cs`                         | Centralized event bus               |
-| [State (Enum)](#enum-based-state-pattern)                 | `UIGameController.cs`                         | UI state machine                    |
-| [Template Method](#template-method-pattern)               | `UITKBaseClass.cs`                            | Base class for all UI Toolkit views |
-| [Singleton](#singleton-pattern)                           | `UIGameController.cs`                         | Global UI state access              |
-| [Service Locator](#service-locator--dependency-injection) | `ServiceLocator.cs` / `DependencyInjector.cs` | Runtime dependency resolution       |
-| [Composition](#composition-over-inheritance)              | `MapTile` + `MapTileMilitary`                 | Focused tile components             |
-| ScriptableObject Data                                     | `*SO` / `*DataSO` classes                     | Static configuration                |
-| Data Binding                                              | `[CreateProperty]` + `dataSource`             | UI Toolkit reactive UI              |
-
-### Reference Patterns (Not Yet in Codebase)
-
-| Pattern                                         | Use Case                            |
-| ----------------------------------------------- | ----------------------------------- |
-| [Class-Based State](#class-based-state-pattern) | Complex AI or character controllers |
-| [Object Pooling](#object-pooling)               | Frequent spawn/despawn              |
-| [Factory](#factory-pattern)                     | Centralized object creation         |
-| [Command](#command-pattern)                     | Undo/redo, action history           |
-| [Strategy](#strategy-pattern)                   | Interchangeable runtime behaviors   |
-
----
-
-## Observer Pattern
-
-**This project's pattern: centralized static event bus in `StaticGameEvents.cs`.**
-
-- **Static events** for game-wide broadcasts (turn ended, tile selected, resources changed).
-- **Static invoke methods** control invocation — external code cannot fire events arbitrarily.
-- **Subscribe in `OnEnable()`, unsubscribe in `OnDisable()`.**
-
-```csharp
-// Centralized event bus (actual project pattern)
-public static class StaticGameEvents
-{
-    public static event Action<MapTile> OnTileSelected;
-    public static event Action OnTurnEnded;
-    public static event Action<UIGameState> OnUIStateChanged;
-
-    public static void InvokeOnTileSelected(MapTile tile) => OnTileSelected?.Invoke(tile);
-    public static void InvokeOnTurnEnded() => OnTurnEnded?.Invoke();
-    public static void InvokeOnUIStateChanged(UIGameState s) => OnUIStateChanged?.Invoke(s);
+    void TakeDamage(int <Amount>);
+    void Move(Vector3 <Position>);
+    void Attack(IEntity <Target>);
 }
 
-// Consumer
-public class MapTile : MonoBehaviour
+// ❌ Direct modification of singleton assets or un-encapsulated global state
+public class <BadManager> : MonoBehaviour
 {
-    private void OnEnable() => StaticGameEvents.OnTurnEnded += CalculateEndOfTurnDif;
-    private void OnDisable() => StaticGameEvents.OnTurnEnded -= CalculateEndOfTurnDif;
-}
-```
+    public static <BadManager> Instance;
 
----
-
-## State Pattern
-
-### Enum-Based (This Project's Approach)
-
-Used by `UIGameController` — states control which panels are visible. Prefer when states have minimal per-state logic.
-
-```csharp
-public enum UIGameState { DefaultMapView, ArmyView, TownView, ConquestView /* ... */ }
-
-public class UIGameController : MonoBehaviour
-{
-    [SerializeField] private UIGameState _currentState;
-
-    public void ChangeState(UIGameState newState)
+    private void Awake()
     {
-        _currentState = newState;
-        StaticGameEvents.InvokeOnUIStateChanged(_currentState);
-        ApplyStateToPanels(newState);
+        Instance = this; // ❌ Doesn't destroy duplicates
     }
+}
+```
 
-    private void ApplyStateToPanels(UIGameState state)
+### ✅ Do (Good)
+
+```csharp
+// ✅ Compliant with ISP: Small, focused interface contracts
+public interface IDamageable
+{
+    void TakeDamage(int <Amount>);
+}
+
+public interface IMovable
+{
+    void Move(Vector3 <Position>);
+}
+
+// ✅ Correct Singleton pattern protecting lifetime instances
+public class <GoodManager> : MonoBehaviour
+{
+    private static <GoodManager> _instance;
+    public static <GoodManager> Instance
     {
-        HideAllPanels();
-        switch (state)
+        get
         {
-            case UIGameState.DefaultMapView:
-                SetPanelsActive(_resources, true);
-                break;
-            case UIGameState.ArmyView:
-                SetPanelsActive(_commanderView, true);
-                break;
-            // ...
+            if (_instance == null)
+            {
+                _instance = FindObjectOfType<<GoodManager>>();
+            }
+            return _instance;
         }
-    }
-}
-```
-
-### Class-Based (For Complex Cases)
-
-Use when each state has substantial logic (complex AI, character controllers).
-
-| Criteria        | Enum + Switch           | Class-Based                        |
-| --------------- | ----------------------- | ---------------------------------- |
-| State count     | < 10                    | Many or growing                    |
-| Per-state logic | Minimal (toggle panels) | Complex (different Update loops)   |
-| Example         | UI view management      | AI behavior, character controllers |
-
-```csharp
-public abstract class PlayerState
-{
-    protected PlayerController _controller;
-    public PlayerState(PlayerController c) { _controller = c; }
-    public abstract void Enter();
-    public abstract void Update();
-    public abstract void Exit();
-}
-
-public class PlayerController : MonoBehaviour
-{
-    private PlayerState _currentState;
-    private void Update() => _currentState.Update();
-    public void ChangeState(PlayerState s) { _currentState.Exit(); _currentState = s; _currentState.Enter(); }
-}
-```
-
----
-
-## Template Method Pattern
-
-**This project's pattern: `UITKBaseClass` as base for all UI Toolkit views.**
-
-Defines the skeleton: `InitializeElements → RegisterCallbacks → UnregisterCallbacks → ShowPanel`.
-
-```csharp
-public abstract class UITKBaseClass : MonoBehaviour
-{
-    protected UIDocument _uiDocument;
-    protected VisualElement _rootVisualElement;
-
-    protected virtual void Awake()
-    {
-        _uiDocument = GetComponent<UIDocument>();
-        _rootVisualElement = _uiDocument.rootVisualElement;
-        InitializeElements();
-    }
-
-    protected virtual void OnEnable() => RegisterCallbacks();
-    protected virtual void OnDisable() => UnregisterCallbacks();
-
-    protected abstract void InitializeElements();
-    protected abstract void RegisterCallbacks();
-    protected abstract void UnregisterCallbacks();
-    public abstract void ShowPanel(bool show);
-}
-```
-
----
-
-## Singleton Pattern
-
-**This project's pattern (from `UIGameController.cs`):**
-
-```csharp
-public class UIGameController : MonoBehaviour
-{
-    private static UIGameController _instance;
-    public static UIGameController Instance
-    {
-        get { if (_instance == null) _instance = FindObjectOfType<UIGameController>(); return _instance; }
     }
 
     private void Awake()
     {
-        if (_instance != null && _instance != this) { Destroy(gameObject); return; }
+        if (_instance != null && _instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         _instance = this;
     }
 }
-
-// With DontDestroyOnLoad:
-public class AudioManager : MonoBehaviour
-{
-    private static AudioManager _instance;
-    // ... same pattern, add DontDestroyOnLoad(gameObject) in Awake
-}
 ```
 
----
-
-## Service Locator / Dependency Injection
-
-**This project's pattern:**
+### 🚫 Don't (Bad)
 
 ```csharp
-// Lightweight static registry
-public static class ServiceLocator
+// ❌ Violates Dependency Inversion (DIP) by coupling directly to concrete classes
+public class <CombatSystem> : MonoBehaviour
 {
-    private static readonly Dictionary<Type, object> _services = new();
-    public static void Register<T>(T service) where T : class => _services[typeof(T)] = service;
-    public static T Resolve<T>() where T : class => _services.TryGetValue(typeof(T), out object s) ? s as T
-        : throw new InvalidOperationException($"Service of type {typeof(T)} not registered.");
-    public static void Clear() => _services.Clear();
-}
-
-// Centralized registration
-public class DependencyInjector : MonoBehaviour
-{
-    [SerializeField] private GameResources _gameResources;
-    private void Awake() { ServiceLocator.Register(_gameResources); /* ... */ }
-    private void OnDestroy() => ServiceLocator.Clear();
-}
-
-// Consumer
-public class RecruitmentManager : MonoBehaviour
-{
-    private GameResources _gameResources;
-    private void Awake() => _gameResources = ServiceLocator.Resolve<GameResources>();
-}
-```
-
----
-
-## Composition over Inheritance
-
-**This project's approach: decompose GameObjects into focused components.**
-
-```
-GameObject: "MapTile_Farmland"
-├── MapTile                  — Population, happiness, taxation
-├── MapTileMilitary          — Recruitment pool, military strength
-├── MapTileBuildings         — Building slots, construction bonuses
-└── MapTileConstructionManager — Active construction logic
-```
-
-- Each component = single responsibility.
-- Wire via `GetComponent<T>()` in `Awake()`.
-- Add new concerns by adding components, not modifying existing classes.
-
----
-
-## Object Pooling
-
-> Canonical code example → [unity-code-style.md](unity-code-style.md#object-pooling). Performance rules → [unity-performance-optimization.md](unity-performance-optimization.md).
-
-For frequent spawn/despawn (bullets, particles, enemies):
-
-```csharp
-using UnityEngine.Pool;
-
-public class BulletPool : MonoBehaviour
-{
-    [SerializeField] private Bullet _bulletPrefab;
-    private ObjectPool<Bullet> _pool;
+    private ConcreteAudioPlayer _audioPlayer; // ❌ Tight coupling
 
     private void Awake()
     {
-        _pool = new ObjectPool<Bullet>(
-            createFunc: () => Instantiate(_bulletPrefab),
-            actionOnGet: bullet => bullet.gameObject.SetActive(true),
-            actionOnRelease: bullet => bullet.gameObject.SetActive(false),
-            actionOnDestroy: bullet => Destroy(bullet.gameObject),
-            defaultCapacity: 20, maxSize: 100
-        );
+        _audioPlayer = new ConcreteAudioPlayer();
     }
-
-    public Bullet GetFromPool() => _pool.Get();
-    public void ReturnToPool(Bullet bullet) => _pool.Release(bullet);
 }
 ```
 
-For collection reuse → `CollectionPool<T>`, `ListPool<T>`, `DictionaryPool<TKey, TValue>`.
-
----
-
-## Factory Pattern
-
-Centralize object creation with setup logic:
+### ✅ Do (Good)
 
 ```csharp
-public class EnemyFactory : MonoBehaviour
+// ✅ Complies with DIP: references service interface resolved from ServiceLocator
+public interface IAudioService
 {
-    [SerializeField] private GameObject _infantryPrefab, _cavalryPrefab, _archerPrefab;
+    void PlaySound(string <ClipName>);
+}
 
-    public GameObject CreateEnemy(UnitCategory category, Vector3 spawn)
+public class <CombatSystem> : MonoBehaviour
+{
+    private IAudioService _audioService;
+
+    private void Awake()
     {
-        GameObject prefab = category switch
-        {
-            UnitCategory.Infantry => _infantryPrefab,
-            UnitCategory.Cavalry  => _cavalryPrefab,
-            UnitCategory.Ranged   => _archerPrefab,
-            _ => throw new ArgumentException($"Unknown: {category}")
-        };
-        var enemy = Instantiate(prefab, spawn, Quaternion.identity);
-        enemy.name = $"{category}_{Time.frameCount}";
-        return enemy;
+        _audioService = ServiceLocator.Resolve<IAudioService>();
     }
 }
 ```
 
----
+## 5. Quick Reference & Decision Matrix
 
-## Command Pattern
-
-For undo/redo, action history, input replay:
-
-```csharp
-public interface ICommand { void Execute(); void Undo(); }
-
-public class MoveArmyCommand : ICommand
-{
-    private readonly ArmyController _army;
-    private readonly Vector3 _target, _previous;
-    public MoveArmyCommand(ArmyController army, Vector3 target) { _army = army; _target = target; _previous = army.transform.position; }
-    public void Execute() => _army.transform.position = _target;
-    public void Undo() => _army.transform.position = _previous;
-}
-
-public class CommandInvoker
-{
-    private readonly Stack<ICommand> _undoStack = new(), _redoStack = new();
-    public void ExecuteCommand(ICommand cmd) { cmd.Execute(); _undoStack.Push(cmd); _redoStack.Clear(); }
-    public void Undo() { if (_undoStack.Count == 0) return; var cmd = _undoStack.Pop(); cmd.Undo(); _redoStack.Push(cmd); }
-    public void Redo() { if (_redoStack.Count == 0) return; var cmd = _redoStack.Pop(); cmd.Execute(); _undoStack.Push(cmd); }
-}
-```
-
----
-
-## Strategy Pattern
-
-For interchangeable runtime behaviors (AI, movement, attack types):
-
-```csharp
-public interface IMovementStrategy { void Move(Transform t, Vector3 target, float speed); }
-public class DirectMovement : IMovementStrategy { public void Move(Transform t, Vector3 target, float speed) => t.position = Vector3.MoveTowards(t.position, target, speed * Time.deltaTime); }
-
-public class ArmyMovementController : MonoBehaviour
-{
-    private IMovementStrategy _strategy;
-    public void SetMovementStrategy(IMovementStrategy s) => _strategy = s;
-    private void Update() => _strategy?.Move(transform, _targetPosition, _moveSpeed);
-}
-```
+| Pattern               | Best Use Case                                                    | Location / File Suffix                 |
+| :-------------------- | :--------------------------------------------------------------- | :------------------------------------- |
+| Centralized Event Bus | Global decoupling of gameplay triggers (e.g. turns, selections)  | `StaticGameEvents.cs`                  |
+| Enum State Machine    | UI panel visibility control, simple state branching (<10 states) | `*Controller.cs`                       |
+| Class State Machine   | Complex character movement states, AI behavioral loops           | `*State.cs` & `*Controller.cs`         |
+| Template Method       | Base view initialization flow (UXML, USS binding lifecycle)      | `UITKBaseClass.cs`                     |
+| Service Locator       | Decoupling gameplay systems from runtime managers                | `ServiceLocator.cs`                    |
+| Composition           | Customizing GameObject logic dynamically                         | Separate components (e.g., `MapTile*`) |
+| Factory               | Hiding instantiation complexity and pre-configuring prefabs      | `*Factory.cs`                          |
+| Command               | Implementing undo/redo actions or input replays                  | `*Command.cs`                          |
+| Strategy              | Exchanging character algorithms or AI routines at runtime        | `I*Strategy.cs`                        |
