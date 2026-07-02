@@ -1,0 +1,153 @@
+using GooGalaxy.Runtime.Board.Models;
+using GooGalaxy.Runtime.Board.Utils;
+using NUnit.Framework;
+using UnityEngine;
+
+namespace GooGalaxy.Runtime.Tests.EditMode.Board
+{
+    [TestFixture]
+    public class HexMathUtilsTests
+    {
+        private const float Size = 1f;
+        private const float Tolerance = 0.0001f;
+
+        [Test]
+        public void ProjectToWorldSpace_Origin_ReturnsZero()
+        {
+            // GIVEN
+            var origin = new HexCoordinates(0, 0);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(origin, Size);
+
+            // THEN
+            Assert.AreEqual(Vector3.zero, result);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_YCoordinate_IsAlwaysZero()
+        {
+            // GIVEN
+            var coords = new HexCoordinates(2, -1);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(coords, Size);
+
+            // THEN
+            Assert.AreEqual(0f, result.y, Tolerance, "Y axis should always be 0 (XZ plane layout).");
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_East_CorrectPosition()
+        {
+            // GIVEN
+            var east = new HexCoordinates(1, 0);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(east, Size);
+
+            // THEN
+            Assert.AreEqual(1.5f, result.x, Tolerance);
+            Assert.AreEqual(Mathf.Sqrt(3f) * 0.5f, result.z, Tolerance);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_West_CorrectPosition()
+        {
+            // GIVEN
+            var west = new HexCoordinates(-1, 0);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(west, Size);
+
+            // THEN
+            Assert.AreEqual(-1.5f, result.x, Tolerance);
+            Assert.AreEqual(-Mathf.Sqrt(3f) * 0.5f, result.z, Tolerance);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_SouthEast_CorrectPosition()
+        {
+            // GIVEN
+            var se = new HexCoordinates(0, 1);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(se, Size);
+
+            // THEN
+            Assert.AreEqual(0f, result.x, Tolerance);
+            Assert.AreEqual(Mathf.Sqrt(3f), result.z, Tolerance);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_NorthEast_CorrectPosition()
+        {
+            // GIVEN
+            var ne = new HexCoordinates(1, -1);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(ne, Size);
+
+            // THEN
+            Assert.AreEqual(1.5f, result.x, Tolerance);
+            Assert.AreEqual(-Mathf.Sqrt(3f) * 0.5f, result.z, Tolerance);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_NorthWest_CorrectPosition()
+        {
+            // GIVEN
+            var nw = new HexCoordinates(0, -1);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(nw, Size);
+
+            // THEN
+            Assert.AreEqual(0f, result.x, Tolerance);
+            Assert.AreEqual(-Mathf.Sqrt(3f), result.z, Tolerance);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_SouthWest_CorrectPosition()
+        {
+            // GIVEN
+            var sw = new HexCoordinates(-1, 1);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(sw, Size);
+
+            // THEN
+            Assert.AreEqual(-1.5f, result.x, Tolerance);
+            Assert.AreEqual(Mathf.Sqrt(3f) * 0.5f, result.z, Tolerance);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_SizeZero_ReturnsZero()
+        {
+            // GIVEN
+            var coords = new HexCoordinates(3, -1);
+
+            // WHEN
+            Vector3 result = HexMathUtils.ProjectToWorldSpace(coords, 0f);
+
+            // THEN
+            Assert.AreEqual(Vector3.zero, result);
+        }
+
+        [Test]
+        public void ProjectToWorldSpace_ScalesWithSize()
+        {
+            // GIVEN
+            var east = new HexCoordinates(1, 0);
+            float size2 = 2f;
+
+            // WHEN
+            Vector3 result1 = HexMathUtils.ProjectToWorldSpace(east, Size);
+            Vector3 result2 = HexMathUtils.ProjectToWorldSpace(east, size2);
+
+            // THEN
+            Assert.AreEqual(result1.x * size2, result2.x, Tolerance);
+            Assert.AreEqual(result1.z * size2, result2.z, Tolerance);
+        }
+    }
+}

@@ -102,5 +102,56 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             // THEN
             Assert.AreEqual(rawId, toStringResult);
         }
+
+        [Test]
+        public void Equals_BoxedObject_SameValue_ReturnsTrue()
+        {
+            // GIVEN
+            var id1 = new CardId("card_a");
+            object boxed = new CardId("card_a");
+
+            // WHEN
+            bool result = id1.Equals(boxed);
+
+            // THEN
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void Equals_BoxedObject_WrongType_ReturnsFalse()
+        {
+            // GIVEN
+            var id = new CardId("card_a");
+
+            // WHEN
+            bool result = id.Equals("card_a");
+
+            // THEN
+            Assert.IsFalse(result);
+        }
+
+        [Test]
+        public void Equals_Empty_And_Default_AreEqual()
+        {
+            // GIVEN
+            CardId empty = CardId.Empty;
+            var defaultId = default(CardId);
+
+            // THEN
+            Assert.AreEqual(empty, defaultId);
+            Assert.IsTrue(empty == defaultId);
+        }
+
+        [Test]
+        public void Equals_CaseSensitive_DifferentCase_NotEqual()
+        {
+            // GIVEN
+            var upper = new CardId("CardABC");
+            var lower = new CardId("cardabc");
+
+            // THEN
+            Assert.AreNotEqual(upper, lower);
+            Assert.IsFalse(upper == lower);
+        }
     }
 }

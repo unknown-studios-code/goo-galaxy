@@ -12,6 +12,7 @@
   "references": [
     "GooGalaxy.Runtime.Shared",
     "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Core",
     "VContainer",
     "UnityEngine.TestRunner"
   ],
