@@ -31,10 +31,11 @@ type(scope): subject
 - **type** is mandatory and lowercase.
 - **scope** is mandatory, lowercase, and must describe the affected area.
 - **subject** is mandatory, lowercase, imperative, and must not end with a period.
-- Subject must be under 72 characters.
+- **subject** must be under 72 characters.
 - **body** is mandatory and must explain what changed and why.
 - **organized sections** with bullet points are mandatory.
-- Separate subject, body, and footers with blank lines.
+- Separate **subject**, **body**, and **footers** with blank lines.
+- All lines must be wrapped at 72 characters.
 
 ## Allowed Types
 
@@ -85,7 +86,6 @@ Every commit message must contain a body explaining what changed and why.
 Body rules:
 
 - Leave one blank line after the subject.
-- Wrap lines at 72 characters.
 - Explain what changed and why.
 - Start bullet points with uppercase if used in the main body.
 - Do not repeat the subject.
@@ -226,7 +226,8 @@ Before returning a commit message or creating a commit, verify:
 - Scope is present and matches the affected Goo Galaxy module or subsystem.
 - Subject is imperative, lowercase, specific, and has no period.
 - Subject is under 72 characters.
-- Body is present, explains what and why, and lines wrap at 72 characters.
+- Body is present and explains what and why
+- All lines wrapped at 72 characters.
 - At least one organized section with bullet points is present.
 - Footer only uses `Implements`, `Part of`, or `Related`.
 - Automated commits use `HUSKY=0`.

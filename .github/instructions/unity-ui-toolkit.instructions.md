@@ -1,8 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/UI/**/*.uxml"
-  - "Assets/UI/**/*.uss"
+description: "Use when writing Unity UI Toolkit code, UXML, or USS. Covers USS/CSS differences, BEM naming, data binding, MVP pattern, custom elements, and ListView usage."
+applyTo: "Assets/Scripts/**/*.cs, Assets/UI/**/*.uxml, Assets/UI/**/*.uss"
 ---
 
 # Unity UI Toolkit Reference
@@ -13,9 +11,9 @@ This document defines coding, styling, and architectural rules for designing, bi
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard event subscription syntax and general C# naming)
-- **Design Patterns** → [unity-design-patterns.md](unity-design-patterns.md) (Template Method pattern, singletons, and MVP architecture details)
-- **Performance Optimization** → [unity-performance-optimization.md](unity-performance-optimization.md) (Caching visual element references and preventing update-loop allocations)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Standard event subscription syntax and general C# naming)
+- **Design Patterns** → [unity-design-patterns.instructions.md](unity-design-patterns.instructions.md) (Template Method pattern, singletons, and MVP architecture details)
+- **Performance Optimization** → [unity-performance-optimization.instructions.md](unity-performance-optimization.instructions.md) (Caching visual element references and preventing update-loop allocations)
 
 ## 3. Core Rules
 

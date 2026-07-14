@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when writing or reviewing Unity C# classes, MonoBehaviours, ScriptableObjects, structs, records, interfaces, or enums. Covers strict member ordering conventions."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Unity Class Organization
@@ -11,9 +11,9 @@ This file establishes a strict and predictable member layout ordering for all C#
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Align fields and property naming conventions with class member layout)
-- **Debugging** → [unity-debugging.md](unity-debugging.md) (Verify script execution and lifecycle initialization order)
-- **Design Patterns** → [unity-design-patterns.md](unity-design-patterns.md) (Apply consistent layouts to components and patterns)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Align fields and property naming conventions with class member layout)
+- **Debugging** → [unity-debugging.instructions.md](unity-debugging.instructions.md) (Verify script execution and lifecycle initialization order)
+- **Design Patterns** → [unity-design-patterns.instructions.md](unity-design-patterns.instructions.md) (Apply consistent layouts to components and patterns)
 
 ## 3. Core Rules
 

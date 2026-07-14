@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when designing systems or writing Unity C# code that applies architectural patterns. Covers Observer, State, Template Method, Singleton, Service Locator, Composition, Factory, Command, and Strategy."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Design Patterns for Unity
@@ -11,9 +11,9 @@ This document outlines structural, behavioral, and architectural patterns approv
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Align naming and event subscription syntax with these patterns)
-- **Performance Optimization** → [unity-performance-optimization.md](unity-performance-optimization.md) (Minimize allocations when implementing patterns)
-- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (Apply Template Method and MVP patterns in UI layouts)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Align naming and event subscription syntax with these patterns)
+- **Performance Optimization** → [unity-performance-optimization.instructions.md](unity-performance-optimization.instructions.md) (Minimize allocations when implementing patterns)
+- **UI Toolkit** → [unity-ui-toolkit.instructions.md](unity-ui-toolkit.instructions.md) (Apply Template Method and MVP patterns in UI layouts)
 
 ## 3. Core Rules
 

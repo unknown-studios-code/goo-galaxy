@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# Goo Galaxy — Copilot Instructions
 
 ## Project
 
@@ -8,7 +6,7 @@ Goo Galaxy — real-time PvP mobile strategy game (Unity 6.3.4f1 LTS, URP 17.3).
 
 ## Project Skills
 
-Project-specific Claude Code skills in `.claude/skills/`:
+Project-specific skills live in `.github/skills/`:
 
 - `commit-messages` — Conventional Commits formatting with tracker footers
 - `pull-requests` — PR creation with template bodies and label assignment
@@ -32,7 +30,7 @@ Assets/Scripts/Runtime/
 
 Each Runtime folder is a separate `.asmdef` assembly (`GooGalaxy.Runtime.<Feature>`), created on demand when a feature needs code. Future features (match orchestration, card logic, HUD, etc.) are scaffolded when needed, not pre-allocated. Editor tooling lives under `Assets/Editor/` with its own assemblies (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows).
 
-**Key patterns** (detailed in `.claude/rules/unity-design-patterns.md`):
+**Key patterns** (detailed in [unity-design-patterns.instructions.md](instructions/unity-design-patterns.instructions.md)):
 
 - **StaticGameEvents** — centralized static event bus (Observer)
 - **UITKBaseClass** — Template Method base for all UI Toolkit views (MVP pattern)
@@ -51,17 +49,18 @@ Each Runtime folder is a separate `.asmdef` assembly (`GooGalaxy.Runtime.<Featur
 
 ## Design & Code Conventions
 
-**All detailed rules are in `.claude/rules/` — read them before writing C#:**
+**All detailed rules are in `.github/instructions/` — they auto-apply when editing `Assets/Scripts/**/\*.cs`:\*\*
 
-| Rule file                           | Covers                                                                                                |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `unity-code-style.md`               | Formatting, naming, class organization, braces, fields, methods, async, pooling                       |
-| `unity-code-documentation.md`       | XML comments rules, Unity inspector tooltips, self-documenting code, inline comments                  |
-| `unity-design-patterns.md`          | Observer, State, Template Method, Singleton, Service Locator, Composition, Factory, Command, Strategy |
-| `unity-performance-optimization.md` | Update loop rules, allocation avoidance, caching, physics, rendering, LINQ ban                        |
-| `unity-debugging.md`                | Diagnostic priority, null refs, lifecycle, Input System, physics, animation                           |
-| `unity-ui-toolkit.md`               | USS/CSS differences, BEM, data binding, MVP, custom elements, ListView                                |
-| `unity-project-configuration.md`    | Domain reload, Burst, asset presets, URP tiers, asmdefs                                               |
+| Instructions file                                | Covers                                                                                                |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `unity-code-style.instructions.md`               | Formatting, naming, class organization, braces, fields, methods, async, pooling                       |
+| `unity-code-documentation.instructions.md`       | XML comments rules, Unity inspector tooltips, self-documenting code, inline comments                  |
+| `unity-class-organization.instructions.md`       | Strict member ordering for classes, MonoBehaviours, ScriptableObjects, structs, records, interfaces   |
+| `unity-design-patterns.instructions.md`          | Observer, State, Template Method, Singleton, Service Locator, Composition, Factory, Command, Strategy |
+| `unity-performance-optimization.instructions.md` | Update loop rules, allocation avoidance, caching, physics, rendering, LINQ ban                        |
+| `unity-debugging.instructions.md`                | Diagnostic priority, null refs, lifecycle, Input System, physics, animation                           |
+| `unity-ui-toolkit.instructions.md`               | USS/CSS differences, BEM, data binding, MVP, custom elements, ListView                                |
+| `unity-project-configuration.instructions.md`    | Domain reload, Burst, asset presets, URP tiers, asmdefs                                               |
 
 Quick hits:
 
@@ -71,7 +70,7 @@ Quick hits:
 - **No LINQ in hot paths**, no `Camera.main` every frame
 - **`Awaitable` Async suffix**, coroutines `Co` suffix
 - **Early returns** over nested `if`
-- **XML Documentation** — write XML comments only for interfaces, abstract members, cross-assembly public APIs, and generic utilities/extensions (see [unity-code-documentation.md](.claude/rules/unity-code-documentation.md))
+- **XML Documentation** — write XML comments only for interfaces, abstract members, cross-assembly public APIs, and generic utilities/extensions (see [unity-code-documentation.instructions.md](instructions/unity-code-documentation.instructions.md))
 - **Testing Pattern** — all tests must follow the GIVEN-WHEN-THEN structure using `// GIVEN`, `// WHEN`, and `// THEN` comments
 
 ## Gotchas

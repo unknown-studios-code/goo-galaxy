@@ -14,13 +14,15 @@ namespace GooGalaxy.Runtime.Energy.Presenters
     {
         [Header("Match Setup")]
         [Tooltip(
-            "The starting energy configuration for Player 1. MaxEnergy is the ceiling, RegenRate is energy per second, and StartingEnergy is the initial amount."
+            "The starting energy configuration for Player 1.\n"
+                + "MaxEnergy is the ceiling, RegenRate is energy per second, and StartingEnergy is the initial amount."
         )]
         [SerializeField]
         private EnergyConfig _playerOneConfig = new(10f, 1f / 2.8f, 5f);
 
         [Tooltip(
-            "The starting energy configuration for Player 2. MaxEnergy is the ceiling, RegenRate is energy per second, and StartingEnergy is the initial amount (includes Komi bonus)."
+            "The starting energy configuration for Player 2.\n"
+                + "MaxEnergy is the ceiling, RegenRate is energy per second, and StartingEnergy is the initial amount (includes Komi bonus)."
         )]
         [SerializeField]
         private EnergyConfig _playerTwoConfig = new(10f, 1f / 2.8f, 5.5f);

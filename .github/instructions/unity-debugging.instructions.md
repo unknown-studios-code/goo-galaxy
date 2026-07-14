@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when debugging or troubleshooting Unity C# code. Covers diagnostic priority, null references, lifecycle timing, Input System, physics, animation, and async pitfalls."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Unity Debugging Guide
@@ -11,9 +11,9 @@ This document provides a systematic approach to diagnostics, debugging, and trou
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard lifecycle methods, event subscription syntax, and Awaitable rules)
-- **Performance Optimization** → [unity-performance-optimization.md](unity-performance-optimization.md) (CPU/GPU profiling and garbage reduction)
-- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (Debugging elements, picking modes, and USS bindings)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Standard lifecycle methods, event subscription syntax, and Awaitable rules)
+- **Performance Optimization** → [unity-performance-optimization.instructions.md](unity-performance-optimization.instructions.md) (CPU/GPU profiling and garbage reduction)
+- **UI Toolkit** → [unity-ui-toolkit.instructions.md](unity-ui-toolkit.instructions.md) (Debugging elements, picking modes, and USS bindings)
 
 ## 3. Core Rules
 

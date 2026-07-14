@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when documenting Unity C# code. Covers XML comment rules, Unity inspector tooltips, self-documenting code, and inline comment conventions."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Unity Code Documentation
@@ -11,8 +11,8 @@ This document defines rules for documenting C# code in the codebase. It aims to 
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Verify naming conventions and general class layout)
-- **Debugging** → [unity-debugging.md](unity-debugging.md) (Understand assertion patterns and error logging)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Verify naming conventions and general class layout)
+- **Debugging** → [unity-debugging.instructions.md](unity-debugging.instructions.md) (Understand assertion patterns and error logging)
 
 ## 3. Core Rules
 

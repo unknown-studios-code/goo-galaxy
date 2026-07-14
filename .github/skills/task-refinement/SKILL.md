@@ -17,7 +17,7 @@ Your objective is to ensure that all tasks, especially technical ones, strictly 
 
 When asked to create or refine a task, story, or epic, you must execute the following steps in order:
 
-1. **Architectural & Design Context** — Scan and read relevant Game Design Documents in the `.docs/GDD/` directory to understand the intended mechanics. Then, read the project's architectural guidelines and constraints in the `.claude/rules/` directory.
+1. **Architectural & Design Context** — Scan and read relevant Game Design Documents in the `.docs/GDD/` directory to understand the intended mechanics. Then, read the project's architectural guidelines and constraints in the `.github/instructions/` directory.
 2. **Template Selection** — Determine the right template from what the user describes (see table below).
 3. **Read the template** — Always read the chosen template file from `templates/` first. Do not work from memory.
 4. **Gather context** — Ask the user for details that fill each required section. Break the task down into actionable, granular technical sub-tasks or implementation steps.
@@ -109,7 +109,7 @@ Every task should include, when applicable:
 
 Before presenting the final document, verify:
 
-- `docs/GDD/` and `.claude/rules/` were consulted.
+- `docs/GDD/` and `.github/instructions/` were consulted.
 - The technical design correctly applies GameObjects/MonoBehaviours, SOLID principles, and the MVP pattern.
 - Template structure is followed (not copy-pasted placeholders).
 - File paths respect the existing `Assets` project structure (sub-folders are allowed if nested correctly).

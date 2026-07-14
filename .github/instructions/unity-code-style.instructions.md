@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when writing or reviewing Unity C# code. Covers formatting, naming, braces, fields, properties, methods, events, async, pooling, and file conventions."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Unity C# Code Style
@@ -11,11 +11,11 @@ This document defines the C# style, formatting, naming, and architectural conven
 
 ## 2. Cross-References
 
-- **Class Organization** → [unity-class-organization.md](unity-class-organization.md) (Detailed member layout rules for types)
-- **Code Documentation** → [unity-code-documentation.md](unity-code-documentation.md) (XML, tooltip, and comment rules)
-- **Debugging** → [unity-debugging.md](unity-debugging.md) (Standard practices for assertions and diagnostics)
-- **Performance Optimization** → [unity-performance-optimization.md](unity-performance-optimization.md) (Banned patterns in update loops and hot paths)
-- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (Style and naming conventions specific to UI systems)
+- **Class Organization** → [unity-class-organization.instructions.md](unity-class-organization.instructions.md) (Detailed member layout rules for types)
+- **Code Documentation** → [unity-code-documentation.instructions.md](unity-code-documentation.instructions.md) (XML, tooltip, and comment rules)
+- **Debugging** → [unity-debugging.instructions.md](unity-debugging.instructions.md) (Standard practices for assertions and diagnostics)
+- **Performance Optimization** → [unity-performance-optimization.instructions.md](unity-performance-optimization.instructions.md) (Banned patterns in update loops and hot paths)
+- **UI Toolkit** → [unity-ui-toolkit.instructions.md](unity-ui-toolkit.instructions.md) (Style and naming conventions specific to UI systems)
 
 ## 3. Core Rules
 

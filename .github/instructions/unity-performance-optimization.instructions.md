@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when writing performance-sensitive Unity C# code. Covers update loop rules, allocation avoidance, caching, physics, rendering, and the LINQ ban."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Unity Performance Optimization
@@ -11,9 +11,9 @@ This document defines performance optimization rules and constraints. Its primar
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard object pooling syntax and collection initialization rules)
-- **Debugging** → [unity-debugging.md](unity-debugging.md) (Programmatic profiling and runtime diagnostic metrics)
-- **UI Toolkit** → [unity-ui-toolkit.md](unity-ui-toolkit.md) (UI rendering efficiency, pooling, and binding optimizations)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Standard object pooling syntax and collection initialization rules)
+- **Debugging** → [unity-debugging.instructions.md](unity-debugging.instructions.md) (Programmatic profiling and runtime diagnostic metrics)
+- **UI Toolkit** → [unity-ui-toolkit.instructions.md](unity-ui-toolkit.instructions.md) (UI rendering efficiency, pooling, and binding optimizations)
 
 ## 3. Core Rules
 

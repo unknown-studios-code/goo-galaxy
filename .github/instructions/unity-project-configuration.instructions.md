@@ -1,6 +1,6 @@
 ---
-paths:
-  - "Assets/Scripts/**/*.cs"
+description: "Use when configuring Unity project settings or writing code affected by domain reload. Covers Enter Play Mode, static field resets, Burst, asset presets, URP tiers, and asmdefs."
+applyTo: "Assets/Scripts/**/*.cs"
 ---
 
 # Unity Project Configuration
@@ -11,8 +11,8 @@ This document defines standard project settings, editor preferences, and compila
 
 ## 2. Cross-References
 
-- **Code Style** → [unity-code-style.md](unity-code-style.md) (Standard practices for classes and ScriptableObjects)
-- **Debugging** → [unity-debugging.md](unity-debugging.md) (Checking runtime initialization issues)
+- **Code Style** → [unity-code-style.instructions.md](unity-code-style.instructions.md) (Standard practices for classes and ScriptableObjects)
+- **Debugging** → [unity-debugging.instructions.md](unity-debugging.instructions.md) (Checking runtime initialization issues)
 
 ## 3. Core Rules
 
