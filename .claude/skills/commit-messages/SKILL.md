@@ -56,7 +56,7 @@ type(scope): subject
 
 Use the scope that matches the affected project area:
 
-`bootstrap`, `board`, `cards`, `hud`, `input`, `match`, `networking`,
+`bootstrap`, `board`, `cards`, `energy`, `hud`, `input`, `match`, `networking`,
 `progression`, `shared`, `tests`, `docs`, `build`, `ci`
 
 If none of these fit, choose the smallest clear subsystem name and keep it

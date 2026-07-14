@@ -6,20 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Goo Galaxy — real-time PvP mobile strategy game (Unity 6.3.4f1 LTS, URP 17.3). Hex-grid territorial domination (Ataxx/Heggagon-style) with asymmetrical deck-building and specimen deployment. Sentient alien slime sci-fi theme. Targets iOS and Android via IL2CPP.
 
-## Commands
-
-```bash
-npm run check              # Run all formatters in check mode
-npm run format             # Auto-format everything
-npm run check:csharpier    # C# formatting check only
-npm run check:dotnet       # .NET formatting + analyzers check
-npm run check:prettier     # JSON/MD/YAML formatting check
-```
-
-Formatting is enforced in CI. Run `npm run format` before commits.
-
-`npm run prepare` (auto-runs on `npm install`) restores dotnet tools and sets up Husky hooks.
-
 ## Project Skills
 
 Project-specific Claude Code skills in `.claude/skills/`:
@@ -92,7 +78,6 @@ Quick hits:
 
 - **`.slnx`** — new .NET XML solution format; some IDE versions and external tools don't recognize it. If tooling complains, open the `.slnx` directly.
 - **Husky** — git hooks managed by Husky. If commits fail on format checks, run `npm run format` and retry.
-- **`dotnet tool restore`** — runs via `npm run prepare`. If `dotnet format` or `dotnet csharpier` fail with "tool not found," run it manually.
 
 ## Conventional Commits
 

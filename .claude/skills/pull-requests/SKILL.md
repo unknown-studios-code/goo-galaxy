@@ -55,7 +55,7 @@ Rules:
 - **type** is mandatory and lowercase: `feat`, `fix`, `docs`, `style`,
   `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 - **scope** is mandatory, lowercase, and from the Goo Galaxy scope list:
-  `bootstrap`, `board`, `cards`, `hud`, `input`, `match`, `networking`,
+  `bootstrap`, `board`, `cards`, `energy`, `hud`, `input`, `match`, `networking`,
   `progression`, `shared`, `tests`, `docs`, `build`, `ci`
 - **subject** is mandatory, lowercase, imperative, no period, under 72 chars
 

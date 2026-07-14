@@ -1,0 +1,16 @@
+{
+  "name": "GooGalaxy.Runtime.Energy",
+  "rootNamespace": "GooGalaxy.Runtime.Energy",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

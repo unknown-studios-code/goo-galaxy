@@ -1,4 +1,5 @@
 ﻿<Solution>
+  <Project Path="GooGalaxy.Runtime.Energy.csproj" />
   <Project Path="GooGalaxy.Tests.PlayMode.csproj" />
   <Project Path="GooGalaxy.Runtime.Tests.EditMode.csproj" />
   <Project Path="GooGalaxy.Runtime.Core.csproj" />
