@@ -8,7 +8,7 @@ namespace GooGalaxy.Runtime.Energy.Services
     public static class EnergyRegenerator
     {
         /// <summary>
-        /// Calculates the new energy value after a elapsed time delta.
+        /// Calculates the new energy value after an elapsed time delta.
         /// </summary>
         /// <param name="currentEnergy">The current energy value.</param>
         /// <param name="deltaTime">The time passed in seconds.</param>

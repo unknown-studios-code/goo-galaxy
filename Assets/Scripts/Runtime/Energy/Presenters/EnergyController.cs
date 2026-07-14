@@ -39,10 +39,14 @@ namespace GooGalaxy.Runtime.Energy.Presenters
                 float oldEnergy = state.CurrentEnergy;
                 float newEnergy = EnergyRegenerator.Tick(oldEnergy, Time.deltaTime, state.EffectiveRegenRate, state.Config.MaxEnergy);
 
-                if (MathF.Abs(newEnergy - oldEnergy) > 0.0001f)
+                if (newEnergy != oldEnergy)
                 {
                     state.SetEnergy(newEnergy);
-                    StaticGameEvents.OnEnergyChanged(playerId, state.CurrentEnergy);
+
+                    if (MathF.Abs(newEnergy - oldEnergy) > 0.0001f)
+                    {
+                        StaticGameEvents.OnEnergyChanged(playerId, state.CurrentEnergy);
+                    }
                 }
             }
         }

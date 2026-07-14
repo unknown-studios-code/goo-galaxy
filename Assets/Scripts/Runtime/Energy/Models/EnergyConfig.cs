@@ -1,12 +1,13 @@
 using System;
+using UnityEngine;
 
 namespace GooGalaxy.Runtime.Energy.Models
 {
     /// <summary>
-    /// Immutable configuration parameters for a player's energy system in a match.
+    /// Configuration parameters for a player's energy system in a match.
     /// </summary>
     [Serializable]
-    public readonly struct EnergyConfig
+    public struct EnergyConfig
     {
         /// <summary>
         /// The fixed energy cost for the Sample Purge discard mechanic.
@@ -29,16 +30,19 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// <summary>
         /// The maximum energy a player can store.
         /// </summary>
-        public float MaxEnergy { get; }
+        [field: SerializeField]
+        public float MaxEnergy { get; private set; }
 
         /// <summary>
         /// The base energy regeneration rate per second.
         /// </summary>
-        public float RegenRate { get; }
+        [field: SerializeField]
+        public float RegenRate { get; private set; }
 
         /// <summary>
         /// The starting energy of the player.
         /// </summary>
-        public float StartingEnergy { get; }
+        [field: SerializeField]
+        public float StartingEnergy { get; private set; }
     }
 }
