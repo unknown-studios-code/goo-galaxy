@@ -5,10 +5,10 @@
     "*.slnx": "*.csproj"
   },
   "files.associations": {
-    "*.asset": "yaml",
-    "*.meta": "yaml",
-    "*.prefab": "yaml",
-    "*.unity": "yaml"
+    "*.asset": "plaintext",
+    "*.meta": "plaintext",
+    "*.prefab": "plaintext",
+    "*.unity": "plaintext"
   },
   "files.exclude": {
     "**/.DS_Store": true,

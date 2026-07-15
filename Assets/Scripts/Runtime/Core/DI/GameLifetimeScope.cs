@@ -10,10 +10,8 @@ namespace GooGalaxy.Runtime.Core.DI
     /// </summary>
     public class GameLifetimeScope : LifetimeScope
     {
-        // Configures container bindings by registering types and existing components to the container.
         protected override void Configure(IContainerBuilder builder)
         {
-            // Register systems and services explicitly here:
             builder.RegisterComponentInHierarchy<GridPresenter>().AsSelf();
         }
     }

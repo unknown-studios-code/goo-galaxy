@@ -1,0 +1,259 @@
+---
+name: pull-requests
+description: >-
+  Create, draft, and manage GitHub pull requests for Goo Galaxy following the
+  project's PR workflow — Conventional Commits titles, template-driven bodies,
+  label assignment, and Notion task sync. Use whenever the user asks to create
+  a PR, open a pull request, draft a PR, or mentions pull requests — even if
+  they don't explicitly mention the workflow or conventions. Also use when the
+  user wants to update PR labels, title, or body.
+---
+
+# Goo Galaxy Pull Requests
+
+When creating or managing a pull request for this repository, follow the
+workflow below. The goal is to produce a reviewer-ready PR with a
+Conventional Commits title, a structured body from the project template,
+appropriate labels, and synced Notion task metadata.
+
+## Workflow
+
+Follow these steps in order when creating a PR:
+
+1. **Identify context** — Determine the current branch, target branch (usually
+   `main`), and any task/story IDs (GOOT, GOOM, GOOS, GOOE).
+2. **Fetch Notion data** — Use Notion MCP search to look up the task and
+   parent story by their IDs. Pull the task name, priority, type, acceptance
+   criteria (Definition of Done), and page URL.
+3. **Generate the title** — Format as `type(scope): subject` using the rules
+   in the Title Format section below.
+4. **Read the template** — Read `templates/pr-template.md` and use it
+   as the body structure.
+5. **Build the body** — Fill in the template with Notion data and concrete
+   details (see Body Generation below).
+6. **Assign labels** — Select 3–5 labels based on type, priority, context, and
+   optional status (see Label Assignment below).
+7. **Create the PR** — Use **GitHub MCP first** (`create_pull_request`),
+   targeting `main`. Fall back to `gh pr create` only if GitHub MCP is
+   unavailable or fails. Always note which method was used and why if falling
+   back.
+8. **Apply labels** — Use **GitHub MCP first** to add labels. Fall back to
+   `gh pr edit` if needed.
+9. **Update Notion** — Use Notion MCP to update the task page with the branch
+   name (`Branch` property) and PR URL (`Pull Request` property).
+
+## Title Format
+
+PR titles follow the same Conventional Commits format as commit messages:
+
+```
+type(scope): subject
+```
+
+Rules:
+
+- **type** is mandatory and lowercase: `feat`, `fix`, `docs`, `style`,
+  `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+- **scope** is mandatory, lowercase, and from the Goo Galaxy scope list:
+  `bootstrap`, `board`, `cards`, `energy`, `hud`, `input`, `match`, `networking`,
+  `progression`, `shared`, `tests`, `docs`, `build`, `ci`
+- **subject** is mandatory, lowercase, imperative, no period, under 72 chars
+
+## Body Generation
+
+Use `templates/pr-template.md` as the structural source. Fill in every
+section with real data, never leaving placeholders.
+
+### Template Section Selection
+
+Choose exactly one task-type section based on the work:
+
+| Section                    | Use for                                                   |
+| :------------------------- | :-------------------------------------------------------- |
+| **Feature Additions**      | New features, user-facing behavior, integrations          |
+| **Technical Improvements** | Refactors, optimizations, architecture, tooling, delivery |
+| **Bug Fix Details**        | Bug fixes and regressions                                 |
+
+Delete the two unused sections — only one remains in the final body.
+
+### What Changed
+
+Write a concise, high-level summary focused on reviewer outcomes — what
+changed and why it matters. Do not write a commit-by-commit changelog.
+
+### Key Technical Decisions
+
+Include this section when the PR changes architecture, flow, tooling,
+networking, or any non-obvious implementation choice. For each decision,
+explain the rationale — not just what was done, but why that approach was
+chosen.
+
+### Files Section
+
+Group changes under real Goo Galaxy paths:
+
+| Path                                  | Domain      |
+| :------------------------------------ | :---------- |
+| `Assets/Scripts/Runtime/Board/`       | Board       |
+| `Assets/Scripts/Runtime/Cards/`       | Cards       |
+| `Assets/Scripts/Runtime/HUD/`         | HUD         |
+| `Assets/Scripts/Runtime/Input/`       | Input       |
+| `Assets/Scripts/Runtime/Match/`       | Match       |
+| `Assets/Scripts/Runtime/Networking/`  | Networking  |
+| `Assets/Scripts/Runtime/Progression/` | Progression |
+| `Assets/Scripts/Runtime/Bootstrap/`   | Bootstrap   |
+| `Assets/Scripts/Runtime/Shared/`      | Shared      |
+| `Assets/Scripts/Tests/EditMode/`      | Edit tests  |
+| `Assets/Scripts/Tests/PlayMode/`      | Play tests  |
+| `Assets/Data/`                        | Data        |
+| `Assets/Prefabs/`                     | Prefabs     |
+| `Assets/Scenes/`                      | Scenes      |
+| `Assets/Settings/`                    | Settings    |
+| `Assets/Editor/`                      | Editor      |
+
+Do not fabricate old folder structures or architecture buckets that do not
+exist in this repository.
+
+### Definition of Done
+
+Copy real acceptance criteria from Notion MCP whenever available. Mark items
+as completed (`[x]`) only when the work is actually done. If the task is not
+complete, use a draft PR or stop and ask before generating a misleading
+checklist.
+
+### References
+
+Always include:
+
+- The Notion task link (when available)
+- The Notion story link (when available)
+- Relevant documentation under `.docs/GDD/` when it helps reviewers
+
+If the PR touches networking, sessions, or multiplayer, reference
+`.docs/GDD/08_Technical_Architecture_and_Multiplayer.md`.
+
+## Task and Story IDs
+
+| Prefix | Meaning          | Usage                                   |
+| :----- | :--------------- | :-------------------------------------- |
+| `GOOE` | Epic identifier  | References only when genuinely relevant |
+| `GOOS` | Story identifier | Parent story in PR header               |
+| `GOOT` | Standard task    | Task header in PR body                  |
+| `GOOM` | MVP task         | Task header in PR body                  |
+
+Rules:
+
+- Use `GOOT` or `GOOM` in the PR task header.
+- Use `GOOS` for the parent story.
+- If no task or story ID is available, ask before inventing references.
+- If identifiers don't match expected patterns, ask whether the convention
+  should be updated.
+
+## Notion MCP Integration
+
+When a PR references Notion-tracked work:
+
+- **Before creating the PR:** Search for the task by ID, fetch its name,
+  priority, type, and acceptance criteria. Fetch the parent story for context.
+- **After creating the PR:** Update the task page with the branch name and PR
+  URL using the `Branch` (text) and `Pull Request` (URL) properties.
+- **Epic context:** Only fetch epic-level context when it materially helps
+  reviewers understand the change.
+
+If Notion data is unavailable, say the PR body is a draft missing synced task
+metadata — do not invent task details.
+
+## Label Assignment
+
+Assign 3 to 5 labels. If the repository labels do not exist exactly as listed,
+use the closest available ones and note the discrepancy.
+
+### Label Categories
+
+**Type (1 required):**
+
+`type: feat`, `type: fix`, `type: docs`, `type: style`, `type: refactor`,
+`type: perf`, `type: test`, `type: build`, `type: ci`, `type: chore`,
+`type: revert`
+
+**Priority (1 required):**
+
+`priority: critical`, `priority: high`, `priority: medium`, `priority: low`
+
+Source: task priority from Notion MCP. Fallback: `priority: medium`.
+
+**Context (1–2):**
+
+| Category       | Labels                                                                                   |
+| :------------- | :--------------------------------------------------------------------------------------- |
+| Domain         | `domain: board`, `domain: cards`, `domain: match`, `domain: progression`                 |
+| Client         | `client: hud`, `client: input`, `client: audio`                                          |
+| Platform       | `platform: networking`, `platform: bootstrap`, `platform: shared`, `platform: rendering` |
+| Infrastructure | `infra: build`, `infra: ci`, `infra: tests`, `infra: docs`                               |
+
+**Status (optional, at most 1):**
+
+`status: blocked`, `status: in progress`, `status: needs review`,
+`status: needs testing`
+
+### Selection Rules
+
+- Always assign 1 type label and 1 priority label.
+- Add 1 or 2 context labels based on the main affected area.
+- Add at most 1 status label, only when it materially helps reviewers.
+
+## GitHub Operations
+
+### Primary: GitHub MCP
+
+Use GitHub MCP tools for all PR operations:
+
+- `create_pull_request` — create the PR
+- `update_pull_request` — update title, body, state, reviewers
+- `list_pull_requests` / `pull_request_read` — read PR details
+
+GitHub MCP operates directly against the GitHub API with full authenticated
+access.
+
+### Fallback: GitHub CLI
+
+Only use `gh` CLI when GitHub MCP is unavailable or returns an error:
+
+- `gh pr create` — create the PR, passing `--base`, `--head`, `--title`, and
+  `--body-file` explicitly
+- `gh pr edit` — update labels, title, or body after creation
+
+Always log which method was used and why the primary method was skipped.
+
+## Body Writing Rules
+
+- Write in English only.
+- Remove all placeholders and instructional markers from the template.
+- Select exactly one task-type section (Feature, Tech, or Bug).
+- Summarize reviewer-relevant outcomes, not a commit log.
+- Include Key Technical Decisions with rationale for non-trivial changes.
+- Use concrete file paths, metrics, and validation notes.
+- Keep references aligned with Goo Galaxy architecture and actual repo paths.
+
+## Quality Checks
+
+Before creating a PR, verify:
+
+- Title follows `type(scope): subject` with a valid type and scope
+- Subject is lowercase, imperative, no period, under 72 characters
+- Body uses `templates/pr-template.md` structure
+- Task and story IDs use correct `GOOT`/`GOOM`/`GOOS` prefixes
+- Exactly one task-type section remains
+- Definition of Done is copied from Notion MCP when available
+- Key Technical Decisions explains rationale, not just what changed
+- References include task, story, and useful documentation
+- Base branch is `main` unless explicitly overridden
+- All placeholders are replaced with real content
+
+## Ambiguity Handling
+
+- If the task type is unclear, ask whether to frame as Feature, Tech, or Bug.
+- If repository labels are unknown, state that label selection is best-effort.
+- If Notion data is unavailable, say the PR body is a draft missing synced
+  metadata — do not invent it.
+- If task or story IDs are not provided, ask before inventing references.
