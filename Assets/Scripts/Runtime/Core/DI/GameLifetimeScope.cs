@@ -1,4 +1,5 @@
 using GooGalaxy.Runtime.Board.Presenters;
+using GooGalaxy.Runtime.Cards.Presenters;
 using VContainer;
 using VContainer.Unity;
 
@@ -13,6 +14,7 @@ namespace GooGalaxy.Runtime.Core.DI
         protected override void Configure(IContainerBuilder builder)
         {
             builder.RegisterComponentInHierarchy<GridPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<CardRegistry>().AsSelf();
         }
     }
 }

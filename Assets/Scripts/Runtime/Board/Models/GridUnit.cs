@@ -1,9 +1,15 @@
+using GooGalaxy.Runtime.Cards.Interfaces;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Board.Models
 {
     public class GridUnit : MonoBehaviour
     {
-        // Placeholder for future unit properties (ID, owner, stats, status effects, etc.)
+        public ICardData CardData { get; private set; }
+
+        public void Initialize(ICardData cardData)
+        {
+            CardData = cardData;
+        }
     }
 }
