@@ -1,0 +1,18 @@
+# CodeQL configuration file for Goo Galaxy.
+# Filters out third-party assets, generated code, and temporary build directories.
+
+name: "Goo Galaxy CodeQL Configuration"
+
+paths-ignore:
+  - "Assets/Plugins/**"
+  - "Assets/ThirdParty/**"
+  - "**/Generated/**"
+  - "**/*.designer.cs"
+  - "build/**"
+  - "Library/**"
+  - "Temp/**"
+  - "Logs/**"
+
+query-filters:
+  - exclude:
+      kind: metric

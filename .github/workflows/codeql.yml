@@ -1,0 +1,74 @@
+# This workflow runs CodeQL static application security testing (SAST)
+# to detect security vulnerabilities and code quality issues in C# and GitHub Actions workflows.
+
+name: CodeQL Analysis
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+env:
+  CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
+
+jobs:
+  analyze:
+    name: CodeQL Analysis (${{ matrix.language }})
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+            queries: security-extended
+          - language: csharp
+            build-mode: none
+            queries: security-and-quality
+
+    steps:
+      - name: Validate required CI variables
+        env:
+          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
+        shell: bash
+        run: |
+          if [[ -z "$CI_FETCH_DEPTH" ]]; then
+            echo "Missing required GitHub Actions variable: CI_FETCH_DEPTH" >&2
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: .github/codeql/codeql-config.yml
+          queries: ${{ matrix.queries }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

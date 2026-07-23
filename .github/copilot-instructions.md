@@ -78,6 +78,11 @@ Quick hits:
 - **`.slnx`** — new .NET XML solution format; some IDE versions and external tools don't recognize it. If tooling complains, open the `.slnx` directly.
 - **Husky** — git hooks managed by Husky. If commits fail on format checks, run `npm run format` and retry.
 
+## Agent Boundaries
+
+- **Never create `.asset` or `.meta` files.** These are authored/generated through the Unity Editor. When a task calls for ScriptableObject instances or other assets, only provide step-by-step guidance (menu path, fields to fill, values) for the user to create them manually in-editor.
+- **Never run tests.** Do not invoke test runners or test tools (e.g. `runTests`) on the user's behalf. The user always runs tests manually.
+
 ## Conventional Commits
 
 PRs require Conventional Commits format: `type(scope): subject`. Scopes are mandatory. Types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert.

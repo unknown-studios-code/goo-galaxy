@@ -8,6 +8,7 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
 .github/workflows/
 ├── pr-check.yml               # PR title validation
 ├── format-check.yml           # Repository format validation
+├── codeql.yml                 # CodeQL SAST security analysis
 ├── unity-build-android.yml    # Android build validation
 ├── unity-build-ios.yml        # iOS build validation
 ├── unity-tests-editmode.yml   # Edit Mode tests
@@ -36,6 +37,13 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
 - Trigger: `pull_request` on repository content and `push` to `main`
 - Status check: `Format Check`
 - Purpose: run the repository formatting checks from `package.json`, respecting `.formatterignore`.
+
+### CodeQL Analysis
+
+- File: `codeql.yml` (config: `.github/codeql/codeql-config.yml`)
+- Trigger: `push` to `main`, `pull_request` to `main`, weekly schedule, plus `workflow_dispatch`
+- Status check: `CodeQL Analysis (csharp)`, `CodeQL Analysis (actions)`
+- Purpose: perform static application security testing (SAST) on C# codebase and GitHub Actions workflows (`security-and-quality` suite with `build-mode: none`).
 
 ### Android Build
 

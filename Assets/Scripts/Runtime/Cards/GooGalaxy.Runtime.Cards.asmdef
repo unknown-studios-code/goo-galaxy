@@ -1,13 +1,12 @@
 {
-  "name": "GooGalaxy.Runtime.Board",
-  "rootNamespace": "GooGalaxy.Runtime.Board",
+  "name": "GooGalaxy.Runtime.Cards",
+  "rootNamespace": "GooGalaxy.Runtime.Cards",
   "defineConstraints": [],
   "excludePlatforms": [],
   "includePlatforms": [],
   "precompiledReferences": [],
   "references": [
-    "GooGalaxy.Runtime.Shared",
-    "GooGalaxy.Runtime.Cards"
+    "GooGalaxy.Runtime.Shared"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,
