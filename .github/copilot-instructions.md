@@ -8,12 +8,34 @@ Goo Galaxy — real-time PvP mobile strategy game (Unity 6.3.4f1 LTS, URP 17.3).
 
 Project-specific skills live in `.github/skills/`:
 
-- `commit-messages` — Conventional Commits formatting with tracker footers
-- `pull-requests` — PR creation with template bodies and label assignment
-- `task-refinement` — structured task/story/epic/bug templates
-- `task-tracking` — Notion task lookup/update via GOOE/GOOS/GOOT/GOOM IDs
+- `create-commit` — stage and commit with Conventional Commits + tracker footers
+- `open-pull-request` — push, open, and label PRs with template bodies
+- `refine-task` — write task/story/epic/bug docs from structured templates
+- `start-task` — ground a task against the repo and delegate it to specialist agents
+- `track-task` — Notion task lookup/update via GOOE/GOOS/GOOT/GOOM IDs
 
-Use these skills directly (e.g. `/commit-messages`, `/task-tracking`) rather than hand-formatting.
+Use these skills directly (e.g. `/create-commit`, `/track-task`) rather than hand-formatting. These skills perform the action, not just draft the text.
+
+## Project Agents
+
+Specialist agents live in `.github/agents/` and are available in the agent picker or as subagents:
+
+| Agent                     | Owns                                                                  |
+| :------------------------ | :-------------------------------------------------------------------- |
+| Unity Gameplay Engineer   | Runtime feature code, Models/Presenters, feature assembly scaffolding |
+| Unity Netcode Engineer    | NGO authority model, replication, session/relay flow                  |
+| Unity UI Toolkit Engineer | UXML/USS, custom elements, View layer                                 |
+| Unity Editor Tooling      | `Assets/Editor/` inspectors, windows, validators, importers           |
+| Unity Code Reviewer       | Convention audit of a diff (read-only)                                |
+| Unity Test Author         | EditMode/PlayMode tests (writes, never runs)                          |
+| Unity Perf Auditor        | Mobile hot-path and allocation audit (read-only)                      |
+| Unity Bug Hunter          | Root-cause analysis of runtime defects                                |
+| GDD Steward               | `.docs/GDD/` accuracy and drift detection                             |
+| Game Balance Analyst      | Tuning values, economy, and the math behind them                      |
+| Shader VFX Artist         | URP shaders, VFX, quality-tier budgets                                |
+| Task Planner              | Refinement docs in `.docs/refinement/` + Notion sync                  |
+| Release Engineer          | GitHub Actions, build profiles, CI caching, signing                   |
+| Dependency Doctor         | Packages, `.asmdef` graph, solution files, local toolchain            |
 
 ## Workflow
 
@@ -22,13 +44,11 @@ Feature work flows: Notion task (GOO\*) → branch → commits → PR → merge.
 ## High-Level Architecture
 
 ```
-Assets/Scripts/Runtime/
-├── Board/         — Board simulation, tile views, hex logic, commands
-├── Networking/    — Netcode for GameObjects (NGO) integration, session flow
-└── Shared/        — Cross-feature contracts, helpers, services
+Assets/Scripts/Runtime/{Feature}/   — one feature domain per folder, one .asmdef each
+Assets/Scripts/Tests/{EditMode,PlayMode}/
 ```
 
-Each Runtime folder is a separate `.asmdef` assembly (`GooGalaxy.Runtime.<Feature>`), created on demand when a feature needs code. Future features (match orchestration, card logic, HUD, etc.) are scaffolded when needed, not pre-allocated. Editor tooling lives under `Assets/Editor/` with its own assemblies (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows).
+Each Runtime folder is a separate `.asmdef` assembly (`GooGalaxy.Runtime.<Feature>`), created on demand when a feature needs code. The set grows over time — list `Assets/Scripts/Runtime/` to see what exists rather than assuming. `Runtime.Shared` is the dependency-free leaf that every other assembly may reference. Editor tooling lives under `Assets/Editor/` with its own assemblies (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows).
 
 **Key patterns** (detailed in [unity-design-patterns.instructions.md](instructions/unity-design-patterns.instructions.md)):
 
@@ -80,7 +100,7 @@ Quick hits:
 
 ## Agent Boundaries
 
-- **Never create `.asset` or `.meta` files.** These are authored/generated through the Unity Editor. When a task calls for ScriptableObject instances or other assets, only provide step-by-step guidance (menu path, fields to fill, values) for the user to create them manually in-editor.
+- **Never create `.asset` or `.meta` files.** These are authored/generated through the Unity Editor. When a task calls for ScriptableObject instances or other assets, only provide step-by-step guidance (menu path, fields to fill, values) for the user to create them manually in-editor. This is enforced deterministically — a `PreToolUse` hook (`.github/hooks/block-unity-authored-assets.json`) denies any write to `Assets/**/*.meta` or `Assets/**/*.asset`. A denial is policy, not a bug: switch to manual editor instructions.
 - **Never run tests.** Do not invoke test runners or test tools (e.g. `runTests`) on the user's behalf. The user always runs tests manually.
 
 ## Conventional Commits

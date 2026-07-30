@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "pwsh -NoProfile -NonInteractive -File .github/hooks/block-unity-authored-assets.ps1",
+        "windows": "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .github\\hooks\\block-unity-authored-assets.ps1",
+        "timeout": 10
+      }
+    ]
+  }
+}

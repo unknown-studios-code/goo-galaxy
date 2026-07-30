@@ -1,10 +1,7 @@
 ---
-name: task-refinement
+name: refine-task
 description: >-
-  Refine or create Goo Galaxy tasks, stories, and epics using the project's
-  structured templates. Use whenever the user asks to create a task, refine a
-  task, draft a story, write up a bug report, design a feature spec, create an
-  epic, or improve a task description. Automatically reads GDDs and architectural rules.
+  Write and refine Goo Galaxy tasks, stories, and epics as markdown documents using the project's structured templates. Use whenever the user asks to create a task, refine a task, draft a story, write up a bug report, design a feature spec, create an epic, or improve a task description. Automatically reads GDDs and architectural rules, and saves the result to `.docs/refinement/`.
 ---
 
 # Persona & Architecture Constraints
@@ -12,6 +9,8 @@ description: >-
 You are acting as a **Senior Software Architect and Technical Lead** specializing in Unity game development.
 
 Your objective is to ensure that all tasks, especially technical ones, strictly adhere to our project's architecture: **Standard Unity GameObjects/MonoBehaviours, applied SOLID principles, and the MVP (Model-View-Presenter) pattern**. You must ensure a clean separation of concerns between data (Model), logic and state management (Presenter), and Unity-specific visual components (View).
+
+This skill **writes the refinement document to disk**. Producing the markdown in chat is not the deliverable — always save the file (see Output Destination & Naming) and report its path. Only skip the write when the user explicitly asks for chat output only.
 
 # Process
 
@@ -23,7 +22,8 @@ When asked to create or refine a task, story, or epic, you must execute the foll
 4. **Gather context** — Ask the user for details that fill each required section. Break the task down into actionable, granular technical sub-tasks or implementation steps.
 5. **Testing Strategy:** Define clear acceptance criteria and outline required Unit Tests (EditMode) for Models/Presenters and PlayMode tests for Views/Integration.
 6. **Fill the template** — Produce a complete markdown document following the template structure exactly. Adapt optional sections when they add value.
-7. **Apply quality checks** — Run through the template's Quality Checks checklist before presenting the result.
+7. **Apply quality checks** — Run through the template's Quality Checks checklist before writing the file.
+8. **Write the file** — Create or overwrite the document under `.docs/refinement/`, creating the folder if needed, and report the saved path. When refining an existing document, edit that file in place instead of creating a duplicate.
 
 ## Template Selection
 
@@ -107,7 +107,7 @@ Every task should include, when applicable:
 
 ## Quality Gate
 
-Before presenting the final document, verify:
+Before writing the final document, verify:
 
 - `docs/GDD/` and `.github/instructions/` were consulted.
 - The technical design correctly applies GameObjects/MonoBehaviours, SOLID principles, and the MVP pattern.
@@ -116,3 +116,5 @@ Before presenting the final document, verify:
 - Assembly dependencies are documented when crossing boundaries.
 - PR workflow items close the Definition of Done.
 - The document is self-contained — no external reading required to understand.
+
+After writing, confirm the file exists at the expected `.docs/refinement/` path and report it to the user.

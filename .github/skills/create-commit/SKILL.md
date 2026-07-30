@@ -1,18 +1,35 @@
 ---
-name: commit-messages
+name: create-commit
 description: >-
-  Format git commit messages following Goo Galaxy's Conventional Commits
-  convention with mandatory scopes, footer trackers, and PowerShell HUSKY=0
-  handling. Use whenever the user asks to create a commit, write a commit
-  message, generate a commit, or mentions committing changes — even if they
-  don't explicitly mention formatting or conventions.
+  Stage changes and create git commits in the Goo Galaxy repository following the project's Conventional Commits convention with mandatory scopes, footer trackers, and PowerShell HUSKY=0 handling. Use whenever the user asks to create a commit, commit changes, write a commit message, or mentions committing — even if they don't explicitly mention formatting or conventions.
 ---
 
-# Goo Galaxy Commit Messages
+# Goo Galaxy: Create Commit
 
-When creating a git commit for this repository, always produce a commit
-message that follows the Conventional Commits format with Goo Galaxy-specific
-scopes and footers.
+This skill **creates the commit**. Composing the message is a step, not the deliverable. Unless the user explicitly asks for a message only ("just draft the message", "what should the commit message be?"), always finish by running `git commit` and reporting the resulting commit hash and subject.
+
+## Execution Workflow
+
+Run these steps in order:
+
+1. **Inspect the working tree** — run `git status --short` and `git diff --stat` (plus `git diff --staged --stat` when something is already staged) to see what changed.
+2. **Read the actual diff** — run `git diff` / `git diff --staged` for the relevant files so the body describes real changes, not assumptions.
+3. **Resolve trackers** — if a task ID (`GOOE`/`GOOS`/`GOOT`/`GOOM`) is known or the branch name encodes one (`feat/GOOM-1`), use the `track-task` skill to fetch task metadata for the footers. If no ID can be resolved, ask before adding footer references.
+4. **Stage the changes** — stage only files that belong to this commit. Use `git add <path>` with explicit paths; use `git add -A` only when the user asked to commit everything or the whole tree clearly belongs together. Never stage unrelated in-progress work without asking.
+5. **Compose the message** — follow the format rules below.
+6. **Create the commit** — run the commit command with `HUSKY=0` (see Creating Automated Commits), passing the body as a multi-line argument. Never write the message to a temporary file.
+7. **Verify** — run `git log -1 --stat` and report the commit hash, subject, and file count back to the user.
+8. **Do not push** — pushing requires explicit user approval. Offer it as a next step instead.
+
+### Splitting Commits
+
+If the working tree contains clearly unrelated changes, propose a split into multiple commits, confirm the grouping with the user, then create each commit in sequence with its own staged file set.
+
+### When Commits Fail
+
+- Husky/format hook failures: run `npm run format`, re-stage, retry.
+- Nothing staged: report it and stop; do not create an empty commit.
+- Merge conflicts or a dirty rebase state: stop and report; do not force past them.
 
 ## Commit Message Format
 
@@ -57,11 +74,9 @@ type(scope): subject
 
 Use the scope that matches the affected project area:
 
-`bootstrap`, `board`, `cards`, `energy`, `hud`, `input`, `match`, `networking`,
-`progression`, `shared`, `tests`, `docs`, `build`, `ci`
+`bootstrap`, `board`, `cards`, `energy`, `hud`, `input`, `match`, `networking`, `progression`, `shared`, `tests`, `docs`, `build`, `ci`
 
-If none of these fit, choose the smallest clear subsystem name and keep it
-lowercase.
+If none of these fit, choose the smallest clear subsystem name and keep it lowercase.
 
 ## Subject Rules
 
@@ -112,8 +127,7 @@ Tests:
 [footer(s)]
 ```
 
-Common section names: `Implementation:`, `Tests:`, `Performance:`, `Fixes:`,
-`Configuration:`
+Common section names: `Implementation:`, `Tests:`, `Performance:`, `Fixes:`, `Configuration:`
 
 ## Allowed Footers
 
@@ -164,9 +178,7 @@ Related: GOOE-4, GOOT-39
 
 ## Creating Automated Commits (HUSKY=0)
 
-When creating commits programmatically, always disable Husky and Commitizen
-hooks by setting `HUSKY=0`. The syntax depends on the shell in use — check
-the environment before choosing.
+When creating commits programmatically, always disable Husky and Commitizen hooks by setting `HUSKY=0`. The syntax depends on the shell in use — check the environment before choosing.
 
 ### Bash / sh (Linux, macOS, Git Bash on Windows)
 
@@ -187,8 +199,7 @@ HUSKY=0 git rebase --continue
 
 ### PowerShell (Windows)
 
-PowerShell does not support bash-style inline environment variables. Set
-the variable explicitly before the git command:
+PowerShell does not support bash-style inline environment variables. Set the variable explicitly before the git command:
 
 ```powershell
 # Single-line (semicolon chains the commands):
@@ -207,20 +218,51 @@ $env:HUSKY = "0"
 git rebase -i HEAD~2
 ```
 
+### Preferred: multi-line body in a single `-m`
+
+Every Goo Galaxy commit needs a multi-line body with organized sections. Pass that body as one multi-line argument instead of chaining many `-m` flags, and never write it to a temporary file — no cleanup, no leftover artifacts, no risk of committing the temp file itself.
+
+Git treats each `-m` as its own paragraph and inserts a blank line between them, so use the first `-m` for the subject and the second for the whole body plus footers.
+
+In PowerShell, build the body with a literal here-string (`@'` … `'@`) so `$` and backticks in the text are not expanded. The terminator `'@` must start at column 1:
+
+```powershell
+$body = @'
+Body paragraph.
+
+Implementation:
+- First change description
+
+Implements: GOOM-42
+'@
+$env:HUSKY = "0"; git commit -m "type(scope): subject" -m $body
+```
+
+In bash, embed the newlines directly in the quoted argument:
+
+```bash
+HUSKY=0 git commit -m "type(scope): subject" -m "Body paragraph.
+
+Implementation:
+- First change description
+
+Implements: GOOM-42"
+```
+
+Both shells pass the argument to git verbatim, so the body keeps its line breaks exactly as written.
+
 ### How to choose
 
 - If the environment says `Shell: bash` (or `sh`, `zsh`), use Bash syntax.
-- If the environment says `Shell: powershell` (or `pwsh`), use PowerShell
-  syntax.
+- If the environment says `Shell: powershell` (or `pwsh`), use PowerShell syntax.
 - When unsure, the `echo $0` command reveals the current shell.
-- Never mix the two — `$env:HUSKY` fails in bash, `HUSKY=0` at the start
-  of a line has no effect in PowerShell.
+- Never mix the two — `$env:HUSKY` fails in bash, `HUSKY=0` at the start of a line has no effect in PowerShell.
 
 Never create automated commits without `HUSKY=0`.
 
 ## Final Verification
 
-Before returning a commit message or creating a commit, verify:
+Before running `git commit`, verify:
 
 - Type is valid and lowercase.
 - Scope is present and matches the affected Goo Galaxy module or subsystem.
@@ -230,4 +272,12 @@ Before returning a commit message or creating a commit, verify:
 - All lines wrapped at 72 characters.
 - At least one organized section with bullet points is present.
 - Footer only uses `Implements`, `Part of`, or `Related`.
-- Automated commits use `HUSKY=0`.
+- Only intended files are staged.
+- The command sets `HUSKY=0`.
+- The message is passed inline via `-m`, not through a temporary file.
+
+After running `git commit`, verify:
+
+- The command exited successfully and the commit exists (`git log -1`).
+- The committed file list matches what was intended.
+- Report the commit hash and subject to the user, and confirm nothing was pushed.
