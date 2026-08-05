@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Constants;
@@ -7,30 +6,24 @@ using UnityEngine;
 
 namespace GooGalaxy.Runtime.Board.Presenters
 {
+    /// <summary>
+    /// Owns the match's hex grid: builds it from the authored layout on <c>Awake</c> and announces it through
+    /// <c>MatchEvents.GridInitialized</c>. Units are tracked by <see cref="UnitPresenter" />, which reads the
+    /// grid from here — the dependency points one way.
+    /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(UnitMovementController))]
     public class GridPresenter : MonoBehaviour
     {
-        private static readonly Dictionary<int, GridUnit> _emptyRegistry = new();
-
         [Tooltip("The grid layout settings defining the radius and obstacles.")]
         [SerializeField]
         private GridLayoutSO _gridLayout;
 
-        [Tooltip("The movement controller holding the registry of active units.")]
-        [SerializeField]
-        private UnitMovementController _movementController;
-
+        /// <summary>The grid built from the authored layout, or null while the layout is missing.</summary>
         public HexGrid HexGrid { get; private set; }
 
         private void Awake()
         {
             Debug.Assert(_gridLayout != null, BoardLogMessages.GridLayoutConfigurationMissing, this);
-
-            if (_movementController == null)
-            {
-                _movementController = GetComponent<UnitMovementController>();
-            }
 
             InitializeHexGrid();
         }
@@ -48,15 +41,10 @@ namespace GooGalaxy.Runtime.Board.Presenters
         }
 #endif
 
-        public IReadOnlyDictionary<int, GridUnit> GetActiveUnits()
+        /// <summary>Assigns the layout asset that <c>Awake</c> builds the grid from.</summary>
+        internal void SetGridLayout(GridLayoutSO gridLayout)
         {
-            if (_movementController == null)
-            {
-                Debug.LogWarning(BoardLogMessages.UnitMovementControllerMissing);
-                return _emptyRegistry;
-            }
-
-            return _movementController.ActiveUnits;
+            _gridLayout = gridLayout;
         }
 
         private void InitializeHexGrid()
@@ -68,7 +56,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
             }
 
             HexGrid = new HexGrid(_gridLayout);
-            StaticGameEvents.OnGridInitialized(HexGrid);
+            MatchEvents.RaiseGridInitialized(HexGrid);
         }
     }
 }
