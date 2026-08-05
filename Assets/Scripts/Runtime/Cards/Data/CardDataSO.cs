@@ -9,7 +9,7 @@ namespace GooGalaxy.Runtime.Cards.Data
     public class CardDataSO : ScriptableObject, ICardData
     {
         [Header("Identity")]
-        [Tooltip("Unique, stable identifier used as the lookup key in CardRegistry. Must not be empty.")]
+        [Tooltip("Unique, stable identifier used as the lookup key in CardPresenter. Must not be empty.")]
         [SerializeField]
         private string _cardId;
 
@@ -54,11 +54,29 @@ namespace GooGalaxy.Runtime.Cards.Data
 
         public bool HasArmor => _hasArmor;
 
+        /// <summary>Replaces every authored field in one call, mirroring what the Inspector writes.</summary>
+        internal void SetAuthoredData(string cardId, string displayName, CardType type, int energyCost, bool canClone, bool canJump, bool hasArmor)
+        {
+            _cardId = cardId;
+            _displayName = displayName;
+            _type = type;
+            _energyCost = energyCost;
+            _canClone = canClone;
+            _canJump = canJump;
+            _hasArmor = hasArmor;
+        }
+
         private void OnValidate()
+        {
+            ValidateAuthoredData();
+        }
+
+        /// <summary>Warns when the asset cannot be registered because it has no id. Runs on every Inspector edit.</summary>
+        internal void ValidateAuthoredData()
         {
             if (string.IsNullOrWhiteSpace(_cardId))
             {
-                Debug.LogWarning($"{name}: CardId is empty. Assign a unique, stable id before referencing this card in a CardRegistry.", this);
+                Debug.LogWarning($"{name}: CardId is empty. Assign a unique, stable id before referencing this card in a CardPresenter.", this);
             }
         }
     }

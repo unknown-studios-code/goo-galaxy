@@ -21,7 +21,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             float result = EnergyRegenerator.Tick(current, dt, regenRate, max);
 
             // THEN
-            Assert.AreEqual(6.0f, result, Tolerance);
+            Assert.That(result, Is.EqualTo(6.0f).Within(Tolerance));
         }
 
         [Test]
@@ -37,7 +37,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             float result = EnergyRegenerator.Tick(current, dt, regenRate, max);
 
             // THEN
-            Assert.AreEqual(10.0f, result, Tolerance);
+            Assert.That(result, Is.EqualTo(10.0f).Within(Tolerance));
         }
 
         [Test]
@@ -53,7 +53,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             float result = EnergyRegenerator.Tick(current, dt, regenRate, max);
 
             // THEN
-            Assert.AreEqual(10.0f, result, Tolerance);
+            Assert.That(result, Is.EqualTo(10.0f).Within(Tolerance));
         }
 
         [Test]
@@ -69,7 +69,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             float result = EnergyRegenerator.Tick(current, dt, regenRate, max);
 
             // THEN
-            Assert.AreEqual(5.0f, result, Tolerance);
+            Assert.That(result, Is.EqualTo(5.0f).Within(Tolerance));
         }
 
         [Test]
@@ -85,7 +85,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             float result = EnergyRegenerator.Tick(current, dt, regenRate, max);
 
             // THEN
-            Assert.AreEqual(5.0f, result, Tolerance);
+            Assert.That(result, Is.EqualTo(5.0f).Within(Tolerance));
         }
 
         [Test]
@@ -101,7 +101,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             float result = EnergyRegenerator.Tick(current, dt, regenRate, max);
 
             // THEN
-            Assert.AreEqual(10.0f, result, Tolerance);
+            Assert.That(result, Is.EqualTo(10.0f).Within(Tolerance));
         }
     }
 }

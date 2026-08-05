@@ -10,7 +10,7 @@ namespace GooGalaxy.Runtime.Energy.Presenters
     /// <summary>
     /// Presenter that orchestrates the real-time energy systems of active players in a match.
     /// </summary>
-    public class EnergyController : MonoBehaviour
+    public class EnergyPresenter : MonoBehaviour
     {
         [Header("Match Setup")]
         [Tooltip(
@@ -45,7 +45,7 @@ namespace GooGalaxy.Runtime.Energy.Presenters
 
                     if (MathF.Abs(newEnergy - oldEnergy) > 0.0001f)
                     {
-                        StaticGameEvents.OnEnergyChanged(playerId, state.CurrentEnergy);
+                        MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);
                     }
                 }
             }
@@ -70,7 +70,7 @@ namespace GooGalaxy.Runtime.Energy.Presenters
         {
             var state = new EnergyState(config);
             _playerStates[playerId] = state;
-            StaticGameEvents.OnEnergyChanged(playerId, state.CurrentEnergy);
+            MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace GooGalaxy.Runtime.Energy.Presenters
         {
             if (!_playerStates.TryGetValue(playerId, out EnergyState state))
             {
-                StaticGameEvents.OnEnergySpent(playerId, 0f, false);
+                MatchEvents.RaiseEnergySpent(playerId, 0f, false);
                 return SpendResult.InsufficientEnergy;
             }
 
@@ -93,12 +93,12 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             if (result == SpendResult.Success)
             {
                 state.SetEnergy(energy);
-                StaticGameEvents.OnEnergyChanged(playerId, state.CurrentEnergy);
-                StaticGameEvents.OnEnergySpent(playerId, state.CurrentEnergy, true);
+                MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);
+                MatchEvents.RaiseEnergySpent(playerId, state.CurrentEnergy, true);
             }
             else
             {
-                StaticGameEvents.OnEnergySpent(playerId, state.CurrentEnergy, false);
+                MatchEvents.RaiseEnergySpent(playerId, state.CurrentEnergy, false);
             }
 
             return result;
