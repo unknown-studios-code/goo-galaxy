@@ -80,11 +80,29 @@ Rules, in priority order:
 6. **Always include `unity-test-author`** unless the task is documentation-, config-, or asset-only.
 7. **Add `unity-perf-auditor`** when the task touches an update loop, per-tile board work, the network tick, or rendering. Otherwise skip it — the reviewer delegates on its own if needed.
 
-State the chosen roster and the order before you dispatch, e.g.:
+## 5. Choose the Model Tier per Agent
 
-> 3 agents, sequential: `unity-gameplay-engineer` → `unity-test-author` → `unity-code-reviewer`.
+The `Agent` tool takes a `model` parameter that **overrides** the agent's frontmatter for that one dispatch. Only the two read-only analysts pin a model; every other agent in `.claude/agents/` inherits, so **pass `model` explicitly when you dispatch them** — an omitted parameter falls back to the session model, and this project's lead runs on `opus`, which would silently promote every routine slice to the top tier.
 
-## 5. Dispatch
+Pick the tier from the **complexity of that agent's slice**, not from the agent's identity — the same `unity-gameplay-engineer` takes `haiku` for a rename sweep and `opus` for designing a resolver.
+
+| Tier     | The slice looks like                                                                                                                                                                                                                         |
+| :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `haiku`  | Mechanical and fully specified: renames, applying findings another agent already wrote out, `.asmdef` scaffolding, a test that mirrors an existing one, a values-only balance edit                                                           |
+| `sonnet` | **The default for implementation.** Ordinary work inside an established pattern — a new Presenter alongside three siblings, a UXML screen like the others, a normal-sized diff to review                                                     |
+| `opus`   | Architecture and assembly-boundary calls, a new feature assembly, netcode authority and reconciliation design, root-causing an intermittent or desync defect, balance math with interacting curves, reviewing a large or cross-assembly diff |
+
+Three rules that override the table:
+
+1. **The read-only analysts are always `opus`, whatever the diff looks like.** `unity-perf-auditor` and `unity-code-reviewer` produce findings nobody double-checks — a false negative there ships silently. They pin `model: opus` in their own frontmatter, so leaving the parameter off already gets this right; never pass a lower tier to either.
+2. **Never send `haiku` into an unresolved question.** The tier is a floor for work whose answer is already decided. If the agent still has a decision to make, it is not `haiku` work.
+3. **`sonnet` is the resting point, not `opus`.** Escalate on a named reason you can state in the roster line. "The task feels important" is not one — most slices of an important task are still ordinary implementation.
+
+State the roster, the order, **and the tier** before you dispatch, e.g.:
+
+> 3 agents, sequential: `unity-gameplay-engineer` (opus — new assembly + resolver design) → `unity-test-author` (haiku — mirrors `BoardMovementTests`) → `unity-code-reviewer` (opus, pinned).
+
+## 6. Dispatch
 
 Each subagent gets a **self-contained brief**. It cannot see this conversation, the Notion page, or your grounding table.
 
@@ -98,9 +116,11 @@ Every brief must contain:
 - The explicit boundary: what this agent must not touch, because another agent owns it.
 - What to return: files changed, decisions made, and anything left for the next agent.
 
-Feed each agent's returned notes into the next agent's brief. If an agent reports a blocker or contradicts the task, stop and bring it to the user rather than dispatching around it.
+Dispatch each agent with the `model` tier chosen in step 5.
 
-## 6. Integrate and Verify
+Feed each agent's returned notes into the next agent's brief. If an agent reports a blocker or contradicts the task, stop and bring it to the user rather than dispatching around it. A `haiku` agent that comes back with questions instead of code was mis-tiered — re-dispatch that slice a tier up rather than answering it piecemeal.
+
+## 7. Integrate and Verify
 
 1. Read every file the agents touched and fix what they left broken — you cannot compile, so cross-check signatures, namespaces, and `.asmdef` references by hand.
 2. Run `npm run format`.
@@ -108,11 +128,11 @@ Feed each agent's returned notes into the next agent's brief. If an agent report
 4. Confirm the acceptance criteria are actually met, item by item.
 5. Never run tests. Tell the user which tests to run in the Unity Test Runner.
 
-## 7. Report and Hand Off
+## 8. Report and Hand Off
 
 - **Task** — ID, title, and the source it came from.
 - **Grounding** — the task-says vs actual table.
-- **Agents run** — roster, order, and what each produced.
+- **Agents run** — roster, order, model tier, and what each produced.
 - **Changes** — files created and edited, grouped by assembly.
 - **Manual editor steps** — every `.asset`, `.meta`, prefab, or scene change the user must make in Unity. You cannot write those files; the `deny` rules in `.claude/settings.json` enforce it.
 - **Tests to run** — EditMode and PlayMode, by name.

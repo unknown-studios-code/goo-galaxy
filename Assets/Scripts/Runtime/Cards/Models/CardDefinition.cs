@@ -6,11 +6,16 @@ namespace GooGalaxy.Runtime.Cards.Models
 {
     /// <summary>
     /// Immutable runtime copy of an <see cref="ICardData"/> source (e.g. a <c>CardDataSO</c> asset).
-    /// Value-copied and never boxed, since it is always constructed from a class-based <see cref="ICardData"/>
-    /// implementation. This is what gameplay code (e.g. board units) should hold at runtime instead of a
-    /// reference to the authored asset.
+    /// This is what gameplay code (e.g. board units) should hold at runtime instead of a reference to the
+    /// authored asset.
     /// </summary>
-    public readonly struct CardDefinition : ICardData, IMoveCapable
+    /// <remarks>
+    /// A reference type on purpose: consumers hold it through <see cref="ICardData"/> and
+    /// <see cref="IMoveCapable"/> — the board keeps one per live unit in an <c>IMoveCapable</c> registry — and
+    /// a value type stored behind an interface boxes on every store. One definition is built per card during
+    /// match setup, never per frame, so the single allocation is outside every hot path.
+    /// </remarks>
+    public sealed class CardDefinition : ICardData, IMoveCapable
     {
         public CardDefinition(ICardData cardData)
         {

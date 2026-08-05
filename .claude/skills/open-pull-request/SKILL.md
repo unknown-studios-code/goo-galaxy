@@ -21,7 +21,7 @@ Follow these steps in order when opening a PR:
 7. **Build the body** — fill in the template with Notion data and concrete details (see Body Generation below).
 8. **Assign labels** — select 3–5 labels based on type, priority, context, and optional status (see Label Assignment below).
 9. **Create the PR** — use **GitHub MCP first** (`create_pull_request`), targeting `main`. Fall back to `gh pr create` only if GitHub MCP is unavailable or fails. Always note which method was used and why if falling back. Open as a draft when the work is incomplete.
-10. **Apply labels** — use **GitHub MCP first** to add labels. Fall back to `gh pr edit` if needed.
+10. **Apply labels** — use **GitHub MCP first**, via `issue_write` with `method: "update"` and the PR number as `issue_number`. `update_pull_request` cannot set labels. Fall back to `gh pr edit --add-label` if needed.
 11. **Update Notion** — when step 4 resolved a page, use `track-task` to write the branch name (`Branch` property) and PR URL (`Pull Request` property) back to it.
 12. **Report** — return the PR number, URL, applied labels, and the Notion sync result (updated, skipped, or failed).
 
@@ -166,8 +166,11 @@ Source: task priority from Notion MCP. Fallback: `priority: medium`.
 Use GitHub MCP tools for all PR operations:
 
 - `create_pull_request` — create the PR
-- `update_pull_request` — update title, body, state, reviewers
+- `update_pull_request` — update title, body, base, state, reviewers, draft status
+- `issue_write` — apply labels (`method: "update"`, `issue_number` = PR number); labels are an issue-level field, so `update_pull_request` has no `labels` parameter
 - `list_pull_requests` / `pull_request_read` — read PR details
+
+Every one of these tools requires `owner` and `repo`. Resolve them from `git remote -v` rather than assuming.
 
 GitHub MCP operates directly against the GitHub API with full authenticated access.
 

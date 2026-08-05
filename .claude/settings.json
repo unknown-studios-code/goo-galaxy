@@ -71,15 +71,16 @@
       "PowerShell(gh run list:*)",
       "PowerShell(gh run view:*)",
       "PowerShell(gh label list:*)",
-      "PowerShell(gh repo view:*)"
+      "PowerShell(gh repo view:*)",
+      "mcp__github__get_me",
+      "mcp__github__get_file_contents",
+      "mcp__github__list_commits",
+      "mcp__github__list_pull_requests",
+      "mcp__github__pull_request_read",
+      "mcp__github__get_label",
+      "mcp__notion__notion-search",
+      "mcp__notion__notion-fetch"
     ],
-    "deny": [
-      "Write(Assets/**/*.meta)",
-      "Write(Assets/**/*.asset)",
-      "Edit(Assets/**/*.meta)",
-      "Edit(Assets/**/*.asset)",
-      "MultiEdit(Assets/**/*.meta)",
-      "MultiEdit(Assets/**/*.asset)"
-    ]
+    "deny": ["Edit(Assets/**/*.meta)", "Edit(Assets/**/*.asset)"]
   }
 }
