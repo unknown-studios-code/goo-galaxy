@@ -15,6 +15,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
     [TestFixture]
     public class GridViewTests
     {
+        private const float PositionTolerance = 0.0001f;
+
         private GameObject _prefabGO;
         private CellView _cellPrefab;
         private GridLayoutSO _gridLayout;
@@ -85,7 +87,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             Assert.That(
                 view.CellViews.Values,
-                Is.All.Matches<CellView>(cell => cell.transform.localPosition.y == 0f),
+                Is.All.Matches<CellView>(cell => Mathf.Abs(cell.transform.localPosition.y) <= PositionTolerance),
                 "Cells should lie flat on the XZ plane."
             );
 

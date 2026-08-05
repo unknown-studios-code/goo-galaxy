@@ -828,8 +828,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private HexCell GetCell(HexCoordinates coordinates)
         {
-            Assert.That(_gridPresenter != null, Is.True, "The grid presenter should still exist.");
-            Assert.That(_gridPresenter.HexGrid.TryGetCell(coordinates, out HexCell cell), Is.True, $"Test expects {coordinates} to exist on the grid.");
+            HexGrid grid = _gridPresenter.HexGrid;
+
+            Assert.That(grid, Is.Not.Null, "Test setup expects the grid presenter to have initialized its hex grid.");
+            Assert.That(grid.TryGetCell(coordinates, out HexCell cell), Is.True, $"Test expects {coordinates} to exist on the grid.");
 
             return cell;
         }
