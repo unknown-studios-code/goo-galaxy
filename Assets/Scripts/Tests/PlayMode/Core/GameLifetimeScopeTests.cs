@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Reflection;
 using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Core.DI;
@@ -44,7 +43,8 @@ namespace GooGalaxy.Tests.PlayMode
         }
 
         [Test]
-        public void Configure_BuildsContainerSuccessfully()
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_BuildsContainer()
         {
             // GIVEN
             _presenterGO = CreateGridPresenter();
@@ -54,7 +54,7 @@ namespace GooGalaxy.Tests.PlayMode
             BuildContainer();
 
             // THEN
-            Assert.IsNotNull(_scope.Container, "VContainer container was not initialized");
+            Assert.That(_scope.Container, Is.Not.Null, "VContainer container was not initialized");
         }
 
         private void CreateScope()
@@ -74,11 +74,10 @@ namespace GooGalaxy.Tests.PlayMode
 
             var presenterGO = new GameObject("GridPresenter_DI_Test");
             presenterGO.SetActive(false);
-            presenterGO.AddComponent<UnitMovementController>();
+            presenterGO.AddComponent<UnitPresenter>();
             GridPresenter presenter = presenterGO.AddComponent<GridPresenter>();
 
-            FieldInfo gridLayoutField = typeof(GridPresenter).GetField("_gridLayout", BindingFlags.NonPublic | BindingFlags.Instance);
-            gridLayoutField.SetValue(presenter, gridLayout);
+            presenter.SetGridLayout(gridLayout);
 
             presenterGO.SetActive(true);
 

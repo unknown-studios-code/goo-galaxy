@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
@@ -26,7 +27,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var set = new ReadOnlySet<int>(new HashSet<int>());
 
             // THEN
-            Assert.AreEqual(0, set.Count);
+            Assert.That(set.Count, Is.EqualTo(0));
         }
 
         [Test]
@@ -36,7 +37,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var set = new ReadOnlySet<int>(new HashSet<int> { 1, 2, 3 });
 
             // THEN
-            Assert.AreEqual(3, set.Count);
+            Assert.That(set.Count, Is.EqualTo(3));
         }
 
         [Test]
@@ -46,7 +47,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var set = new ReadOnlySet<string>(new HashSet<string> { "a", "b", "c" });
 
             // THEN
-            Assert.IsTrue(set.Contains("b"));
+            Assert.That(set.Contains("b"), Is.True);
         }
 
         [Test]
@@ -56,11 +57,29 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var set = new ReadOnlySet<string>(new HashSet<string> { "a", "b" });
 
             // THEN
-            Assert.IsFalse(set.Contains("z"));
+            Assert.That(set.Contains("z"), Is.False);
         }
 
         [Test]
-        public void GetEnumerator_IteratesAllItems()
+        public void GetEnumerator_ThroughNonGenericInterface_IteratesEveryItem()
+        {
+            // GIVEN
+            var inner = new HashSet<int> { 10, 20, 30 };
+            IEnumerable set = new ReadOnlySet<int>(inner);
+            var visited = new List<int>();
+
+            // WHEN
+            foreach (object item in set)
+            {
+                visited.Add((int)item);
+            }
+
+            // THEN
+            Assert.That(visited, Is.EquivalentTo(inner));
+        }
+
+        [Test]
+        public void GetEnumerator_OverPopulatedSet_IteratesEveryItem()
         {
             // GIVEN
             var inner = new HashSet<int> { 10, 20, 30 };
@@ -74,8 +93,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             }
 
             // THEN
-            Assert.AreEqual(3, visited.Count);
-            CollectionAssert.AreEquivalent(inner, visited);
+            Assert.That(visited.Count, Is.EqualTo(3));
+            Assert.That(visited, Is.EquivalentTo(inner));
         }
 
         [Test]
@@ -86,7 +105,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var superset = new List<int> { 1, 2, 3 };
 
             // THEN
-            Assert.IsTrue(set.IsSubsetOf(superset));
+            Assert.That(set.IsSubsetOf(superset), Is.True);
         }
 
         [Test]
@@ -97,7 +116,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var other = new List<int> { 1, 2, 3 };
 
             // THEN
-            Assert.IsFalse(set.IsSubsetOf(other));
+            Assert.That(set.IsSubsetOf(other), Is.False);
         }
 
         [Test]
@@ -108,7 +127,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var subset = new List<int> { 1, 2 };
 
             // THEN
-            Assert.IsTrue(set.IsSupersetOf(subset));
+            Assert.That(set.IsSupersetOf(subset), Is.True);
         }
 
         [Test]
@@ -119,7 +138,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var other = new List<int> { 1, 2, 3 };
 
             // THEN
-            Assert.IsFalse(set.IsSupersetOf(other));
+            Assert.That(set.IsSupersetOf(other), Is.False);
         }
 
         [Test]
@@ -130,7 +149,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var superset = new List<int> { 1, 2, 3 };
 
             // THEN
-            Assert.IsTrue(set.IsProperSubsetOf(superset));
+            Assert.That(set.IsProperSubsetOf(superset), Is.True);
         }
 
         [Test]
@@ -141,7 +160,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var equalSet = new List<int> { 1, 2, 3 };
 
             // THEN
-            Assert.IsFalse(set.IsProperSubsetOf(equalSet));
+            Assert.That(set.IsProperSubsetOf(equalSet), Is.False);
         }
 
         [Test]
@@ -152,7 +171,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var subset = new List<int> { 1, 2 };
 
             // THEN
-            Assert.IsTrue(set.IsProperSupersetOf(subset));
+            Assert.That(set.IsProperSupersetOf(subset), Is.True);
         }
 
         [Test]
@@ -163,7 +182,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var equalSet = new List<int> { 1, 2 };
 
             // THEN
-            Assert.IsFalse(set.IsProperSupersetOf(equalSet));
+            Assert.That(set.IsProperSupersetOf(equalSet), Is.False);
         }
 
         [Test]
@@ -174,7 +193,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var other = new List<int> { 3, 4, 5 };
 
             // THEN
-            Assert.IsTrue(set.Overlaps(other));
+            Assert.That(set.Overlaps(other), Is.True);
         }
 
         [Test]
@@ -185,7 +204,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var other = new List<int> { 4, 5, 6 };
 
             // THEN
-            Assert.IsFalse(set.Overlaps(other));
+            Assert.That(set.Overlaps(other), Is.False);
         }
 
         [Test]
@@ -196,7 +215,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var other = new List<int> { 3, 1, 2 };
 
             // THEN
-            Assert.IsTrue(set.SetEquals(other));
+            Assert.That(set.SetEquals(other), Is.True);
         }
 
         [Test]
@@ -207,7 +226,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Shared
             var other = new List<int> { 1, 2, 4 };
 
             // THEN
-            Assert.IsFalse(set.SetEquals(other));
+            Assert.That(set.SetEquals(other), Is.False);
         }
     }
 }

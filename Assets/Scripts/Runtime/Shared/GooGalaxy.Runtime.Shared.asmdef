@@ -10,7 +10,7 @@
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,
-  "autoReferenced": true,
+  "autoReferenced": false,
   "noEngineReferences": false,
   "overrideReferences": false
 }

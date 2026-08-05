@@ -21,11 +21,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             var grid = new HexGrid(mockLayout);
 
             // THEN
-            Assert.AreEqual(61, grid.Cells.Count);
+            Assert.That(grid.Cells.Count, Is.EqualTo(61));
         }
 
         [Test]
-        public void HexGrid_ContainsCenterCell()
+        public void Constructor_WithPositiveRadius_ContainsCenterCell()
         {
             // GIVEN
             var mockLayout = new MockGridLayout { GridRadius = 4 };
@@ -35,9 +35,9 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             bool hasCell = grid.TryGetCell(new HexCoordinates(0, 0), out HexCell centerCell);
 
             // THEN
-            Assert.IsTrue(hasCell);
-            Assert.IsNotNull(centerCell);
-            Assert.IsFalse(centerCell.IsBlocked);
+            Assert.That(hasCell, Is.True);
+            Assert.That(centerCell, Is.Not.Null);
+            Assert.That(centerCell.IsBlocked, Is.False);
         }
 
         [Test]
@@ -54,10 +54,10 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             bool outsideCoords2 = grid.TryGetCell(new HexCoordinates(0, 5), out _);
 
             // THEN
-            Assert.IsTrue(insideCoords1);
-            Assert.IsTrue(insideCoords2);
-            Assert.IsFalse(outsideCoords1);
-            Assert.IsFalse(outsideCoords2);
+            Assert.That(insideCoords1, Is.True);
+            Assert.That(insideCoords2, Is.True);
+            Assert.That(outsideCoords1, Is.False);
+            Assert.That(outsideCoords2, Is.False);
         }
 
         [Test]
@@ -74,9 +74,9 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.TryGetCell(new HexCoordinates(0, 0), out HexCell cell3);
 
             // THEN
-            Assert.IsTrue(cell1.IsBlocked);
-            Assert.IsTrue(cell2.IsBlocked);
-            Assert.IsFalse(cell3.IsBlocked);
+            Assert.That(cell1.IsBlocked, Is.True);
+            Assert.That(cell2.IsBlocked, Is.True);
+            Assert.That(cell3.IsBlocked, Is.False);
         }
 
         [Test]
@@ -98,9 +98,9 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             int edgeNeighborsCount = results.Count;
 
             // THEN
-            Assert.AreEqual(6, centerNeighborsCount);
-            Assert.AreEqual(3, cornerNeighborsCount);
-            Assert.AreEqual(4, edgeNeighborsCount);
+            Assert.That(centerNeighborsCount, Is.EqualTo(6));
+            Assert.That(cornerNeighborsCount, Is.EqualTo(3));
+            Assert.That(edgeNeighborsCount, Is.EqualTo(4));
         }
 
         [Test]
@@ -115,11 +115,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetRingCells(new HexCoordinates(0, 0), 4, results);
 
             // THEN
-            Assert.AreEqual(24, results.Count);
+            Assert.That(results.Count, Is.EqualTo(24));
         }
 
         [Test]
-        public void GetNeighbors_DoesNotAllocate()
+        public void GetNeighbors_OnRepeatedCalls_DoesNotAllocate()
         {
             // GIVEN
             var mockLayout = new MockGridLayout { GridRadius = 4 };
@@ -140,11 +140,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             long endAlloc = GC.GetAllocatedBytesForCurrentThread();
 
             // THEN
-            Assert.AreEqual(0, endAlloc - startAlloc, "GetNeighbors allocated memory on hot path!");
+            Assert.That(endAlloc - startAlloc, Is.EqualTo(0), "GetNeighbors allocated memory on hot path!");
         }
 
         [Test]
-        public void GetRing_DoesNotAllocate()
+        public void GetRingCells_OnRepeatedCalls_DoesNotAllocate()
         {
             // GIVEN
             var mockLayout = new MockGridLayout { GridRadius = 4 };
@@ -165,7 +165,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             long endAlloc = GC.GetAllocatedBytesForCurrentThread();
 
             // THEN
-            Assert.AreEqual(0, endAlloc - startAlloc, "GetRingCells allocated memory on hot path!");
+            Assert.That(endAlloc - startAlloc, Is.EqualTo(0), "GetRingCells allocated memory on hot path!");
         }
 
         [Test]
@@ -180,11 +180,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetSpiralCells(new HexCoordinates(0, 0), 4, results);
 
             // THEN
-            Assert.AreEqual(61, results.Count);
+            Assert.That(results.Count, Is.EqualTo(61));
         }
 
         [Test]
-        public void GetSpiral_DoesNotAllocate()
+        public void GetSpiralCells_OnRepeatedCalls_DoesNotAllocate()
         {
             // GIVEN
             var mockLayout = new MockGridLayout { GridRadius = 4 };
@@ -205,7 +205,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             long endAlloc = GC.GetAllocatedBytesForCurrentThread();
 
             // THEN
-            Assert.AreEqual(0, endAlloc - startAlloc, "GetSpiralCells allocated memory on hot path!");
+            Assert.That(endAlloc - startAlloc, Is.EqualTo(0), "GetSpiralCells allocated memory on hot path!");
         }
 
         [Test]
@@ -220,7 +220,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetRingCells(new HexCoordinates(0, 0), 0, results);
 
             // THEN
-            Assert.AreEqual(1, results.Count, "GetRingCells with radius 0 should return exactly the center cell.");
+            Assert.That(results.Count, Is.EqualTo(1), "GetRingCells with radius 0 should return exactly the center cell.");
         }
 
         [Test]
@@ -235,7 +235,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetRingCells(new HexCoordinates(0, 0), -1, results);
 
             // THEN
-            Assert.AreEqual(0, results.Count, "GetRingCells with negative radius should return no cells.");
+            Assert.That(results.Count, Is.EqualTo(0), "GetRingCells with negative radius should return no cells.");
         }
 
         [Test]
@@ -250,7 +250,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetSpiralCells(new HexCoordinates(0, 0), -1, results);
 
             // THEN
-            Assert.AreEqual(0, results.Count, "GetSpiralCells with negative radius should return no cells.");
+            Assert.That(results.Count, Is.EqualTo(0), "GetSpiralCells with negative radius should return no cells.");
         }
 
         private class MockGridLayout : IGridLayout
@@ -311,8 +311,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             var grid = new HexGrid(mockLayout);
 
             // THEN
-            Assert.AreEqual(1, grid.Cells.Count);
-            Assert.IsTrue(grid.TryGetCell(new HexCoordinates(0, 0), out _));
+            Assert.That(grid.Cells.Count, Is.EqualTo(1));
+            Assert.That(grid.TryGetCell(new HexCoordinates(0, 0), out _), Is.True);
         }
 
         [Test]
@@ -327,7 +327,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetRingCells(new HexCoordinates(0, 0), 1, results);
 
             // THEN
-            Assert.AreEqual(6, results.Count);
+            Assert.That(results.Count, Is.EqualTo(6));
         }
 
         [Test]
@@ -342,8 +342,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetSpiralCells(new HexCoordinates(0, 0), 0, results);
 
             // THEN
-            Assert.AreEqual(1, results.Count);
-            Assert.AreEqual(new HexCoordinates(0, 0), results[0].Coordinates);
+            Assert.That(results.Count, Is.EqualTo(1));
+            Assert.That(results[0].Coordinates, Is.EqualTo(new HexCoordinates(0, 0)));
         }
 
         [Test]
@@ -358,7 +358,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetRingCells(new HexCoordinates(4, -4), 1, results);
 
             // THEN
-            Assert.AreEqual(3, results.Count);
+            Assert.That(results.Count, Is.EqualTo(3));
         }
 
         [Test]
@@ -373,11 +373,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             grid.GetSpiralCells(new HexCoordinates(2, -2), 2, results);
 
             // THEN
-            Assert.Greater(results.Count, 0, "Spiral from off-center should return at least one cell.");
-            foreach (HexCell cell in results)
-            {
-                Assert.IsTrue(grid.TryGetCell(cell.Coordinates, out _), $"Cell {cell.Coordinates} from spiral is not in the grid.");
-            }
+            Assert.That(results, Is.Not.Empty, "Spiral from off-center should return at least one cell.");
+            Assert.That(results, Is.All.Matches<HexCell>(cell => grid.TryGetCell(cell.Coordinates, out _)), "Every spiral cell must exist in the grid.");
         }
     }
 }

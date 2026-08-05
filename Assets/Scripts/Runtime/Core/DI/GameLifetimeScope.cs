@@ -14,7 +14,8 @@ namespace GooGalaxy.Runtime.Core.DI
         protected override void Configure(IContainerBuilder builder)
         {
             builder.RegisterComponentInHierarchy<GridPresenter>().AsSelf();
-            builder.RegisterComponentInHierarchy<CardRegistry>().AsSelf();
+            builder.RegisterComponentInHierarchy<UnitPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<CardPresenter>().AsSelf();
         }
     }
 }

@@ -67,7 +67,7 @@ jobs:
           dotnet tool restore
 
       - name: Run EditorConfig checks
-        uses: editorconfig-checker/action-editorconfig-checker@v2
+        uses: editorconfig-checker/action-editorconfig-checker@d2ed4fd072ae6f887e9407c909af0f585d2ad9f4 # v2
         with:
           version: latest
 

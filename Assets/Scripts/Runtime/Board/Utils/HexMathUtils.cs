@@ -1,4 +1,4 @@
-using GooGalaxy.Runtime.Board.Models;
+using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Board.Utils

@@ -1,23 +1,50 @@
-using System;
 using System.Reflection;
 using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Models;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace GooGalaxy.Runtime.Tests.EditMode.Cards
 {
     [TestFixture]
     public class CardDataSOTests
     {
+        private CardDataSO _card;
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (_card != null)
+            {
+                Object.DestroyImmediate(_card);
+            }
+        }
+
         [Test]
-        public void CardDataSO_HasCreateAssetMenuAttribute()
+        public void ValidateAuthoredData_WithEmptyCardId_WarnsThatTheCardCannotBeRegistered()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card.name = "TestCard";
+            _card.SetAuthoredData(string.Empty, "Unnamed", CardType.Troop, energyCost: 1, canClone: false, canJump: false, hasArmor: false);
+            LogAssert.Expect(LogType.Warning, "TestCard: CardId is empty. Assign a unique, stable id before referencing this card in a CardPresenter.");
+
+            // WHEN
+            _card.ValidateAuthoredData();
+
+            // THEN
+            Assert.That(_card.CardId.Value, Is.Empty);
+        }
+
+        [Test]
+        public void CardDataSO_AsAuthoredAsset_DeclaresCreateAssetMenuAttribute()
         {
             // GIVEN
             CreateAssetMenuAttribute attribute = typeof(CardDataSO).GetCustomAttribute<CreateAssetMenuAttribute>();
 
             // THEN
-            Assert.IsNotNull(attribute);
+            Assert.That(attribute, Is.Not.Null);
         }
 
         [Test]
@@ -25,24 +52,16 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Cards
         {
             // GIVEN
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
-            Type soType = typeof(CardDataSO);
-
-            soType.GetField("_cardId", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, "bio_phalanx");
-            soType.GetField("_displayName", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, "Bio-Phalanx");
-            soType.GetField("_type", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, CardType.Troop);
-            soType.GetField("_energyCost", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, 3);
-            soType.GetField("_canClone", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, true);
-            soType.GetField("_canJump", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, true);
-            soType.GetField("_hasArmor", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(card, true);
+            card.SetAuthoredData("bio_phalanx", "Bio-Phalanx", CardType.Troop, energyCost: 3, canClone: true, canJump: true, hasArmor: true);
 
             // WHEN / THEN
-            Assert.AreEqual("bio_phalanx", card.CardId.Value);
-            Assert.AreEqual("Bio-Phalanx", card.DisplayName);
-            Assert.AreEqual(CardType.Troop, card.Type);
-            Assert.AreEqual(3, card.EnergyCost);
-            Assert.IsTrue(card.CanClone);
-            Assert.IsTrue(card.CanJump);
-            Assert.IsTrue(card.HasArmor);
+            Assert.That(card.CardId.Value, Is.EqualTo("bio_phalanx"));
+            Assert.That(card.DisplayName, Is.EqualTo("Bio-Phalanx"));
+            Assert.That(card.Type, Is.EqualTo(CardType.Troop));
+            Assert.That(card.EnergyCost, Is.EqualTo(3));
+            Assert.That(card.CanClone, Is.True);
+            Assert.That(card.CanJump, Is.True);
+            Assert.That(card.HasArmor, Is.True);
         }
 
         [Test]
@@ -52,11 +71,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Cards
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
 
             // THEN
-            Assert.AreEqual(CardType.Troop, card.Type);
-            Assert.AreEqual(1, card.EnergyCost);
-            Assert.IsFalse(card.CanClone);
-            Assert.IsFalse(card.CanJump);
-            Assert.IsFalse(card.HasArmor);
+            Assert.That(card.Type, Is.EqualTo(CardType.Troop));
+            Assert.That(card.EnergyCost, Is.EqualTo(1));
+            Assert.That(card.CanClone, Is.False);
+            Assert.That(card.CanJump, Is.False);
+            Assert.That(card.HasArmor, Is.False);
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Models
 {

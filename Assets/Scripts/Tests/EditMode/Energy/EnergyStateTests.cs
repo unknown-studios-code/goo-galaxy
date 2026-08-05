@@ -9,7 +9,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
         private const float Tolerance = 0.0001f;
 
         [Test]
-        public void Constructor_SetsCurrentEnergyToStartingEnergy()
+        public void Constructor_WithConfig_SetsCurrentEnergyToStartingEnergy()
         {
             // GIVEN
             var config = new EnergyConfig(10.0f, 1.0f, 4.5f);
@@ -18,11 +18,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             var state = new EnergyState(config);
 
             // THEN
-            Assert.AreEqual(4.5f, state.CurrentEnergy, Tolerance);
+            Assert.That(state.CurrentEnergy, Is.EqualTo(4.5f).Within(Tolerance));
         }
 
         [Test]
-        public void SetEnergy_ClampsWithinBounds()
+        public void SetEnergy_OutsideConfiguredRange_ClampsToBounds()
         {
             // GIVEN
             var config = new EnergyConfig(10.0f, 1.0f, 5.0f);
@@ -32,13 +32,13 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             state.SetEnergy(15.0f);
 
             // THEN
-            Assert.AreEqual(10.0f, state.CurrentEnergy, Tolerance);
+            Assert.That(state.CurrentEnergy, Is.EqualTo(10.0f).Within(Tolerance));
 
             // WHEN
             state.SetEnergy(-2.0f);
 
             // THEN
-            Assert.AreEqual(0f, state.CurrentEnergy, Tolerance);
+            Assert.That(state.CurrentEnergy, Is.EqualTo(0f).Within(Tolerance));
         }
 
         [Test]
@@ -46,13 +46,14 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
         {
             // GIVEN
             var config = new EnergyConfig(10.0f, 1.5f, 5.0f);
-            var state = new EnergyState(config);
-
-            // WHEN
-            state.IsOvertime = true;
+            var state = new EnergyState(config)
+            {
+                // WHEN
+                IsOvertime = true,
+            };
 
             // THEN
-            Assert.AreEqual(3.0f, state.EffectiveRegenRate, Tolerance);
+            Assert.That(state.EffectiveRegenRate, Is.EqualTo(3.0f).Within(Tolerance));
         }
 
         [Test]
@@ -66,11 +67,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             state.IsOvertime = false;
 
             // THEN
-            Assert.AreEqual(1.5f, state.EffectiveRegenRate, Tolerance);
+            Assert.That(state.EffectiveRegenRate, Is.EqualTo(1.5f).Within(Tolerance));
         }
 
         [Test]
-        public void KomiStartingAsymmetry_PlayerConfigsSetCorrectStartingValues()
+        public void Constructor_WithAsymmetricKomiConfigs_SetsPerPlayerStartingEnergy()
         {
             // GIVEN
             var p1Config = new EnergyConfig(10.0f, 1f / 2.8f, 5.0f);
@@ -81,8 +82,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             var p2State = new EnergyState(p2Config);
 
             // THEN
-            Assert.AreEqual(5.0f, p1State.CurrentEnergy, Tolerance);
-            Assert.AreEqual(5.5f, p2State.CurrentEnergy, Tolerance);
+            Assert.That(p1State.CurrentEnergy, Is.EqualTo(5.0f).Within(Tolerance));
+            Assert.That(p2State.CurrentEnergy, Is.EqualTo(5.5f).Within(Tolerance));
         }
     }
 }

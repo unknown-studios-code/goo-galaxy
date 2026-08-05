@@ -6,12 +6,11 @@
   "includePlatforms": [],
   "precompiledReferences": [],
   "references": [
-    "GooGalaxy.Runtime.Shared",
-    "GooGalaxy.Runtime.Cards"
+    "GooGalaxy.Runtime.Shared"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,
-  "autoReferenced": true,
+  "autoReferenced": false,
   "noEngineReferences": false,
   "overrideReferences": false
 }

@@ -4,6 +4,7 @@ using GooGalaxy.Runtime.Board.Utils;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
+using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Board.Views
@@ -11,19 +12,20 @@ namespace GooGalaxy.Runtime.Board.Views
     [DisallowMultipleComponent]
     public class GridView : MonoBehaviour
     {
-        [Tooltip("The prefab used to represent a single hexagonal cell.")]
+        [Header("Cells")]
         [SerializeField]
         private CellView _cellPrefab;
 
-        [Tooltip("The size of each hex cell (distance from center to corner vertex).")]
+        [Tooltip("Distance from a cell's center to its corner vertex, in world units. Must match the prefab mesh or cells overlap.")]
         [SerializeField]
         private float _cellVisualSize = 1.0f;
 
-        [Tooltip("Color tint applied to standard playable cells.")]
+        [Header("Colors")]
+        [Tooltip("Tint applied to standard playable cells.")]
         [SerializeField]
         private Color _defaultCellColor = Color.white;
 
-        [Tooltip("Color tint applied to blocked, impassable cells.")]
+        [Tooltip("Tint applied to blocked, impassable cells.")]
         [SerializeField]
         private Color _blockedCellColor = Color.gray;
 
@@ -38,15 +40,22 @@ namespace GooGalaxy.Runtime.Board.Views
 
         private void OnEnable()
         {
-            StaticGameEvents.GridInitialized += OnGridInitialized;
+            MatchEvents.GridInitialized += HandleGridInitialized;
         }
 
         private void OnDisable()
         {
-            StaticGameEvents.GridInitialized -= OnGridInitialized;
+            MatchEvents.GridInitialized -= HandleGridInitialized;
         }
 
-        private void OnGridInitialized(IHexGrid gridObject)
+        /// <summary>Assigns the cell prefab and its world size before the view builds a grid.</summary>
+        internal void SetViewConfiguration(CellView cellPrefab, float cellVisualSize)
+        {
+            _cellPrefab = cellPrefab;
+            _cellVisualSize = cellVisualSize;
+        }
+
+        private void HandleGridInitialized(IHexGrid gridObject)
         {
             if (gridObject is HexGrid grid)
             {

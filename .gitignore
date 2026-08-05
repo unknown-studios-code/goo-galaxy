@@ -26,6 +26,9 @@
 # Recordings can get excessive in size
 /[Rr]ecordings/
 
+# Unity Code Coverage output: regenerated on every run with coverage enabled
+/[Cc]ode[Cc]overage/
+
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 

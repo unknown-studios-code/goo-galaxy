@@ -10,6 +10,19 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
         private const float Tolerance = 0.0001f;
 
         [Test]
+        public void CanAfford_WithNegativeCost_ReturnsFalse()
+        {
+            // GIVEN
+            const float currentEnergy = 10f;
+
+            // WHEN
+            bool canAfford = EnergyValidator.CanAfford(currentEnergy, -1f);
+
+            // THEN
+            Assert.That(canAfford, Is.False);
+        }
+
+        [Test]
         public void CanAfford_WithSufficientEnergy_ReturnsTrue()
         {
             // GIVEN
@@ -20,7 +33,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             bool result = EnergyValidator.CanAfford(current, cost);
 
             // THEN
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -34,7 +47,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             bool result = EnergyValidator.CanAfford(current, cost);
 
             // THEN
-            Assert.IsFalse(result);
+            Assert.That(result, Is.False);
         }
 
         [Test]
@@ -48,7 +61,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             bool result = EnergyValidator.CanAfford(current, cost);
 
             // THEN
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -62,8 +75,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             SpendResult result = EnergyValidator.TrySpend(ref current, cost);
 
             // THEN
-            Assert.AreEqual(SpendResult.Success, result);
-            Assert.AreEqual(2.0f, current, Tolerance);
+            Assert.That(result, Is.EqualTo(SpendResult.Success));
+            Assert.That(current, Is.EqualTo(2.0f).Within(Tolerance));
         }
 
         [Test]
@@ -77,8 +90,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             SpendResult result = EnergyValidator.TrySpend(ref current, cost);
 
             // THEN
-            Assert.AreEqual(SpendResult.InsufficientEnergy, result);
-            Assert.AreEqual(2.0f, current, Tolerance);
+            Assert.That(result, Is.EqualTo(SpendResult.InsufficientEnergy));
+            Assert.That(current, Is.EqualTo(2.0f).Within(Tolerance));
         }
 
         [Test]
@@ -92,8 +105,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             SpendResult result = EnergyValidator.TrySpend(ref current, cost);
 
             // THEN
-            Assert.AreEqual(SpendResult.InsufficientEnergy, result);
-            Assert.AreEqual(5.0f, current, Tolerance);
+            Assert.That(result, Is.EqualTo(SpendResult.InsufficientEnergy));
+            Assert.That(current, Is.EqualTo(5.0f).Within(Tolerance));
         }
 
         [Test]
@@ -107,8 +120,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Energy
             SpendResult result = EnergyValidator.TrySpend(ref current, cost);
 
             // THEN
-            Assert.AreEqual(SpendResult.Success, result);
-            Assert.AreEqual(5.0f, current, Tolerance);
+            Assert.That(result, Is.EqualTo(SpendResult.Success));
+            Assert.That(current, Is.EqualTo(5.0f).Within(Tolerance));
         }
     }
 }

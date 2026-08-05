@@ -1,4 +1,4 @@
 namespace GooGalaxy.Runtime.Shared.Types
 {
-    public struct MatchConfiguration { }
+    public readonly struct MatchConfiguration { }
 }
