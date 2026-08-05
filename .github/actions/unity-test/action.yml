@@ -55,7 +55,7 @@ runs:
 
     - name: Run Unity tests
       id: tests
-      uses: game-ci/unity-test-runner@v4
+      uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9 # v4
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}

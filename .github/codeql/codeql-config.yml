@@ -16,3 +16,36 @@ paths-ignore:
 query-filters:
   - exclude:
       kind: metric
+
+  # The queries below fight conventions the project mandates, so they only add noise.
+  # Note the id format: the query help pages spell these "cs/linq-missed-select", but the
+  # scanner emits "cs/linq/missed-select". Filters match the emitted id, so copying an id
+  # from the docs produces a filter that silently matches nothing.
+
+  # "Missed opportunity to use LINQ": indexed for loops are mandated in hot paths by
+  # .claude/rules/unity-performance-optimization.md, which bans LINQ there outright.
+  # The whole family is excluded, not just the members that have fired so far.
+  - exclude:
+      id: cs/linq/missed-select
+  - exclude:
+      id: cs/linq/missed-where
+  - exclude:
+      id: cs/linq/missed-all
+  - exclude:
+      id: cs/linq/missed-cast
+  - exclude:
+      id: cs/linq/missed-oftype
+  - exclude:
+      id: cs/linq/useless-select
+
+  # "Missed 'readonly' opportunity": Unity's serializer writes [SerializeField] private
+  # fields from the Inspector rather than from code, so they look never-assigned here.
+  # Marking them readonly would break deserialization.
+  - exclude:
+      id: cs/missed-readonly-modifier
+
+  # "Poor error handling: empty catch block": .claude/rules/unity-debugging.md Rule 12
+  # prescribes an empty catch (OperationCanceledException) for every Awaitable, since a
+  # cancellation on destroy is expected and has nothing to clean up.
+  - exclude:
+      id: cs/empty-catch-block
