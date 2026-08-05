@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Interfaces;
-using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
@@ -37,7 +36,29 @@ namespace GooGalaxy.Runtime.Board.Data
             }
         }
 
+        internal IReadOnlyList<Vector2Int> AuthoredBlockedCoordinates => _blockedCoordinates;
+
         private void OnValidate()
+        {
+            ValidateAuthoredData();
+        }
+
+        /// <summary>
+        /// Replaces the authored values without running validation, so a caller can observe what
+        /// <see cref="ValidateAuthoredData" /> does to raw input.
+        /// </summary>
+        internal void SetAuthoredData(int gridRadius, params Vector2Int[] blockedCoordinates)
+        {
+            _gridRadius = gridRadius;
+            _blockedCoordinates = blockedCoordinates ?? Array.Empty<Vector2Int>();
+            _blockedCoordinatesWrapper = null;
+        }
+
+        /// <summary>
+        /// Clamps the radius, removes duplicate blocked coordinates, and rebuilds the lookup set.
+        /// Runs on every Inspector edit through <c>OnValidate</c>.
+        /// </summary>
+        internal void ValidateAuthoredData()
         {
             ClampGridRadius();
             ValidateBlockedCoordinates();

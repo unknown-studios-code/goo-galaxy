@@ -16,12 +16,8 @@
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",
-    "GooGalaxy.Runtime.HUD",
-    "GooGalaxy.Runtime.Input",
-    "GooGalaxy.Runtime.Match",
     "GooGalaxy.Runtime.Networking",
-    "GooGalaxy.Runtime.Progression",
-    "GooGalaxy.Runtime.Bootstrap"
+    "UnityEngine.TestRunner"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,

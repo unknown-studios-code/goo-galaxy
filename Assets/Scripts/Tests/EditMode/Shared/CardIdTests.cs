@@ -21,7 +21,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode
         }
 
         [Test]
-        public void Empty_WrapsStringEmpty()
+        public void Empty_WithoutArguments_WrapsStringEmpty()
         {
             // GIVEN
             CardId emptyId = CardId.Empty;
@@ -32,8 +32,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             string defaultVal = defaultId.Value;
 
             // THEN
-            Assert.AreEqual(string.Empty, emptyVal);
-            Assert.AreEqual(string.Empty, defaultVal);
+            Assert.That(emptyVal, Is.EqualTo(string.Empty));
+            Assert.That(defaultVal, Is.EqualTo(string.Empty));
         }
 
         [Test]
@@ -49,10 +49,10 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             bool inequalityOpResult = id1 != id2;
 
             // THEN
-            Assert.IsTrue(equalsMethodResult);
-            Assert.IsTrue(equalityOpResult);
-            Assert.IsFalse(inequalityOpResult);
-            Assert.AreEqual(id1, id2);
+            Assert.That(equalsMethodResult, Is.True);
+            Assert.That(equalityOpResult, Is.True);
+            Assert.That(inequalityOpResult, Is.False);
+            Assert.That(id2, Is.EqualTo(id1));
         }
 
         [Test]
@@ -68,14 +68,14 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             bool inequalityOpResult = id1 != id2;
 
             // THEN
-            Assert.IsFalse(equalsMethodResult);
-            Assert.IsFalse(equalityOpResult);
-            Assert.IsTrue(inequalityOpResult);
-            Assert.AreNotEqual(id1, id2);
+            Assert.That(equalsMethodResult, Is.False);
+            Assert.That(equalityOpResult, Is.False);
+            Assert.That(inequalityOpResult, Is.True);
+            Assert.That(id2, Is.Not.EqualTo(id1));
         }
 
         [Test]
-        public void GetHashCode_MatchesStringGetHashCode()
+        public void GetHashCode_ForWrappedValue_MatchesStringHashCode()
         {
             // GIVEN
             const string rawId = "test_card";
@@ -86,11 +86,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             int actualHash = cardId.GetHashCode();
 
             // THEN
-            Assert.AreEqual(expectedHash, actualHash);
+            Assert.That(actualHash, Is.EqualTo(expectedHash));
         }
 
         [Test]
-        public void ToString_ReturnsWrappedString()
+        public void ToString_ForWrappedValue_ReturnsRawString()
         {
             // GIVEN
             const string rawId = "test_card";
@@ -100,7 +100,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             string toStringResult = cardId.ToString();
 
             // THEN
-            Assert.AreEqual(rawId, toStringResult);
+            Assert.That(toStringResult, Is.EqualTo(rawId));
         }
 
         [Test]
@@ -114,7 +114,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             bool result = id1.Equals(boxed);
 
             // THEN
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -127,7 +127,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             bool result = id.Equals("card_a");
 
             // THEN
-            Assert.IsFalse(result);
+            Assert.That(result, Is.False);
         }
 
         [Test]
@@ -138,8 +138,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             var defaultId = default(CardId);
 
             // THEN
-            Assert.AreEqual(empty, defaultId);
-            Assert.IsTrue(empty == defaultId);
+            Assert.That(defaultId, Is.EqualTo(empty));
+            Assert.That(empty == defaultId, Is.True);
         }
 
         [Test]
@@ -150,8 +150,8 @@ namespace GooGalaxy.Runtime.Tests.EditMode
             var lower = new CardId("cardabc");
 
             // THEN
-            Assert.AreNotEqual(upper, lower);
-            Assert.IsFalse(upper == lower);
+            Assert.That(lower, Is.Not.EqualTo(upper));
+            Assert.That(upper == lower, Is.False);
         }
     }
 }

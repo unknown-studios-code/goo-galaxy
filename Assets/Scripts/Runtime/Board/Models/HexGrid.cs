@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Shared.Interfaces;
+using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Models
 {

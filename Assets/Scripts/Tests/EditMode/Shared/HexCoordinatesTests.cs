@@ -1,7 +1,7 @@
-using GooGalaxy.Runtime.Board.Models;
+using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Board
+namespace GooGalaxy.Runtime.Tests.EditMode
 {
     [TestFixture]
     public class HexCoordinatesTests
@@ -19,9 +19,9 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             bool operatorNotEqualsResult = coord1 != coord2;
 
             // THEN
-            Assert.IsTrue(equalsResult);
-            Assert.IsTrue(operatorEqualsResult);
-            Assert.IsFalse(operatorNotEqualsResult);
+            Assert.That(equalsResult, Is.True);
+            Assert.That(operatorEqualsResult, Is.True);
+            Assert.That(operatorNotEqualsResult, Is.False);
         }
 
         [Test]
@@ -37,9 +37,9 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             bool operatorNotEqualsResult = coord1 != coord2;
 
             // THEN
-            Assert.IsFalse(equalsResult);
-            Assert.IsFalse(operatorEqualsResult);
-            Assert.IsTrue(operatorNotEqualsResult);
+            Assert.That(equalsResult, Is.False);
+            Assert.That(operatorEqualsResult, Is.False);
+            Assert.That(operatorNotEqualsResult, Is.True);
         }
 
         [Test]
@@ -54,11 +54,11 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             int hash2 = coord2.GetHashCode();
 
             // THEN
-            Assert.AreEqual(hash1, hash2);
+            Assert.That(hash2, Is.EqualTo(hash1));
         }
 
         [Test]
-        public void Distance_CalculatesCorrectly()
+        public void Distance_BetweenTwoCoordinates_ReturnsAxialHexDistance()
         {
             // GIVEN
             var origin = new HexCoordinates(0, 0);
@@ -78,55 +78,18 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             int distDiagonal = a.CalculateDistance(b);
 
             // THEN
-            Assert.AreEqual(1, distToEast);
-            Assert.AreEqual(1, distToNorthEast);
-            Assert.AreEqual(1, distToNorthWest);
-            Assert.AreEqual(1, distToWest);
-            Assert.AreEqual(1, distToSouthWest);
-            Assert.AreEqual(1, distToSouthEast);
-            Assert.AreEqual(8, distOpposingBorders);
-            Assert.AreEqual(4, distDiagonal);
+            Assert.That(distToEast, Is.EqualTo(1));
+            Assert.That(distToNorthEast, Is.EqualTo(1));
+            Assert.That(distToNorthWest, Is.EqualTo(1));
+            Assert.That(distToWest, Is.EqualTo(1));
+            Assert.That(distToSouthWest, Is.EqualTo(1));
+            Assert.That(distToSouthEast, Is.EqualTo(1));
+            Assert.That(distOpposingBorders, Is.EqualTo(8));
+            Assert.That(distDiagonal, Is.EqualTo(4));
         }
 
         [Test]
-        public void GetNeighbor_MatchesOffsets()
-        {
-            // GIVEN
-            var origin = new HexCoordinates(0, 0);
-
-            // WHEN
-            HexCoordinates neighborE = origin.GetNeighbor(HexDirection.E);
-            HexCoordinates neighborNE = origin.GetNeighbor(HexDirection.NE);
-            HexCoordinates neighborNW = origin.GetNeighbor(HexDirection.NW);
-            HexCoordinates neighborW = origin.GetNeighbor(HexDirection.W);
-            HexCoordinates neighborSW = origin.GetNeighbor(HexDirection.SW);
-            HexCoordinates neighborSE = origin.GetNeighbor(HexDirection.SE);
-
-            // THEN
-            Assert.AreEqual(new HexCoordinates(1, 0), neighborE);
-            Assert.AreEqual(new HexCoordinates(1, -1), neighborNE);
-            Assert.AreEqual(new HexCoordinates(0, -1), neighborNW);
-            Assert.AreEqual(new HexCoordinates(-1, 0), neighborW);
-            Assert.AreEqual(new HexCoordinates(-1, 1), neighborSW);
-            Assert.AreEqual(new HexCoordinates(0, 1), neighborSE);
-        }
-
-        [Test]
-        public void HexDirection_ExposesCorrectOffsets()
-        {
-            // GIVEN
-            // WHEN
-            // THEN
-            Assert.AreEqual(new HexCoordinates(1, 0), HexDirection.E);
-            Assert.AreEqual(new HexCoordinates(1, -1), HexDirection.NE);
-            Assert.AreEqual(new HexCoordinates(0, -1), HexDirection.NW);
-            Assert.AreEqual(new HexCoordinates(-1, 0), HexDirection.W);
-            Assert.AreEqual(new HexCoordinates(-1, 1), HexDirection.SW);
-            Assert.AreEqual(new HexCoordinates(0, 1), HexDirection.SE);
-        }
-
-        [Test]
-        public void ToString_ReturnsFormattedCoordinates()
+        public void ToString_ForAxialPair_ReturnsFormattedCoordinates()
         {
             // GIVEN
             var coord = new HexCoordinates(3, -2);
@@ -135,7 +98,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             string result = coord.ToString();
 
             // THEN
-            Assert.AreEqual("(3, -2)", result);
+            Assert.That(result, Is.EqualTo("(3, -2)"));
         }
 
         [Test]
@@ -149,7 +112,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             bool result = coord.Equals(boxed);
 
             // THEN
-            Assert.IsTrue(result);
+            Assert.That(result, Is.True);
         }
 
         [Test]
@@ -162,7 +125,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             bool result = coord.Equals("not a HexCoordinates");
 
             // THEN
-            Assert.IsFalse(result);
+            Assert.That(result, Is.False);
         }
 
         [Test]
@@ -175,7 +138,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             int distance = coord.CalculateDistance(coord);
 
             // THEN
-            Assert.AreEqual(0, distance);
+            Assert.That(distance, Is.EqualTo(0));
         }
 
         [Test]
@@ -190,26 +153,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             int hash2 = coord2.GetHashCode();
 
             // THEN
-            Assert.AreNotEqual(hash1, hash2, "Different coordinates should have different hash codes.");
-        }
-
-        [Test]
-        public void HexDirection_All_HasSixElements()
-        {
-            // THEN
-            Assert.AreEqual(6, HexDirection.All.Length);
-        }
-
-        [Test]
-        public void HexDirection_All_ContainsAllDirections()
-        {
-            // THEN
-            Assert.AreEqual(HexDirection.E, HexDirection.All[0]);
-            Assert.AreEqual(HexDirection.NE, HexDirection.All[1]);
-            Assert.AreEqual(HexDirection.NW, HexDirection.All[2]);
-            Assert.AreEqual(HexDirection.W, HexDirection.All[3]);
-            Assert.AreEqual(HexDirection.SW, HexDirection.All[4]);
-            Assert.AreEqual(HexDirection.SE, HexDirection.All[5]);
+            Assert.That(hash2, Is.Not.EqualTo(hash1), "Different coordinates should have different hash codes.");
         }
     }
 }

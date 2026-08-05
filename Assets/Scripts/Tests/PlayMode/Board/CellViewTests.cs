@@ -1,7 +1,6 @@
 using System.Collections;
-using System.Reflection;
-using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Views;
+using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -32,7 +31,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
-        public IEnumerator InitializeCell_SetsCoordinatesAndName()
+        public IEnumerator InitializeCell_WithCoordinates_SetsCoordinatesAndGameObjectName()
         {
             // GIVEN
             var coords = new HexCoordinates(2, -3);
@@ -42,8 +41,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return null;
 
             // THEN
-            Assert.AreEqual(coords, _cellView.CellCoordinates);
-            Assert.AreEqual("Cell_2_-3", _go.name);
+            Assert.That(_cellView.CellCoordinates, Is.EqualTo(coords));
+            Assert.That(_go.name, Is.EqualTo("Cell_2_-3"));
         }
 
         [UnityTest]
@@ -51,14 +50,14 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN
             _cellView.InitializeCell(new HexCoordinates(0, 0));
-            Assert.IsFalse(_cellView.IsHighlighted);
+            Assert.That(_cellView.IsHighlighted, Is.False);
 
             // WHEN
             _cellView.SetHighlightState(true);
             yield return null;
 
             // THEN
-            Assert.IsTrue(_cellView.IsHighlighted);
+            Assert.That(_cellView.IsHighlighted, Is.True);
         }
 
         [UnityTest]
@@ -67,18 +66,18 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             _cellView.InitializeCell(new HexCoordinates(0, 0));
             _cellView.SetHighlightState(true);
-            Assert.IsTrue(_cellView.IsHighlighted);
+            Assert.That(_cellView.IsHighlighted, Is.True);
 
             // WHEN
             _cellView.SetHighlightState(false);
             yield return null;
 
             // THEN
-            Assert.IsFalse(_cellView.IsHighlighted);
+            Assert.That(_cellView.IsHighlighted, Is.False);
         }
 
         [UnityTest]
-        public IEnumerator SetCellColor_DoesNotThrow()
+        public IEnumerator SetCellColor_OnInitializedCell_DoesNotThrow()
         {
             // GIVEN
             _cellView.InitializeCell(new HexCoordinates(1, 1));
@@ -90,23 +89,41 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
-        public IEnumerator NullMeshRenderer_ApplyColor_DoesNotThrow()
+        public IEnumerator SetCellColor_AfterGameObjectDestroyed_DoesNotThrow()
         {
             // GIVEN
-            var bareGO = new GameObject("CellView_NoRenderer");
-            CellView bareView = bareGO.AddComponent<CellView>();
-            bareView.InitializeCell(new HexCoordinates(0, 0));
-
-            FieldInfo rendererField = typeof(CellView).GetField("_meshRenderer", BindingFlags.NonPublic | BindingFlags.Instance);
-            rendererField.SetValue(bareView, null);
-
-            // WHEN
-            // THEN
-            Assert.DoesNotThrow(() => bareView.SetCellColor(Color.blue));
-            Assert.DoesNotThrow(() => bareView.SetHighlightState(true));
-
+            CellView destroyedView = CreateDestroyedCellView();
             yield return null;
-            Object.Destroy(bareGO);
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => destroyedView.SetCellColor(Color.blue));
+        }
+
+        [UnityTest]
+        public IEnumerator SetHighlightState_AfterGameObjectDestroyed_DoesNotThrow()
+        {
+            // GIVEN
+            CellView destroyedView = CreateDestroyedCellView();
+            yield return null;
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => destroyedView.SetHighlightState(true));
+        }
+
+        /// <summary>
+        /// Returns a view whose GameObject — and therefore its cached renderer — is pending destruction.
+        /// The caller must yield one frame before using it so the destruction actually lands.
+        /// </summary>
+        private static CellView CreateDestroyedCellView()
+        {
+            var gameObject = new GameObject("CellView_Destroyed");
+            gameObject.AddComponent<MeshRenderer>();
+            CellView view = gameObject.AddComponent<CellView>();
+            view.InitializeCell(new HexCoordinates(0, 0));
+
+            Object.Destroy(gameObject);
+
+            return view;
         }
     }
 }
