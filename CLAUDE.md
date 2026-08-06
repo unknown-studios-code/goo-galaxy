@@ -51,7 +51,9 @@ The project skills own each step (`/create-commit`, `/open-pull-request`, `/refi
 
 ## Boundaries
 
-- **Never create or edit `.asset` or `.meta` files.** Unity authors them; writing them from an agent corrupts GUIDs and serialized references. Give step-by-step in-editor instructions instead (menu path, fields, values). The `deny` rules in `.claude/settings.json` enforce this — a denial there is policy, not a bug: switch to manual editor instructions rather than looking for another way to write the file.
+- **Never write `.asset`, `.meta`, `.prefab`, or `.unity` files directly.** Unity authors them; writing the bytes from an agent corrupts GUIDs and serialized references. The `deny` rules in `.claude/settings.json` enforce this — a denial there is policy, not a bug.
+- **Authoring those assets through the Unity MCP is allowed**, because the editor still writes the files and GUIDs stay valid. `Unity_RunCommand` is the reliable path: the MCP's `component_properties` setters have silently reported success without applying the change (materials, collider state, nested `ParticleSystem` modules). Prefer `SerializedObject` + `PrefabUtility` in a `RunCommand` over per-property tool calls. Note the sandbox blocks `using System.Reflection;` and `HashSet<T>` — fully qualify reflection types and use arrays. With no MCP connected, fall back to step-by-step in-editor instructions (menu path, fields, values).
+- **`ProjectSettings/` and render pipeline assignment stay the user's call.** Ask before changing Graphics/Quality settings or anything project-wide.
 - **Never commit, push, or open a PR** unless asked.
 
 ## Gotchas
