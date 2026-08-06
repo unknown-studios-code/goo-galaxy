@@ -16,6 +16,7 @@
   "devDependencies": {
     "commitizen": "^4.3.2",
     "cz-conventional-changelog": "^3.3.0",
+    "editorconfig-checker": "6.1.1",
     "husky": "^9.1.7",
     "prettier": "^3.9.6"
   },
@@ -32,11 +33,12 @@
     "url": "git+https://github.com/unknown-studios-code/goo-galaxy.git"
   },
   "scripts": {
-    "check": "npm run check:csharpier && npm run check:dotnet && npm run check:prettier",
+    "check": "npm run check:csharpier && npm run check:dotnet && npm run check:editorconfig && npm run check:prettier",
     "check:csharpier": "dotnet csharpier check Assets/Scripts --ignore-path .formatterignore",
     "check:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" --verify-no-changes --severity info",
+    "check:editorconfig": "cd Assets/Scripts && editorconfig-checker -config ../../.editorconfig-checker.json",
     "check:prettier": "prettier --check \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
-    "format": "npm run format:csharpier && npm run format:dotnet && npm run format:prettier",
+    "format": "npm run format:csharpier && npm run format:dotnet && npm run format:prettier && npm run check:editorconfig",
     "format:csharpier": "dotnet csharpier format Assets/Scripts --ignore-path .formatterignore",
     "format:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\"",
     "format:prettier": "prettier --write \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
