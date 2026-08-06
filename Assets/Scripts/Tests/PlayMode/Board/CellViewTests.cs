@@ -17,7 +17,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public void SetUp()
         {
             _go = new GameObject("CellView_Test");
-            _go.AddComponent<MeshRenderer>();
+            _go.AddComponent<SpriteRenderer>();
             _cellView = _go.AddComponent<CellView>();
         }
 
@@ -31,6 +31,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator InitializeCell_WithCoordinates_SetsCoordinatesAndGameObjectName()
         {
             // GIVEN
@@ -46,6 +47,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetHighlightState_True_SetsIsHighlightedTrue()
         {
             // GIVEN
@@ -61,6 +63,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetHighlightState_False_ResetsHighlight()
         {
             // GIVEN
@@ -77,6 +80,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetCellColor_OnInitializedCell_DoesNotThrow()
         {
             // GIVEN
@@ -89,6 +93,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetCellColor_AfterGameObjectDestroyed_DoesNotThrow()
         {
             // GIVEN
@@ -100,6 +105,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetHighlightState_AfterGameObjectDestroyed_DoesNotThrow()
         {
             // GIVEN
@@ -117,7 +123,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private static CellView CreateDestroyedCellView()
         {
             var gameObject = new GameObject("CellView_Destroyed");
-            gameObject.AddComponent<MeshRenderer>();
+            gameObject.AddComponent<SpriteRenderer>();
             CellView view = gameObject.AddComponent<CellView>();
             view.InitializeCell(new HexCoordinates(0, 0));
 

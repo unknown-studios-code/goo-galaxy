@@ -25,7 +25,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public void SetUp()
         {
             _prefabGO = new GameObject("CellPrefab_Test");
-            _prefabGO.AddComponent<MeshRenderer>();
+            _prefabGO.AddComponent<SpriteRenderer>();
             _cellPrefab = _prefabGO.AddComponent<CellView>();
             _prefabGO.SetActive(false);
 
@@ -60,6 +60,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator GridView_Initialization_Spawns61CellsAtDistinctPositions()
         {
             // GIVEN
@@ -87,8 +88,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             Assert.That(
                 view.CellViews.Values,
-                Is.All.Matches<CellView>(cell => Mathf.Abs(cell.transform.localPosition.y) <= PositionTolerance),
-                "Cells should lie flat on the XZ plane."
+                Is.All.Matches<CellView>(cell => Mathf.Abs(cell.transform.localPosition.z) <= PositionTolerance),
+                "Cells should lie on the XY plane, facing the 2D camera."
             );
 
             foreach (KeyValuePair<HexCoordinates, CellView> kvp in view.CellViews)
@@ -101,6 +102,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator CellViews_WhenCellPrefabIsMissing_StayEmptyAndLogError()
         {
             // GIVEN
@@ -126,6 +128,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator CellViews_WhenGridIsInitializedTwice_AreRebuiltWithoutDuplicatingCells()
         {
             // GIVEN

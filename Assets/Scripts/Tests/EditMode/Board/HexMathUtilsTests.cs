@@ -3,7 +3,7 @@ using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Board
+namespace GooGalaxy.Tests.EditMode.Board
 {
     [TestFixture]
     public class HexMathUtilsTests
@@ -25,7 +25,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
         }
 
         [Test]
-        public void ProjectToWorldSpace_YCoordinate_IsAlwaysZero()
+        public void ProjectToWorldSpace_ZCoordinate_IsAlwaysZero()
         {
             // GIVEN
             var coords = new HexCoordinates(2, -1);
@@ -34,7 +34,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
             Vector3 result = HexMathUtils.ProjectToWorldSpace(coords, Size);
 
             // THEN
-            Assert.That(result.y, Is.EqualTo(0f).Within(Tolerance), "Y axis should always be 0 (XZ plane layout).");
+            Assert.That(result.z, Is.EqualTo(0f).Within(Tolerance), "Z axis should always be 0 (XY plane layout).");
         }
 
         [Test]
@@ -48,7 +48,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result.x, Is.EqualTo(1.5f).Within(Tolerance));
-            Assert.That(result.z, Is.EqualTo(Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
+            Assert.That(result.y, Is.EqualTo(Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
         }
 
         [Test]
@@ -62,7 +62,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result.x, Is.EqualTo(-1.5f).Within(Tolerance));
-            Assert.That(result.z, Is.EqualTo(-Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
+            Assert.That(result.y, Is.EqualTo(-Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result.x, Is.EqualTo(0f).Within(Tolerance));
-            Assert.That(result.z, Is.EqualTo(Mathf.Sqrt(3f)).Within(Tolerance));
+            Assert.That(result.y, Is.EqualTo(Mathf.Sqrt(3f)).Within(Tolerance));
         }
 
         [Test]
@@ -90,7 +90,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result.x, Is.EqualTo(1.5f).Within(Tolerance));
-            Assert.That(result.z, Is.EqualTo(-Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
+            Assert.That(result.y, Is.EqualTo(-Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
         }
 
         [Test]
@@ -104,7 +104,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result.x, Is.EqualTo(0f).Within(Tolerance));
-            Assert.That(result.z, Is.EqualTo(-Mathf.Sqrt(3f)).Within(Tolerance));
+            Assert.That(result.y, Is.EqualTo(-Mathf.Sqrt(3f)).Within(Tolerance));
         }
 
         [Test]
@@ -118,7 +118,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result.x, Is.EqualTo(-1.5f).Within(Tolerance));
-            Assert.That(result.z, Is.EqualTo(Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
+            Assert.That(result.y, Is.EqualTo(Mathf.Sqrt(3f) * 0.5f).Within(Tolerance));
         }
 
         [Test]
@@ -147,7 +147,7 @@ namespace GooGalaxy.Runtime.Tests.EditMode.Board
 
             // THEN
             Assert.That(result2.x, Is.EqualTo(result1.x * size2).Within(Tolerance));
-            Assert.That(result2.z, Is.EqualTo(result1.z * size2).Within(Tolerance));
+            Assert.That(result2.y, Is.EqualTo(result1.y * size2).Within(Tolerance));
         }
     }
 }
