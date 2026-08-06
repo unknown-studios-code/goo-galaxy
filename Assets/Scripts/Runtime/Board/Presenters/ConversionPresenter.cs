@@ -141,6 +141,11 @@ namespace GooGalaxy.Runtime.Board.Presenters
             }
             catch (Exception exception)
             {
+                // Deliberately broad, and the one place the style rule's "no try/catch as flow control" does not
+                // apply: this is a dispatch boundary into arbitrary subscriber code, so no narrower type exists to
+                // name. The conversions are already committed to the models by now, and letting a subscriber's
+                // throw unwind into the move pipeline would report a failed move over a board that did change.
+                // Nothing is swallowed — the exception is logged with its stack.
                 Debug.LogError(BoardLogMessages.ConversionResolvedSubscriberFailed, this);
                 Debug.LogException(exception, this);
             }

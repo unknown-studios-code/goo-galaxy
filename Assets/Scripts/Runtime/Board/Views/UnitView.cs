@@ -52,7 +52,8 @@ namespace GooGalaxy.Runtime.Board.Views
         private GameObject _conversionEffectPrefab;
 
         [Tooltip(
-            "Played when a landing breaks an armored unit's shell without flipping it. Per GDD 06, armor is a white shell, so this reads as the shell shattering — never as an ownership flip."
+            "Played when a landing breaks an armored unit's shell without flipping it."
+                + "Per GDD 06, armor is a white shell, so this reads as the shell shattering — never as an ownership flip."
         )]
         [SerializeField]
         private GameObject _armorBreakEffectPrefab;
@@ -85,7 +86,8 @@ namespace GooGalaxy.Runtime.Board.Views
 
         [Header("Card Colors")]
         [Tooltip(
-            "Body tint per card id, so a troop's type is readable at a glance. Placeholder for the per-card silhouettes GDD 06 calls for; a card with no entry keeps the owner's colour."
+            "Body tint per card id, so a troop's type is readable at a glance."
+                + "Placeholder for the per-card silhouettes GDD 06 calls for; a card with no entry keeps the owner's colour."
         )]
         [SerializeField]
         private CardBodyColor[] _cardBodyColors = Array.Empty<CardBodyColor>();

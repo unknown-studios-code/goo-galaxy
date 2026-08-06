@@ -32,7 +32,8 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private static readonly float _sqrt3 = Mathf.Sqrt(3f);
 
         [Tooltip(
-            "Distance from a hex center to its corner vertex, in world units. Must match GridView's cell visual size or the framing will not match the board that was drawn."
+            "Distance from a hex center to its corner vertex, in world units."
+                + "Must match GridView's cell visual size or the framing will not match the board that was drawn."
         )]
         [SerializeField]
         private float _cellVisualSize = 1f;
