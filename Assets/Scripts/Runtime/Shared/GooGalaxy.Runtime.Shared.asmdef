@@ -5,9 +5,7 @@
   "excludePlatforms": [],
   "includePlatforms": [],
   "precompiledReferences": [],
-  "references": [
-    "VContainer"
-  ],
+  "references": [],
   "versionDefines": [],
   "allowUnsafeCode": false,
   "autoReferenced": false,

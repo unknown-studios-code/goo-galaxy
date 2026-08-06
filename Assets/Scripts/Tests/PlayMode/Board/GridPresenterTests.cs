@@ -41,6 +41,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator Awake_WithValidLayout_InitializesHexGrid()
         {
             // GIVEN
@@ -57,6 +58,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator Awake_WithNullLayout_HexGridRemainsNull()
         {
             // GIVEN

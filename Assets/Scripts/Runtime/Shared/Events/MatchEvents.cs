@@ -48,6 +48,16 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </summary>
         public static event Action<MoveCommand, IReadOnlyList<HexCoordinates>> MoveExecuted;
 
+        /// <summary>
+        /// Raised after a landing has resolved its conversions, carrying the acting player id and what the
+        /// landing did to the units around it. Only raised when at least one unit was converted or lost its
+        /// armor. The lists inside the payload are owned by the publisher and are only valid for the duration
+        /// of the callback; subscribers must copy what they keep, and must read them with an indexed
+        /// <c>for</c> loop — <c>foreach</c> over the interface boxes the backing enumerator, one allocation
+        /// per subscriber per landing.
+        /// </summary>
+        public static event Action<int, ConversionResult> ConversionResolved;
+
         /// <summary>Publishes <see cref="MatchStarted"/>.</summary>
         /// <param name="config">The configuration the match runs with.</param>
         public static void RaiseMatchStarted(MatchConfiguration config)
@@ -98,6 +108,20 @@ namespace GooGalaxy.Runtime.Shared.Events
         }
 
         /// <summary>
+        /// Publishes <see cref="ConversionResolved"/>. Called only after every conversion attempt of the
+        /// landing has been applied to the units.
+        /// </summary>
+        /// <param name="actingPlayerId">The player whose landing triggered the attempts.</param>
+        /// <param name="result">
+        /// The units the landing converted and the armored units it stripped. Its lists are owned by the
+        /// caller and only valid for the duration of the dispatch, so subscribers must copy what they keep.
+        /// </param>
+        public static void RaiseConversionResolved(int actingPlayerId, ConversionResult result)
+        {
+            ConversionResolved?.Invoke(actingPlayerId, result);
+        }
+
+        /// <summary>
         /// Drops every subscriber. Runs automatically on subsystem registration because domain reload is
         /// disabled, and is called by tests to isolate fixtures from one another.
         /// </summary>
@@ -110,6 +134,7 @@ namespace GooGalaxy.Runtime.Shared.Events
             EnergyChanged = null;
             EnergySpent = null;
             MoveExecuted = null;
+            ConversionResolved = null;
         }
     }
 }

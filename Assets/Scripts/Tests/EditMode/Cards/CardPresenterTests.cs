@@ -6,7 +6,7 @@ using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Cards
+namespace GooGalaxy.Tests.EditMode.Cards
 {
     [TestFixture]
     public class CardPresenterTests

@@ -5,7 +5,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Cards
+namespace GooGalaxy.Tests.EditMode.Cards
 {
     [TestFixture]
     public class CardDataSOTests

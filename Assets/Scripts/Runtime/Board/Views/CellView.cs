@@ -3,17 +3,14 @@ using UnityEngine;
 
 namespace GooGalaxy.Runtime.Board.Views
 {
-    [RequireComponent(typeof(MeshRenderer))]
+    [RequireComponent(typeof(SpriteRenderer))]
     public class CellView : MonoBehaviour
     {
-        private static readonly int _colorId = Shader.PropertyToID("_BaseColor");
-
         [Tooltip("The color tint applied when this cell is highlighted.")]
         [SerializeField]
         private Color _highlightColor = new(1f, 1f, 0.5f, 1f);
 
-        private MeshRenderer _meshRenderer;
-        private MaterialPropertyBlock _propertyBlock;
+        private SpriteRenderer _spriteRenderer;
         private HexCoordinates _cellCoordinates;
         private Color _defaultColor = Color.white;
         private bool _isHighlighted;
@@ -24,8 +21,7 @@ namespace GooGalaxy.Runtime.Board.Views
 
         private void Awake()
         {
-            _meshRenderer = GetComponent<MeshRenderer>();
-            _propertyBlock = new MaterialPropertyBlock();
+            _spriteRenderer = GetComponent<SpriteRenderer>();
         }
 
         public void InitializeCell(HexCoordinates coords)
@@ -51,16 +47,16 @@ namespace GooGalaxy.Runtime.Board.Views
             return _isHighlighted ? _highlightColor : _defaultColor;
         }
 
+        // SpriteRenderer.color is already a per-instance value the 2D renderer batches, so this needs no
+        // MaterialPropertyBlock — unlike a MeshRenderer, where tinting would otherwise instantiate a material.
         private void ApplyColorToRenderer(Color color)
         {
-            if (_meshRenderer == null)
+            if (_spriteRenderer == null)
             {
                 return;
             }
 
-            _meshRenderer.GetPropertyBlock(_propertyBlock);
-            _propertyBlock.SetColor(_colorId, color);
-            _meshRenderer.SetPropertyBlock(_propertyBlock);
+            _spriteRenderer.color = color;
         }
     }
 }

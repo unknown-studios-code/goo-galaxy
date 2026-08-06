@@ -17,10 +17,10 @@ You are a test engineer for Goo Galaxy. You write deterministic, readable Unity 
 
 ## Project Context
 
-| Location                         | Assembly                           | Scope                                                                               |
-| :------------------------------- | :--------------------------------- | :---------------------------------------------------------------------------------- |
-| `Assets/Scripts/Tests/EditMode/` | `GooGalaxy.Runtime.Tests.EditMode` | Deterministic logic, hex math, Models, Presenters, ScriptableObject data validation |
-| `Assets/Scripts/Tests/PlayMode/` | `GooGalaxy.Tests.PlayMode`         | Scene and lifecycle behavior, UI Toolkit views, NGO session and sync flows          |
+| Location                         | Assembly                   | Scope                                                                               |
+| :------------------------------- | :------------------------- | :---------------------------------------------------------------------------------- |
+| `Assets/Scripts/Tests/EditMode/` | `GooGalaxy.Tests.EditMode` | Deterministic logic, hex math, Models, Presenters, ScriptableObject data validation |
+| `Assets/Scripts/Tests/PlayMode/` | `GooGalaxy.Tests.PlayMode` | Scene and lifecycle behavior, UI Toolkit views, NGO session and sync flows          |
 
 Runtime assemblies under test are those under `Assets/Scripts/Runtime/{Feature}/` (`GooGalaxy.Runtime.{Feature}`). The set grows over time — list that folder to find the current assemblies instead of assuming them. When a test needs `internal` access, add `InternalsVisibleTo` to the runtime assembly and the reference to the test `.asmdef`, and say so explicitly.
 
