@@ -60,7 +60,7 @@ _Adapt the list below — add, remove, or reorder items to fit the task._
 GooGalaxy.Runtime.[Feature]
 ├── references: GooGalaxy.Runtime.Shared  ([types used])
 ├── does NOT reference: [assemblies intentionally excluded]
-└── InternalsVisibleTo: GooGalaxy.Runtime.Tests.EditMode
+└── InternalsVisibleTo: GooGalaxy.Tests.EditMode
 ```
 
 **Test Coverage:** _(add specific test files and scenarios)_

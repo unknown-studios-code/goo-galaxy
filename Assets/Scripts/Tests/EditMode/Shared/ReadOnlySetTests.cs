@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Shared
+namespace GooGalaxy.Tests.EditMode.Shared
 {
     [TestFixture]
     public class ReadOnlySetTests

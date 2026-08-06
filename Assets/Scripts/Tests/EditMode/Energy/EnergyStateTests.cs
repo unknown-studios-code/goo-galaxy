@@ -1,7 +1,7 @@
 using GooGalaxy.Runtime.Energy.Models;
 using NUnit.Framework;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Energy
+namespace GooGalaxy.Tests.EditMode.Energy
 {
     [TestFixture]
     public class EnergyStateTests

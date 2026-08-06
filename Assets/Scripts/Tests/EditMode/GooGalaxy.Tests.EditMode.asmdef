@@ -1,6 +1,6 @@
 {
-  "name": "GooGalaxy.Runtime.Tests.EditMode",
-  "rootNamespace": "GooGalaxy.Runtime.Tests.EditMode",
+  "name": "GooGalaxy.Tests.EditMode",
+  "rootNamespace": "GooGalaxy.Tests.EditMode",
   "defineConstraints": [
     "UNITY_INCLUDE_TESTS"
   ],

@@ -4,7 +4,7 @@ using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Board
+namespace GooGalaxy.Tests.EditMode.Board
 {
     [TestFixture]
     public class GridUnitTests

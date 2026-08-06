@@ -6,7 +6,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace GooGalaxy.Runtime.Tests.EditMode.Board
+namespace GooGalaxy.Tests.EditMode.Board
 {
     [TestFixture]
     public class GridLayoutSOTests

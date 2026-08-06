@@ -88,7 +88,7 @@ When work crosses assembly boundaries, document them:
 GooGalaxy.Runtime.[Feature]
 ├── references: GooGalaxy.Runtime.Shared  ([types used])
 ├── does NOT reference: [assemblies intentionally excluded]
-└── InternalsVisibleTo: GooGalaxy.Runtime.Tests.EditMode
+└── InternalsVisibleTo: GooGalaxy.Tests.EditMode
 ```
 
 ### File Paths
