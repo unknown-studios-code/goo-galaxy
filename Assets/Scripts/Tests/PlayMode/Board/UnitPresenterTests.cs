@@ -98,6 +98,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_LegalClone_ReturnsSuccess()
         {
             // GIVEN
@@ -114,6 +115,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_LegalClone_PublishesTheCommandAndTargetCoordinate()
         {
             // GIVEN
@@ -135,6 +137,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_LegalJump_ReturnsSuccessAndPublishesSourceThenTarget()
         {
             // GIVEN
@@ -155,6 +158,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_PublishedPayload_CannotBeDowncastToAMutableList()
         {
             // GIVEN
@@ -171,6 +175,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_CloneOntoOccupiedTarget_ReturnsTargetOccupiedAndPublishesNothing()
         {
             // GIVEN
@@ -191,6 +196,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_JumpIssuedByWrongPlayer_ReturnsSourceNotOwnedAndPublishesNothing()
         {
             // GIVEN
@@ -209,6 +215,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_FrozenUnit_ReturnsSourceFrozenAndPublishesNothing()
         {
             // GIVEN
@@ -228,6 +235,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_UnregisteredUnit_ReturnsUnitNotFoundAndPublishesNothing()
         {
             // GIVEN
@@ -244,6 +252,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_CloneWithFailingSpawner_ReturnsSpawnFailedAndPublishesNothing()
         {
             // GIVEN
@@ -264,6 +273,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_TwoConsecutiveSpawnFailures_LogsTheErrorOnce()
         {
             // GIVEN
@@ -284,6 +294,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_SpawnFailuresSeparatedByASuccessfulJump_StillLogsTheErrorOnce()
         {
             // GIVEN
@@ -303,6 +314,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetUnitSpawner_AfterASpawnFailure_ReArmsTheErrorLog()
         {
             // GIVEN
@@ -324,6 +336,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_CloneWithThrowingSpawner_ReturnsSpawnFailedAndLeavesBoardUnchanged()
         {
             // GIVEN
@@ -345,6 +358,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_CloneWithoutSpawner_ReturnsSpawnFailedAndLeavesBoardUnchanged()
         {
             // GIVEN
@@ -366,6 +380,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_UndefinedMoveType_ReturnsInvalidCommandAndPublishesNothing()
         {
             // GIVEN
@@ -383,6 +398,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_ReentrantCallFromSubscriber_ReturnsResolverBusyAndStillNotifiesLaterSubscribers()
         {
             // GIVEN
@@ -423,6 +439,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_SubscriberThrows_StillReportsSuccess()
         {
             // GIVEN
@@ -458,6 +475,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_SubscriberThrows_LeavesTheBoardMutated()
         {
             // GIVEN
@@ -488,6 +506,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_AfterASubscriberFault_StillAcceptsTheNextMove()
         {
             // GIVEN
@@ -519,6 +538,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_WithoutGridPresenter_ReturnsBoardUnavailableAndLogsMissingGrid()
         {
             // GIVEN
@@ -537,6 +557,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator RegisterUnit_WithInitializedGrid_ReturnsTrueAndMarksUnitCellOccupied()
         {
             // GIVEN
@@ -554,6 +575,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator RegisterUnit_WithoutGridPresenter_ReturnsFalseAndLeavesRegistryEmpty()
         {
             // GIVEN
@@ -572,6 +594,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator RegisterUnit_PositionOutsideGrid_ReturnsFalseAndLeavesRegistryEmpty()
         {
             // GIVEN
@@ -589,6 +612,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator RegisterUnit_CellHeldByAnotherUnit_ReturnsFalseAndLeavesTheIncumbentInPlace()
         {
             // GIVEN
@@ -608,6 +632,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator RegisterUnit_SameIdAtNewPosition_FreesThePreviouslyHeldCell()
         {
             // GIVEN
@@ -626,6 +651,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator RegisterUnit_SameInstanceAfterItsPositionWasMutated_FreesThePreviouslyRegisteredCell()
         {
             // GIVEN
@@ -645,6 +671,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator UnregisterUnit_UnitPositionDriftedOntoAnotherCell_FreesOnlyTheRegisteredCell()
         {
             // GIVEN
@@ -664,6 +691,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator UnregisterUnit_RegisteredUnit_FreesCellAndReturnsTrue()
         {
             // GIVEN
@@ -681,6 +709,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator UnregisterUnit_AfterAJump_FreesTheCellTheUnitActuallyLandedOn()
         {
             // GIVEN
@@ -702,6 +731,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator UnregisterUnit_WithoutGridPresenter_ReturnsFalseAndKeepsTheUnitRegistered()
         {
             // GIVEN
@@ -722,6 +752,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator UnregisterUnit_UnknownUnitId_ReturnsFalse()
         {
             // GIVEN
@@ -738,6 +769,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_ClonedUnit_IsRegisteredAndCanMoveItself()
         {
             // GIVEN
@@ -756,6 +788,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator UnregisterUnit_ClonedUnit_FreesTheCellTheCloneOccupies()
         {
             // GIVEN

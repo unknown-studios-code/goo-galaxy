@@ -4,7 +4,7 @@ using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Runtime.Tests.EditMode
+namespace GooGalaxy.Tests.EditMode
 {
     [TestFixture]
     public class MatchEventsTests
@@ -110,6 +110,32 @@ namespace GooGalaxy.Runtime.Tests.EditMode
 
             // THEN
             Assert.That(hasFired, Is.False, "MoveExecuted should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void ResetEvents_ClearsConversionResolved_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.ConversionResolved += (_, _) => hasFired = true;
+            MatchEvents.ResetEvents();
+
+            // WHEN
+            MatchEvents.RaiseConversionResolved(1, default);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "ConversionResolved should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseConversionResolved_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+            MatchEvents.ResetEvents();
+
+            // WHEN
+            // THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseConversionResolved(1, default));
         }
 
         [Test]

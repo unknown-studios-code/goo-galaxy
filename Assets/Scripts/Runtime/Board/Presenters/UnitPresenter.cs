@@ -29,8 +29,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
     {
         private const int AffectedCoordinatesCapacity = 2;
 
-        private const int RadiusFourBoardCellCount = 61;
-        private const int LiveUnitCapacity = RadiusFourBoardCellCount;
+        private const int LiveUnitCapacity = BoardMetrics.DefaultBoardCellCount;
 
         private static readonly ProfilerMarker _resolveMoveMarker = new("UnitPresenter.ResolveMove");
 
@@ -55,6 +54,14 @@ namespace GooGalaxy.Runtime.Board.Presenters
         /// the backing <c>Dictionary</c> enumerator, one allocation per pass.
         /// </remarks>
         public IReadOnlyDictionary<int, GridUnit> ActiveUnits => _activeUnits;
+
+        /// <summary>The tracked units as values only, iterable without boxing the backing enumerator.</summary>
+        /// <remarks>
+        /// The concrete <c>ValueCollection</c> is returned on purpose: it is the type <c>foreach</c> needs to bind
+        /// the struct enumerator directly, and it exposes no mutator, so nothing leaks that
+        /// <see cref="ActiveUnits" /> does not already expose. Prefer it for any whole-registry pass.
+        /// </remarks>
+        public Dictionary<int, GridUnit>.ValueCollection ActiveUnitValues => _activeUnits.Values;
 
         private void Awake()
         {
