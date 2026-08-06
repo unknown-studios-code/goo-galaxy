@@ -1,0 +1,20 @@
+{
+  "name": "GooGalaxy.Playtest",
+  "rootNamespace": "GooGalaxy.Playtest",
+  "defineConstraints": ["UNITY_EDITOR"],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Energy",
+    "GooGalaxy.Runtime.Cards",
+    "Unity.InputSystem"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}
