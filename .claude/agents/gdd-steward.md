@@ -24,7 +24,7 @@ Chapters in `.docs/GDD/`:
 | `00_Pitch_and_Overview.md`                     | Pitch, pillars, target player                                     |
 | `01_Mechanics_and_Core_Gameplay.md`            | Core loop, hex/board rules, turn flow                             |
 | `02_Mathematics_and_Balancing.md`              | Formulas, curves, tuning ranges                                   |
-| `03_Troops_Spells_and_Factions.md`             | Specimen/card/faction definitions                                 |
+| `03_Specimens_Protocols_and_Factions.md`       | Specimen/card/faction definitions                                 |
 | `04_Economy_and_Monetization.md`               | Currencies, pricing, store                                        |
 | `05_Meta_Game_Retention_and_LiveOps.md`        | Progression, seasons, events                                      |
 | `06_Art_Direction_and_UX.md`                   | Visual language, UX rules                                         |

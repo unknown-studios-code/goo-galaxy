@@ -74,4 +74,4 @@ That is a change to the price of a card's power by another route, which the $E^2
 
 - `.docs/GDD/01_Mechanics_and_Core_Gameplay.md` — Clone and Jump definitions, Action Timing Model, Controls
 - `.docs/GDD/02_Mathematics_and_Balancing.md` — the $P_v \propto E^2$ budget and the rule against changing costs
-- `.docs/GDD/03_Troops_Spells_and_Factions.md` — per-card costs and the `CanClone` / `CanJump` flags
+- `.docs/GDD/03_Specimens_Protocols_and_Factions.md` — per-card costs and the `CanClone` / `CanJump` flags

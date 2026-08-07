@@ -17,10 +17,10 @@ The inherently repetitive nature of a 61-hex board game leads to player fatigue 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 flowchart LR
-    subgraph "Daily Loop (5-15 min)"
+    subgraph "Daily Loop (25-45 min)"
         D1["Log In"] --> D2["Collect Daily Scan"]
         D2 --> D3["Complete 3 Daily Contracts"]
-        D3 --> D4["Play 5-10 Matches"]
+        D3 --> D4["Play 5-8 Expeditions"]
         D4 --> D5["Share Samples with Crew"]
         D5 --> D6["Check Galaxy Pass Progress"]
     end
@@ -75,23 +75,23 @@ flowchart LR
 
 ### Daily Contracts (3 per day, refreshed at 00:00 UTC)
 
-| Contract Type         | Example                                         | XP Reward | Stardust Reward |
-| :-------------------- | :---------------------------------------------- | :-------: | :-------------: |
-| **Discovery-Based**   | "Complete 3 expeditions"                        |  100 XP   |   50 Stardust   |
-| **Action-Based**      | "Assimilate 50 enemy sectors"                   |   75 XP   |   30 Stardust   |
-| **Specimen-Specific** | "Deploy Bio-Phalanx 5 times"                    |   75 XP   |   40 Stardust   |
-| **Strategic**         | "Win an expedition using only Clone (no Jumps)" |  150 XP   |   80 Stardust   |
+| Contract Type         | Example                                         | Galaxy Pass XP | Stardust Reward |
+| :-------------------- | :---------------------------------------------- | :------------: | :-------------: |
+| **Discovery-Based**   | "Complete 3 expeditions"                        |     100 XP     |   50 Stardust   |
+| **Action-Based**      | "Assimilate 50 enemy sectors"                   |     75 XP      |   30 Stardust   |
+| **Specimen-Specific** | "Deploy Bio-Phalanx 5 times"                    |     75 XP      |   40 Stardust   |
+| **Strategic**         | "Win an expedition using only Clone (no Jumps)" |     150 XP     |   80 Stardust   |
 
 - Researchers can **re-roll 1 contract per day** for free.
 - Completing all 3 dailies awards a **Daily Bonus Capsule** (equivalent to Standard Capsule, instant unlock).
 
 ### Weekly Expedition Milestones (3 per week, refreshed Monday 00:00 UTC)
 
-| Milestone Type | Example                               | XP Reward | Stardust Reward |
-| :------------- | :------------------------------------ | :-------: | :-------------: |
-| **Endurance**  | "Complete 20 expeditions this week"   |  500 XP   |  500 Stardust   |
-| **Mastery**    | "Achieve 3 Total Assimilations"       |  400 XP   |  400 Stardust   |
-| **Social**     | "Share 30 DNA Strands with your Crew" |  300 XP   |  300 Stardust   |
+| Milestone Type | Example                               | Galaxy Pass XP | Stardust Reward |
+| :------------- | :------------------------------------ | :------------: | :-------------: |
+| **Endurance**  | "Complete 20 expeditions this week"   |     500 XP     |  500 Stardust   |
+| **Mastery**    | "Achieve 3 Total Assimilations"       |     400 XP     |  400 Stardust   |
+| **Social**     | "Share 30 DNA Strands with your Crew" |     300 XP     |  300 Stardust   |
 
 - Completing all 3 weeklies awards a **Weekly Mega Capsule** (equivalent to Premium Capsule).
 
@@ -113,7 +113,7 @@ flowchart LR
 #### Sample Sharing
 
 - Members can **request** specific DNA Strands (1 request every 8 hours).
-- Other members can **share** strands they own (earn 5 Stardust + 1 XP per share).
+- Other members can **share** strands they own (earn 5 Stardust + 1 Galaxy Pass XP per share).
 - **Sharing Limits:** 4 Common, 1 Rare per request. Epics and Legendaries are not shareable (to preserve their value).
 
 #### Comms
@@ -148,9 +148,9 @@ Each week, the crew receives a **collective goal**:
 - Progress bar is visible to all members. Social pressure drives participation.
 - Crews that fail to reach the goal receive nothing — creating natural attrition of inactive members.
 
-### Expedition Races (Post-Launch — Season 3+)
+### Expedition Races (Post-Launch — Expedition Cycle 3+)
 
-A weekly competitive format where clans face off:
+A weekly competitive format where two Crews face off. Formerly "Clan Wars":
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
@@ -173,7 +173,7 @@ Galactic Phenomena are constrained to **weekends (Friday 18:00 UTC → Sunday 23
 | **Frequency** | Every 2 weeks                                                                                                              |
 | **Mechanic**  | Specific hexes are designated as **unstable**. Every 30 seconds, sections collapse into voids or barriers erupt.           |
 | **Effect**    | Forces players to abandon static strategies. Defensive anchors become liabilities. Mobility and adaptability are rewarded. |
-| **Reward**    | Exclusive "Stage Swap" chest (unique cosmetic fragments).                                                                  |
+| **Reward**    | Exclusive "Stage Swap" Capsule (unique cosmetic fragments).                                                                |
 
 **Example Maps:**
 
@@ -185,12 +185,12 @@ Galactic Phenomena are constrained to **weekends (Friday 18:00 UTC → Sunday 23
 
 ### 2. Twisted Rules (Global Physics Alteration)
 
-| Event Name         | Rule Change                                                     | Strategic Impact                                                                               |
-| :----------------- | :-------------------------------------------------------------- | :--------------------------------------------------------------------------------------------- |
-| **Scorched Earth** | Every troop leaves a permanent impassable hazard trail on Jump. | Board rapidly constricts. Cloning > Jumping. Spells become essential.                          |
-| **Overload**       | Energy generation is **3x** from match start.                   | Hyper-aggressive, chaotic matches. APM is king. Heavy cards become viable.                     |
-| **Mirror Match**   | Both players use the **same randomly generated deck**.          | Pure skill test. No deck advantage. Tests adaptability.                                        |
-| **Giant Mode**     | All conversion radii are doubled (1→2 hexes).                   | Massive territory swings. Single moves can flip 15+ pieces. Volatile Mass becomes devastating. |
+| Event Name         | Rule Change                                                                                                       | Strategic Impact                                                                                                                    |
+| :----------------- | :---------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| **Scorched Earth** | Every unit leaves a permanent impassable hazard trail on Jump.                                                    | Board rapidly constricts. Cloning > Jumping. Protocols become essential.                                                            |
+| **Overload**       | Energy generation is **3x** from match start.                                                                     | Hyper-aggressive, chaotic matches. APM is king. Heavy cards become viable.                                                          |
+| **Mirror Match**   | Both players use the **same randomly generated Kit**.                                                             | Pure skill test. No Kit advantage. Tests adaptability.                                                                              |
+| **Giant Mode**     | Every card's conversion radius is raised to **2**, the engine maximum. Volatile Mass, already at 2, is unchanged. | Massive territory swings — one landing can flip up to 18 pieces. Levels the AoE playing field rather than amplifying Volatile Mass. |
 
 ### 3. Blind Discovery (Pure Skill)
 
@@ -208,7 +208,7 @@ Galactic Phenomena are constrained to **weekends (Friday 18:00 UTC → Sunday 23
 
 - The draft-eligible catalog is defined server-side and can differ from ranked.
 - Offer pairs are generated from the current approved draft catalog using a deterministic match seed.
-- If the live card catalog is temporarily too small to support a healthy draft offer space, Draft Mode should be disabled rather than padded with unapproved content.
+- If the live card catalog is temporarily too small to support a healthy draft offer space, Blind Discovery should be disabled rather than padded with unapproved content.
 
 ---
 
@@ -217,61 +217,72 @@ Galactic Phenomena are constrained to **weekends (Friday 18:00 UTC → Sunday 23
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 gantt
-    title Goo Galaxy - Year 1 Seasonal Calendar
+    title Goo Galaxy - Year 1 Expedition Cycle Calendar
     dateFormat YYYY-MM-DD
     axisFormat %b
 
-    section Seasons
-    Season 1 - Genesis          :s1, 2027-01-01, 30d
-    Season 2 - Parasites        :s2, after s1, 30d
-    Season 3 - Terraformers     :s3, after s2, 30d
-    Season 4 - Swarm            :s4, after s3, 30d
-    Season 5 - Eclipse          :s5, after s4, 30d
-    Season 6 - Mutation         :s6, after s5, 30d
-    Season 7 - Outbreak         :s7, after s6, 30d
-    Season 8 - Convergence      :s8, after s7, 30d
-    Season 9 - Apex             :s9, after s8, 30d
-    Season 10 - Singularity     :s10, after s9, 30d
-    Season 11 - Anniversary     :s11, after s10, 30d
-    Season 12 - Nexus           :s12, after s11, 30d
+    section Expedition Cycles
+    Cycle 1 - Genesis           :s1, 2027-01-01, 28d
+    Cycle 2 - Parasites         :s2, after s1, 28d
+    Cycle 3 - Terraformers      :s3, after s2, 28d
+    Cycle 4 - Swarm             :s4, after s3, 28d
+    Cycle 5 - Eclipse           :s5, after s4, 28d
+    Cycle 6 - Mutation          :s6, after s5, 28d
+    Cycle 7 - Outbreak          :s7, after s6, 28d
+    Cycle 8 - Convergence       :s8, after s7, 28d
+    Cycle 9 - Apex              :s9, after s8, 28d
+    Cycle 10 - Singularity      :s10, after s9, 28d
+    Cycle 11 - Outbreak II      :s11, after s10, 28d
+    Cycle 12 - Nexus            :s12, after s11, 28d
+    Cycle 13 - Drift            :s13, after s12, 28d
+    Cycle 14 - Anniversary      :s14, after s13, 28d
 
     section Major Releases
-    New Cards (S2)              :milestone, 2027-02-01, 0d
-    Clan Wars Launch (S3)       :milestone, 2027-03-01, 0d
-    New Cards (S4)              :milestone, 2027-04-01, 0d
-    Tournament Mode (S5)        :milestone, 2027-05-01, 0d
-    New Cards (S6)              :milestone, 2027-06-01, 0d
-    1st Esports Event (S9)      :milestone, 2027-09-01, 0d
-    Anniversary Event (S11)     :milestone, 2027-11-01, 0d
+    New Cards (C2)              :milestone, 2027-02-01, 0d
+    Expedition Races (C3)       :milestone, 2027-03-01, 0d
+    New Cards (C4)              :milestone, 2027-04-01, 0d
+    Tournament Mode (C5)        :milestone, 2027-05-01, 0d
+    New Cards (C6)              :milestone, 2027-06-01, 0d
+    1st Esports Event (C9)      :milestone, 2027-09-01, 0d
+    Anniversary Event (C14)     :milestone, 2028-01-07, 0d
 ```
 
-### Season Content Cadence
+> **Anniversary lands in Cycle 14, not 11.** With Cycle 1 anchored at 2027-01-01 and 28-day cycles, the one-year mark (2028-01-01) falls inside Cycle 14 (2027-12-31 → 2028-01-27). Twelve 28-day cycles cover 336 days, so Year 1 needs **fourteen** cycles, not twelve.
 
-| Season | New Gameplay Content                      | New Event Type      | Galaxy Pass Theme | Major Feature         |
-| :----: | :---------------------------------------- | :------------------ | :---------------- | :-------------------- |
-|   1    | — (launch roster)                         | Stage Swap + Draft  | "Genesis"         | Global Launch         |
-|   2    | Quarantine Drone + Ring Labyrinth         | Scorched Earth      | "Parasites"       | —                     |
-|   3    | Purge Pulse                               | Overload            | "Terraformers"    | **Clan Wars**         |
-|   4    | Detox Mycelium + Split Reactor            | Mirror Match        | "Swarm"           | —                     |
-|   5    | —                                         | Giant Mode          | "Eclipse"         | **Tournament Mode**   |
-|   6    | Phase Relay + Catalyst Wells (event-only) | New Stage Swap maps | "Mutation"        | —                     |
-|   9    | 1 late-cycle high-skill card only         | —                   | "Apex"            | **1st Esports Event** |
-|   11   | —                                         | Anniversary Special | "Anniversary"     | Anniversary Rewards   |
+### Expedition Cycle Content Cadence
 
-> **Cadence Rule:** Never release more than **2 gameplay-shifting elements** in the same season. For Goo Galaxy's team size and meta complexity, a smaller but more stable cadence is healthier than a constant flood of new cards.
+> **Ordering, not dates.** This table gives the order features arrive in and the theme each cycle carries. **`09_MVP_And_Roadmap.md`'s Post-Launch LiveOps Roadmap is the authority on _when_** — it sequences the same features against the solo-developer schedule, and where the two disagree, chapter 09 wins. Crews, Blind Discovery, and Expedition Races are all post-launch there.
+
+| Cycle | New Gameplay Content                      | New Event Type      | Galaxy Pass Theme | Major Feature         |
+| :---: | :---------------------------------------- | :------------------ | :---------------- | :-------------------- |
+|   1   | — (launch roster)                         | Stage Swap + Draft  | "Genesis"         | Global Launch         |
+|   2   | Quarantine Drone + Ring Labyrinth         | Scorched Earth      | "Parasites"       | —                     |
+|   3   | Purge Pulse                               | Overload            | "Terraformers"    | **Expedition Races**  |
+|   4   | Detox Mycelium + Split Reactor            | Mirror Match        | "Swarm"           | —                     |
+|   5   | —                                         | Giant Mode          | "Eclipse"         | **Tournament Mode**   |
+|   6   | Phase Relay + Catalyst Wells (event-only) | New Stage Swap maps | "Mutation"        | —                     |
+|   7   | —                                         | Rotating (no new)   | "Outbreak"        | —                     |
+|   8   | 1 card **or** 1 map (not both)            | Rotating (no new)   | "Convergence"     | —                     |
+|   9   | 1 late-cycle high-skill card only         | —                   | "Apex"            | **1st Esports Event** |
+|  10   | —                                         | Rotating (no new)   | "Singularity"     | —                     |
+|  11   | —                                         | Rotating (no new)   | "Outbreak II"     | —                     |
+|  12   | 1 card **or** 1 map (not both)            | Rotating (no new)   | "Nexus"           | —                     |
+|  14   | —                                         | Anniversary Special | "Anniversary"     | Anniversary Rewards   |
+
+> **Cadence Rule:** Never release more than **2 gameplay-shifting elements** in the same Expedition Cycle. For a solo developer and this meta's complexity, a smaller but more stable cadence is healthier than a constant flood of new cards.
 
 ---
 
 ## Transmission Strategy (Push Notifications)
 
-| Trigger                       | Timing                            | Message Example                                                    | Frequency Cap |
-| :---------------------------- | :-------------------------------- | :----------------------------------------------------------------- | :------------ |
-| **Capsule Ready**             | When decapsulation completes      | "Your Enhanced Capsule is ready! Open it now."                     | Max 4/day     |
-| **Daily Contracts Reset**     | 00:00 UTC + 2 hours               | "New Research Contracts await, Researcher!"                        | 1/day         |
-| **Crew Activity**             | When Sample Share request pending | "Your crewmates need Acid Crawler DNA Strands!"                    | Max 2/day     |
-| **Breakthrough Chain Lost**   | After 3+ consecutive losses       | — (NEVER notify on losses)                                         | —             |
-| **Galactic Phenomenon Start** | Friday 18:00 UTC                  | "A Tectonic Shift is occurring this weekend! Join the expedition." | 1/event       |
-| **Galaxy Pass Expiring**      | 3 days before cycle end           | "3 days left in this Expedition Cycle. Finish your Galaxy Pass!"   | 1/cycle       |
-| **Re-engagement (Lapsed)**    | After 3 days inactive             | "The galaxy misses you, Researcher! Return for a Daily Scan."      | 1/week max    |
+| Trigger                       | Timing                            | Message Example                                                         | Frequency Cap |
+| :---------------------------- | :-------------------------------- | :---------------------------------------------------------------------- | :------------ |
+| **Capsule Ready**             | When decapsulation completes      | "Your Enhanced Capsule is ready! Open it now."                          | Max 4/day     |
+| **Daily Contracts Reset**     | 00:00 UTC + 2 hours               | "New Research Contracts await, Researcher!"                             | 1/day         |
+| **Crew Activity**             | When Sample Share request pending | "Your crewmates need Acid Crawler DNA Strands!"                         | Max 2/day     |
+| **Breakthrough Chain Lost**   | After 3+ consecutive losses       | — (NEVER notify on losses)                                              | —             |
+| **Galactic Phenomenon Start** | Friday 18:00 UTC                  | "A Galactic Phenomenon is occurring this weekend! Join the expedition." | 1/event       |
+| **Galaxy Pass Expiring**      | 3 days before cycle end           | "3 days left in this Expedition Cycle. Finish your Galaxy Pass!"        | 1/cycle       |
+| **Re-engagement (Lapsed)**    | After 3 days inactive             | "The galaxy misses you, Researcher! Return for a Daily Scan."           | 1/week max    |
 
 > **Critical:** Never notify on negative events (expedition recalls, DP drops). Never exceed 4 transmissions per day. Always offer granular opt-out in Settings (per category, not all-or-nothing).

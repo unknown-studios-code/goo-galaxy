@@ -2,6 +2,8 @@
 
 ## Regulatory Landscape (2026)
 
+> **Re-verify before soft launch.** Several dates below have now passed — the amended COPPA Rule's compliance deadline (22 April 2026) and the ASA's UK enforcement start (May 2026) are both in effect, not upcoming. This chapter was written ahead of them. Confirm the current text of each rule with counsel rather than relying on the summaries here, and check whether the EU Digital Fairness Act has moved from proposal to law.
+
 The mobile gaming industry faces intensifying global regulation across three primary domains: **data privacy**, **child protection**, and **monetization transparency**. Goo Galaxy must be designed for compliance from day one — retrofitting compliance is exponentially more expensive and risky.
 
 ---
@@ -83,10 +85,10 @@ flowchart TD
 
 | Feature                     |           Under 13 (COPPA)           |                         13-15 (Teen)                          |               16+ (Standard)                |
 | :-------------------------- | :----------------------------------: | :-----------------------------------------------------------: | :-----------------------------------------: |
-| Chat mode                   |      Pre-approved phrases only       |                   Pre-approved phrases only                   | Full text with profanity and safety filters |
+| Chat mode                   |        None — no chat at all         |                   Pre-approved phrases only                   | Full text with profanity and safety filters |
 | Real-money purchases        |               Blocked                | Parental gate or hard block, depending on region/legal review |                   Allowed                   |
 | Personalized ads            |               Blocked                |                            Blocked                            |               Opt-in consent                |
-| Social features (Crews)     |               Blocked                |                       Limited (no DMs)                        |                    Full                     |
+| Social features (Crews)     |               Blocked                |      Crew membership and Comms only, no Sample requests       |                    Full                     |
 | Data collection (analytics) | Verifiable parental consent required |                           Minimized                           |              Standard consent               |
 | Loot capsule purchases      |               Blocked                |                   Parental consent required                   |     Allowed (with drop rate disclosure)     |
 | Transmissions (push)        |               Blocked                |               Limited (expedition events only)                |      Full (with per-category opt-out)       |
@@ -106,7 +108,7 @@ flowchart TD
 | Region              | Requirement                                                                                                                                    | Status                                                                               |
 | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
 | **EU**              | Non-binding "Key Principles on In-game Virtual Currencies" — clear pricing in real currency. Digital Fairness Act may restrict/ban loot boxes. | Active discussion. Prepare for worst case.                                           |
-| **UK (ASA)**        | **Mandatory disclosure** of loot box presence before download. Enforcement begins May 2026.                                                    | Comply immediately.                                                                  |
+| **UK (ASA)**        | **Mandatory disclosure** of loot box presence before download. Enforcement began May 2026 — already in effect.                                 | Comply immediately.                                                                  |
 | **Belgium**         | Paid loot boxes **banned** (classified as gambling).                                                                                           | Remove paid loot boxes for Belgian players.                                          |
 | **Netherlands**     | Paid loot boxes with transferable items banned.                                                                                                | Goo Galaxy items are non-transferable — likely compliant. Verify with local counsel. |
 | **Germany**         | Federal Council resolution calling for 18+ age rating for games with loot boxes.                                                               | Monitor. Prepare 18+ variant if needed.                                              |
@@ -171,22 +173,22 @@ For Belgian Researchers, the monetization system must be modified:
 
 ### Server-Authoritative Security Model
 
-| Threat                                          | Mitigation                                                                                                                                                                   |
-| :---------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Memory Editing** (GameGuardian, Cheat Engine) | All game logic runs on the server. Client is a "dumb terminal" rendering the server's state. Energy, score, conversions, and timer are server-controlled `NetworkVariables`. |
-| **Packet Spoofing** (fake ServerRpcs)           | Server validates every `MoveCommand` against the authoritative board state. Invalid commands are silently rejected. Repeated invalid commands flag the account.              |
-| **Speed Hacking** (modified game clock)         | Server owns the match timer. Client timer is cosmetic only. Desync > 2 seconds triggers a resynchronization.                                                                 |
-| **Data Mining** (unreleased content)            | IL2CPP compilation (required for iOS) obfuscates C# code. Unreleased card data is NOT included in the client build — loaded from server on release day.                      |
-| **Bot Accounts**                                | CAPTCHA on account creation (if not using Apple/Google sign-in). Rate-limiting on match queue. Behavioral analysis (perfect play patterns, inhuman APM).                     |
-| **Replay Tampering**                            | Replays are reconstructed from authoritative command logs and validated against stored config version plus match hash before sharing or spectating.                          |
+| Threat                                          | Mitigation                                                                                                                                                                                                                                                        |
+| :---------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Memory Editing** (GameGuardian, Cheat Engine) | All game logic runs on the server. Client is a "dumb terminal" rendering the server's state. Energy, score, conversions, and timer are server-controlled `NetworkVariables`.                                                                                      |
+| **Packet Spoofing** (fake ServerRpcs)           | Server validates every `MoveCommand` against the authoritative board state. Invalid commands are silently rejected. Repeated invalid commands flag the account.                                                                                                   |
+| **Speed Hacking** (modified game clock)         | Server owns the match timer. Client timer is cosmetic only. Desync > 2 seconds triggers a resynchronization.                                                                                                                                                      |
+| **Data Mining** (unreleased content)            | IL2CPP compiles C# ahead-of-time to native code, which raises the cost of decompilation but is **not obfuscation** and does not replace it. The real defence is that unreleased card data is never in the client build — it loads from the server on release day. |
+| **Bot Accounts**                                | CAPTCHA on account creation (if not using Apple/Google sign-in). Rate-limiting on match queue. Behavioral analysis (perfect play patterns, inhuman APM).                                                                                                          |
+| **Replay Tampering**                            | Replays are reconstructed from authoritative command logs and validated against stored config version plus match hash before sharing or spectating.                                                                                                               |
 
 ### Anti-Smurfing System
 
-| Signal                             | Detection Method                                     | Action                                                        |
-| :--------------------------------- | :--------------------------------------------------- | :------------------------------------------------------------ |
-| Experienced player in low Arena    | Win rate >80% in Arenas 1-3 with advanced deck usage | Accelerated Trophy gain (3x) until appropriate Arena reached. |
-| Intentional losing                 | >10 consecutive surrenders within 1 hour             | Account flagged. Temporary queue ban (30 min).                |
-| Multiple accounts from same device | Device fingerprinting (IDFV on iOS, Android ID)      | Warning on first detection. Restriction on second.            |
+| Signal                                      | Detection Method                                          | Action                                                                                                                          |
+| :------------------------------------------ | :-------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| Experienced Researcher in a low Star System | Win rate >80% in Star Systems 1-3 with advanced Kit usage | Accelerated DP gain (3x) until the appropriate Star System is reached. This replaces $M_{system}$ rather than stacking with it. |
+| Intentional losing                          | >10 consecutive surrenders within 1 hour                  | Account flagged. Temporary queue ban (30 min).                                                                                  |
+| Multiple accounts from same device          | Device fingerprinting (IDFV on iOS, Android ID)           | Warning on first detection. Restriction on second.                                                                              |
 
 ---
 
@@ -212,11 +214,11 @@ flowchart TD
     end
 
     subgraph "Balance Panel"
-    P1P2["P1 vs P2 Win Rate<br/>(target 49-51%)"] --> CARD["Per-Card Win Rate<br/>(target 45-55%)"] --> USAGE["Card Usage Rate<br/>(target 4-25% each)"] --> DECK["Deck Diversity<br/>(target >= 15 archetypes)"]
+    P1P2["P1 vs P2 Win Rate<br/>(target 49-51%)"] --> CARD["Per-Card Win Rate<br/>(target 45-55%)"] --> USAGE["Card Usage Rate<br/>(target 4-25% each)"] --> DECK["Kit Diversity<br/>(target >= 15 archetypes)"]
     end
 
     subgraph "Monetization Panel"
-    ARPDAU["ARPDAU<br/>(target >= USD 0.08)"] --> CONV["Payer Conversion<br/>(target >= 3% by D7)"] --> LTV["Predicted LTV<br/>(D30 projection)"] --> BUNDLE["Starter Bundle<br/>Conversion Rate"]
+    ARPDAU["ARPDAU<br/>(Optimistic target >= USD 0.08;<br/>Conservative floor 0.015)"] --> CONV["Payer Conversion<br/>(target >= 3% by D7)"] --> LTV["Predicted LTV<br/>(D30 projection)"] --> BUNDLE["Starter Bundle<br/>Conversion Rate"]
     end
 
     subgraph "Engagement Panel"
@@ -233,16 +235,16 @@ flowchart TD
 
 | Event              | Parameters                                                 | Purpose               |
 | :----------------- | :--------------------------------------------------------- | :-------------------- |
-| `match_start`      | P1_trophies, P2_trophies, arena, mode                      | Matchmaking analysis  |
+| `match_start`      | p1_dp, p2_dp, star_system, mode                            | Matchmaking analysis  |
 | `match_end`        | winner, P1_score, P2_score, duration, overtime, domination | Balance + pacing      |
 | `card_deployed`    | card_id, hex_q, hex_r, move_type, energy_spent             | Card usage + strategy |
 | `conversion_event` | converting_card, pieces_converted, hex_positions           | Balance + meta        |
-| `chest_opened`     | chest_type, contents, source                               | Economy tracking      |
+| `capsule_opened`   | capsule_type, contents, source                             | Economy tracking      |
 | `purchase`         | item_id, currency, amount, real_money_value                | Monetization          |
 | `tutorial_step`    | step_number, completed, time_spent                         | FTUE funnel           |
-| `arena_promoted`   | new_arena, trophies                                        | Progression pacing    |
+| `system_promoted`  | new_star_system, dp                                        | Progression pacing    |
 | `session_start`    | device_model, os_version, connection_type                  | Technical health      |
-| `session_end`      | duration, matches_played, chests_earned                    | Engagement depth      |
+| `session_end`      | duration, matches_played, capsules_earned                  | Engagement depth      |
 
 ---
 
@@ -250,27 +252,29 @@ flowchart TD
 
 ### Pre-Launch Checklist
 
-| Item                                            | Status | Owner                |
-| :---------------------------------------------- | :----: | :------------------- |
-| Privacy policy published (all regions)          |   ☐    | Legal                |
-| Age gate functional and tested                  |   ☐    | Engineering          |
-| Drop rates visible for all chests               |   ☐    | Engineering + Design |
-| COPPA parental consent flow tested              |   ☐    | Engineering + QA     |
-| Belgium variant (no paid loot boxes) prepared   |   ☐    | Engineering          |
-| Server capacity tested (target: 10K concurrent) |   ☐    | DevOps               |
-| Crash rate < 1% on device test matrix           |   ☐    | QA                   |
-| App Store / Google Play listing compliant       |   ☐    | Marketing + Legal    |
-| Customer support pipeline established           |   ☐    | Operations           |
-| Incident response plan documented               |   ☐    | All                  |
+| Item                                            | Status | Owner               |
+| :---------------------------------------------- | :----: | :------------------ |
+| Privacy policy published (all regions)          |   ☐    | Developer + counsel |
+| Age gate functional and tested                  |   ☐    | Developer           |
+| Drop rates visible for all Capsules             |   ☐    | Developer           |
+| COPPA parental consent flow tested              |   ☐    | Developer           |
+| Belgium variant (no paid loot boxes) prepared   |   ☐    | Developer           |
+| Server capacity tested (target: 10K concurrent) |   ☐    | Developer           |
+| Crash rate < 1% on device test matrix           |   ☐    | Developer           |
+| App Store / Google Play listing compliant       |   ☐    | Developer + counsel |
+| Customer support pipeline established           |   ☐    | Developer           |
+| Incident response plan documented               |   ☐    | Developer           |
 
 ### Incident Response
 
-| Severity | Definition                                    | Response Time | Escalation                   |
-| :------- | :-------------------------------------------- | :------------ | :--------------------------- |
-| **P0**   | Service outage affecting all players          | < 30 min      | All-hands. CEO notification. |
-| **P1**   | Game-breaking bug affecting >10% of matches   | < 2 hours     | Engineering lead + Producer. |
-| **P2**   | Significant bug affecting progression/economy | < 8 hours     | Engineering team.            |
-| **P3**   | Minor cosmetic/UI bug                         | Next sprint   | Standard backlog.            |
+| Severity | Definition                                       | Response Target | First Action                                                                     |
+| :------- | :----------------------------------------------- | :-------------- | :------------------------------------------------------------------------------- |
+| **P0**   | Service outage affecting all Researchers         | < 30 min        | Drop everything. Roll back the last live config or deploy. Post a status notice. |
+| **P1**   | Game-breaking bug affecting >10% of expeditions  | < 2 hours       | Halt feature work. Hotfix or disable the offending system server-side.           |
+| **P2**   | Significant bug affecting progression or economy | < 8 hours       | Triage, quantify affected accounts, decide on compensation.                      |
+| **P3**   | Minor cosmetic/UI bug                            | Next work block | Standard backlog.                                                                |
 
-- P0 and P1 incidents require a written postmortem, owner assignment, and rollback decision log.
-- Match integrity incidents must explicitly document whether rankings, Trophies, or economy rollbacks are required.
+> **Solo-project note:** these are response _targets_, not an escalation chain — there is no on-call rotation and no second responder. That makes the automated gates load-bearing: `codeql.yml`, both test suites, and a config rollback that works without a client patch are the only things standing between a bad publish and a P0.
+
+- P0 and P1 incidents require a written postmortem and a rollback decision log.
+- Match integrity incidents must explicitly document whether Star System rankings, Discovery Points, or economy rollbacks are required.

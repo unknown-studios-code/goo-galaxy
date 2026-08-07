@@ -10,7 +10,24 @@ The contemporary mobile gaming market rejects overt "pay-to-win" mechanics, espe
 | **Utility** | Items that save time or reduce friction without affecting competitive fairness. | Capsule timer skips, extra Kit slots, Kit presets/loadout slots.                                     |
 | **Vanity**  | Pure cosmetics with zero gameplay impact.                                       | Researcher gear (coats, helmets, species skins), specimen skins, starship themes, deploy animations. |
 
-> **Golden Rule:** No purchasable item may ever increase a specimen's Assimilation Power, Energy generation rate, or provide any stat advantage in ranked expeditions. Blind Discovery (normalized levels) exists specifically to prove this commitment.
+> **Golden Rule:** No purchase may grant a **competitive capability** a free Researcher cannot also earn. Concretely: nothing bought may raise a specimen's conversion radius, ability duration, cluster size, or Energy generation rate; no purchase may unlock a card ahead of its Star System; and no ranked mode may read a purchased value.
+>
+> **What money may buy is time.** DNA Strand packs, Capsule timer acceleration, and the Galaxy Pass premium track all **accelerate acquisition** of progression a free Researcher reaches on the same ceiling — the same maximum level, the same cards, the same caps. That is the line this design accepts, and it must be stated rather than implied: an earlier wording banned raising "a specimen's level", which this chapter's own DNA Strand packs (`Day 21-30` monetization), Capsule acceleration, and the Belgian direct-purchase variant in `10_Operations_Security_and_Legal.md` all violate.
+>
+> **Blind Discovery is the proof.** Normalizing every specimen to one level removes acquisition speed from the equation entirely, which is why it exists and why it must stay in the product.
+
+---
+
+## Two Progressions That Never Touch
+
+Goo Galaxy runs two independent progression tracks. They share no resource, and neither can be spent on the other:
+
+| Track           | What it advances                 | Fuelled by                                            | Where it lives                    |
+| :-------------- | :------------------------------- | :---------------------------------------------------- | :-------------------------------- |
+| **Enhance**     | a single specimen's **level**    | **DNA Strands + Stardust**                            | `02_Mathematics_and_Balancing.md` |
+| **Galaxy Pass** | the seasonal pass's **35 tiers** | **Galaxy Pass XP** — victories, Contracts, Milestones | this chapter                      |
+
+**Galaxy Pass XP is never a card stat.** It is account-level progress toward pass rewards and nothing else — it does not level a specimen, does not unlock one, and is not spendable. A specimen's level moves only through Enhance, and Enhance never consumes XP. Wherever this GDD writes a bare "XP", it means Galaxy Pass XP.
 
 ---
 
@@ -18,25 +35,25 @@ The contemporary mobile gaming market rejects overt "pay-to-win" mechanics, espe
 
 ### Stardust (Soft Currency)
 
-| Source                               | Amount             |
-| :----------------------------------- | :----------------- |
-| Expedition Cache                     | 50-200 Stardust    |
-| Capsule Cycle (free timed capsules)  | 30-500 Stardust    |
-| Sample Sharing (per specimen shared) | 5 Stardust + 1 XP  |
-| Daily Discovery Bonus (first 5 wins) | 20 Stardust each   |
-| Weekly Research Contracts            | 200-1,000 Stardust |
+| Source                               | Amount                        |
+| :----------------------------------- | :---------------------------- |
+| Expedition Cache                     | 50-200 Stardust               |
+| Capsule Cycle (free timed capsules)  | 20-1,000 Stardust             |
+| Sample Sharing (per strand shared)   | 5 Stardust + 1 Galaxy Pass XP |
+| Daily Discovery Bonus (first 5 wins) | 20 Stardust each              |
+| Weekly Research Contracts            | 200-1,000 Stardust            |
 
 **Primary Sinks:** Specimen Enhancements (see cost table in `02_Mathematics_and_Balancing.md`), Galactic Market (basic tier).
 
 ### Nova Cores (Hard Currency)
 
-| Source                                           | Amount                  |
-| :----------------------------------------------- | :---------------------- |
-| Real-Money Purchase                              | See pricing table below |
-| Free in Milestone Capsules (Star System unlocks) | 10-50 Nova Cores        |
-| Galaxy Pass Free Track (weekly)                  | 5-10 Nova Cores         |
-| Symposium Top 3 Rewards                          | 50-200 Nova Cores       |
-| Achievement Milestones                           | 10-100 Nova Cores       |
+| Source                                        | Amount                  |
+| :-------------------------------------------- | :---------------------- |
+| Real-Money Purchase                           | See pricing table below |
+| Free in Mythic Capsules (Star System unlocks) | 10-50 Nova Cores        |
+| Galaxy Pass Free Track (weekly)               | 5-10 Nova Cores         |
+| Symposium Top 3 Rewards                       | 50-200 Nova Cores       |
+| Achievement Milestones                        | 10-100 Nova Cores       |
 
 **Primary Sinks:** Galaxy Pass premium track, Galactic Market (premium tier), capsule timer acceleration, special event entries.
 
@@ -45,7 +62,7 @@ The contemporary mobile gaming market rejects overt "pay-to-win" mechanics, espe
 | Pack             | Nova Cores | USD Price | Cores/USD | Bonus      |
 | :--------------- | :--------: | :-------: | :-------: | :--------- |
 | **Handful**      |     80     | USD 0.99  |   80.8    | —          |
-| **Pouch**        |    500     | USD 4.99  |   100.2   | +25% value |
+| **Pouch**        |    500     | USD 4.99  |   100.2   | +24% value |
 | **Bucket**       |   1,200    | USD 9.99  |   120.1   | +49% value |
 | **Barrel**       |   2,500    | USD 19.99 |   125.1   | +55% value |
 | **Tank**         |   6,500    | USD 49.99 |   130.0   | +61% value |
@@ -70,7 +87,11 @@ The contemporary mobile gaming market rejects overt "pay-to-win" mechanics, espe
 
 ### The 240-Capsule Discovery Cycle
 
-Capsules follow a **deterministic 240-capsule cycle**. The Researcher sees "random" capsules, but the sequence is fixed — guaranteeing fair rarity distribution for every consistent player.
+Capsules follow a **deterministic 240-capsule cycle**: the Researcher sees "random" contents, but the sequence of rarity slots is fixed, guaranteeing every consistent player the same distribution over a full cycle.
+
+> **Open item — the cycle and the legal disclosure format are not yet reconciled.** A fixed sequence has no per-capsule probability: capsule _n_ contains what the cycle says it contains. But Apple and Google both require **exact drop probabilities** before purchase, and the disclosure JSON in `10_Operations_Security_and_Legal.md` is written in probabilities. Two reconciliations are viable — publish the **cycle composition** ("1 Legendary per 240") and derive the stated probability from it, or make purchased capsules genuinely probabilistic while earned capsules stay cyclic. **The cycle's composition table has never been written.** Until it is, neither the fairness claim nor the disclosure is verifiable.
+
+> **Contents are DNA Strands, not whole specimens.** The Capsule Types table counts DNA Strands; a Researcher assembles a specimen from strands. The disclosure JSON in chapter 10 uses the same unit.
 
 ### Capsule Bay
 
@@ -82,7 +103,7 @@ Researchers have **4 capsule bay slots** on their starship. Only **1 capsule** c
 
 ### Structure
 
-Each Expedition Cycle (4 weeks) features a new Galaxy Pass with **35 tiers**, split into a Free Track and a Premium Track.
+Each Expedition Cycle (4 weeks / 28 days) features a new Galaxy Pass with **35 tiers**, split into a Free Track and a Premium Track.
 
 **Premium Pass Price:** 500 Nova Cores (USD 4.99 equivalent — the target conversion price point).
 
@@ -102,9 +123,10 @@ Each Expedition Cycle (4 weeks) features a new Galaxy Pass with **35 tiers**, sp
 ### Galaxy Pass XP
 
 - **20 XP per expedition victory** (capped at 200 XP/day from victories).
-- **Daily Research Contracts** (3 per day): 50-100 XP each.
+- **Daily Research Contracts** (3 per day): 75-150 XP each.
 - **Weekly Expedition Milestones** (3 per week): 200-500 XP each.
-- **Target pace:** A Researcher completing all dailies and winning ~10 expeditions/day reaches Tier 35 in 25 days (5 days buffer in a 30-day cycle).
+- **Open item — XP per tier is never stated, and the target pace assumes an outlier player.** The GDD has never declared what a tier costs, so any "Tier 35 in N days" claim is not derivable from this chapter. Worse, the pace it was calibrated against — **~10 victories/day** — implies **~20 expeditions/day** at the 49-51% win rate this GDD targets. That is 2.5-4x the **5-8 matches/day** in `10_Operations_Security_and_Legal.md`'s engagement panel, and roughly 80 min/day of matches against the 32-72 min/day total that `00_Pitch_and_Overview.md`'s session KPIs allow.
+- **Calibrate against the KPI player, not the outlier.** At 5-8 matches/day a Researcher earns roughly 60-80 XP from victories, 225-450 from dailies, and ~100-250 amortized from weeklies — about **400-750 XP/day**. Clearing 35 tiers inside a 28-day cycle with a few days of slack therefore puts a tier near **300-500 XP**. Pin the figure before the Galaxy Pass ships: the 500 Nova Core premium price is only defensible if the track is completable by the player the KPIs describe.
 
 ---
 
@@ -151,46 +173,54 @@ gantt
 
 ## Revenue Projection Model
 
-### Assumptions
+### The Three Scenarios
 
-| Parameter                         | Value     |
-| :-------------------------------- | :-------- |
-| DAU (Month 1, post soft-launch)   | 50,000    |
-| DAU (Month 6, post global launch) | 500,000   |
-| Payer Conversion Rate             | 3%        |
-| Average Monthly Spend (Payers)    | USD 15.00 |
-| ARPDAU (blended)                  | USD 0.10  |
+Revenue is modelled as three scenarios rather than one forecast, because a survival floor and a success target are different questions and conflating them produced contradictory numbers in an earlier draft. Every scenario below satisfies the same identity:
+
+$$\text{ARPDAU} = \frac{\text{conversion rate} \times \text{monthly spend per payer}}{30}$$
+
+| Scenario         | Conversion | Monthly spend / payer | ARPDAU    | What it represents                                                          |
+| :--------------- | :--------: | :-------------------: | :-------- | :-------------------------------------------------------------------------- |
+| **Conservative** |     3%     |        USD 15         | USD 0.015 | The survival floor. What must be true for the project to sustain itself.    |
+| **Expected**     |     3%     |        USD 50         | USD 0.05  | Anchored to the mid-core benchmark band. The planning case.                 |
+| **Optimistic**   |     4%     |        USD 75         | USD 0.10  | The KPI target in `00_Pitch_and_Overview.md`. Requires a strong whale tail. |
+
+> **Why the spread is this wide:** in mid-core, monthly spend per payer typically lands between **USD 30 and 60** — the mean is dragged well above the median by a small number of high-spending Researchers. USD 15 is casual-game territory; the USD 75 the Optimistic scenario assumes already demands a whale tail above the genre average. The three scenarios bracket that uncertainty honestly instead of picking one and asserting it.
 
 ### Projected Monthly Revenue
 
-|         Month          | DAU  | Payers |   Revenue   |
-| :--------------------: | :--: | :----: | :---------: |
-|    1 (Soft Launch)     | 50K  | 1,500  | USD 22,500  |
-| 3 (Regional Expansion) | 150K | 4,500  | USD 67,500  |
-|   6 (Global Launch)    | 500K | 15,000 | USD 225,000 |
-|      12 (Mature)       | 300K | 12,000 | USD 180,000 |
+|         Month          | DAU  | Conservative | Expected    | Optimistic  |
+| :--------------------: | :--: | :----------- | :---------- | :---------- |
+|    1 (Soft Launch)     | 50K  | USD 22,500   | USD 75,000  | USD 150,000 |
+| 3 (Regional Expansion) | 150K | USD 67,500   | USD 225,000 | USD 450,000 |
+|   6 (Global Launch)    | 500K | USD 225,000  | USD 750,000 | USD 1.50M   |
+|      12 (Mature)       | 300K | USD 135,000  | USD 450,000 | USD 900,000 |
 
-> **Note:** These are conservative estimates. Actual revenue depends heavily on UA spend, retention optimization, and live-ops event cadence. The numbers serve as minimum viability targets for sustaining the development team.
+Payer counts follow directly from DAU: at 3% conversion, 50K DAU is 1,500 payers, 150K is 4,500, 500K is 15,000, and 300K is **9,000**. (An earlier draft listed 12,000 payers at 300K DAU, which is 4% — the Optimistic conversion rate applied to a Conservative revenue figure.)
+
+> **Which number to hold yourself to:** the **Conservative** column is the one that gates the project. `09_MVP_And_Roadmap.md`'s Phase 4 → Phase 5 gate uses ARPDAU > USD 0.015 for exactly this reason. The **Optimistic** column is what the KPI dashboard in `10_Operations_Security_and_Legal.md` aims at, and missing it is a signal to tune monetization, not to stop.
+
+> **Note:** Actual revenue depends heavily on UA spend, retention optimization, and live-ops event cadence. Re-derive all three scenarios from real soft-launch conversion and spend data before committing to global launch UA budget.
 
 ---
 
-## Cosmetic Shop (Vanity Vectors)
+## Galactic Market (Vanity Vectors)
 
 ### Cosmetic Categories
 
-| Category              | Price Range (Gems) | Description                                                                               |
-| :-------------------- | :----------------: | :---------------------------------------------------------------------------------------- |
-| **Goo Skins**         |      100-500       | Alternate appearances for troops on the hex grid. No stat changes.                        |
-| **Board Themes**      |     500-1,500      | Full 3D environment swap (alien landscape, cyberpunk arena, underwater lab).              |
-| **Deploy Animations** |      200-800       | Custom unit deployment VFX (drop pod, teleporter, hatching egg).                          |
-| **Color Palettes**    |      100-300       | Alternate neon faction colors (within WCAG contrast guidelines).                          |
-| **Emotes**            |       50-200       | Animated reactions sent during matches.                                                   |
-| **Profile Frames**    |      100-500       | Decorative frames around player avatar in matchmaking screen.                             |
-| **Mascots/Pets**      |    1,000-2,500     | Interactive companions on the board periphery. React to game state. Zero gameplay impact. |
+| Category                 | Price Range (Nova Cores) | Description                                                                                       |
+| :----------------------- | :----------------------: | :------------------------------------------------------------------------------------------------ |
+| **Specimen Skins**       |         100-500          | Alternate appearances for Specimens on the planetary surface. No stat changes.                    |
+| **Starship Themes**      |        500-1,500         | Full environment swap for the planetary surface backdrop (gas giant, ice field, volcanic waste).  |
+| **Deploy Animations**    |         200-800          | Custom deployment VFX (drop pod, teleporter, hatching pod).                                       |
+| **Color Palettes**       |         100-300          | Alternate neon faction colors (within WCAG contrast guidelines).                                  |
+| **Emotes**               |          50-200          | Animated reactions sent during expeditions.                                                       |
+| **Researcher ID Frames** |         100-500          | Decorative frames around the Researcher portrait on the pre-expedition screen.                    |
+| **Mascots/Pets**         |       1,000-2,500        | Interactive companions on the surface periphery. React to expedition state. Zero gameplay impact. |
 
-### Shop Rotation
+### Market Rotation
 
 - **Featured Items:** 4 items refreshed every 48 hours, prominently displayed.
 - **Daily Deals:** 2 items at 30% discount, refreshed every 24 hours.
-- **Season Collection:** Themed cosmetics available for the full 30-day season.
-- **Vault Items:** Retired seasonal items return periodically at full price (FOMO + exclusivity cycle).
+- **Cycle Collection:** Themed cosmetics available for the full 4-week Expedition Cycle.
+- **Vault Items:** Retired cycle items return periodically at full price (FOMO + exclusivity cycle).

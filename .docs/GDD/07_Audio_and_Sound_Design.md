@@ -5,7 +5,7 @@
 Audio in Goo Galaxy serves three critical functions:
 
 1. **Feedback ("Game Juice"):** Every player action must produce an immediate, satisfying audio response. Sound confirms inputs faster than visuals — the brain processes audio before visual stimuli.
-2. **Atmosphere:** Reinforce the juxtaposition between the sterile corporate laboratory and the organic chaos of sentient slimes.
+2. **Atmosphere:** Reinforce the wonder-and-discovery tone set in `06_Art_Direction_and_UX.md` — a vast, colourful, _alive_ galaxy — against the squelching organic chaos of the specimens themselves. The contrast is cosmic awe versus goo, never sterile containment.
 3. **Information:** Communicate board state changes (conversions, hazards, overtime) without requiring the player to visually scan the entire grid.
 
 > **Core Rule:** If a player does something and nothing audibly responds, the game feels dead. Every action responds.
@@ -20,11 +20,13 @@ Audio in Goo Galaxy serves three critical functions:
 | :--------------------- | :------------------------------------------------------ | :-------------------------------- | :---------------------------- |
 | **Adaptive Music**     | Excellent (vertical layering + horizontal resequencing) | Basic (no native adaptive system) | Excellent                     |
 | **Unity Integration**  | Native plugin, well-documented                          | N/A                               | Good but complex setup        |
-| **License Cost**       | Free for revenue < USD 200K                             | Free                              | Free for indie, paid at scale |
+| **License Cost**       | Indie tier, then paid — see note below                  | Free                              | Free for indie, paid at scale |
 | **Learning Curve**     | Moderate                                                | Low                               | High                          |
 | **Mobile Performance** | Optimized                                               | Native                            | Optimized                     |
 
-**Recommendation:** FMOD Studio for its balance of power, cost, and integration simplicity. The adaptive music system is essential for Goo Galaxy's dynamic match pacing.
+**Recommendation:** FMOD Studio, chosen for its adaptive music capability and Unity integration — not for being free.
+
+> **Budget for the licence.** Even the Conservative revenue scenario in `04_Economy_and_Monetization.md` reaches roughly **USD 270K/year** in the first month after soft launch, and the Optimistic scenario (USD 150,000/month, or USD 5,000/day) reaches the same USD 270,000 in about 54 days. Any "free below a revenue threshold" tier is therefore a first-month convenience, not a long-term cost model. Confirm the current FMOD indie terms and price the paid tier into the budget before soft launch.
 
 ### FMOD Integration Architecture
 
@@ -59,16 +61,16 @@ The music dynamically responds to the match state using FMOD's **vertical layeri
 
 #### FMOD Parameter: `MatchIntensity` (float, 0.0 - 1.0)
 
-| Game State                         | `MatchIntensity` Value | Active Layers                                                          |
-| :--------------------------------- | :--------------------: | :--------------------------------------------------------------------- |
-| **Pre-Expedition / Loading**       |          0.0           | Ambient pad only. Low drone.                                           |
-| **Early Expedition (0:00 - 1:00)** |          0.2           | + Subtle rhythmic pulse. Light percussion.                             |
-| **Mid Expedition (1:00 - 2:00)**   |          0.5           | + Melodic synth arpeggios. Mid percussion.                             |
-| **Late Expedition (2:00 - 2:45)**  |          0.7           | + Full drum kit. Bassline intensifies.                                 |
-| **Final 15 Seconds**               |          0.85          | + Stinger accents. Rising pitch tension.                               |
-| **Overtime (Sudden Death)**        |          1.0           | **All layers at full intensity.** Tempo increases 15%. Distorted bass. |
-| **Discovery Complete**             |           —            | Triumphant stinger → fade to discovery theme.                          |
-| **Expedition Recalled**            |           —            | Somber descending stinger → quiet recall theme.                        |
+| Game State                         | `MatchIntensity` Value | Active Layers                                                                         |
+| :--------------------------------- | :--------------------: | :------------------------------------------------------------------------------------ |
+| **Pre-Expedition / Loading**       |          0.0           | Ambient pad only. Low drone.                                                          |
+| **Early Expedition (0:00 - 1:00)** |          0.2           | + Subtle rhythmic pulse. Light percussion.                                            |
+| **Mid Expedition (1:00 - 2:00)**   |          0.5           | + Melodic synth arpeggios. Mid percussion.                                            |
+| **Late Expedition (2:00 - 2:45)**  |          0.7           | + Full drum kit. Bassline intensifies.                                                |
+| **Final 15 Seconds**               |          0.85          | + Stinger accents. Rising pitch tension.                                              |
+| **Overtime (Sudden Death)**        |          1.0           | **All layers at full intensity.** Tempo rises 128 → 148 BPM (+15.6%). Distorted bass. |
+| **Discovery Complete**             |           —            | Triumphant stinger → fade to discovery theme.                                         |
+| **Expedition Recalled**            |           —            | Somber descending stinger → quiet recall theme.                                       |
 
 #### FMOD Parameter: `TerritoryBalance` (float, -1.0 to 1.0)
 
@@ -98,26 +100,28 @@ The music dynamically responds to the match state using FMOD's **vertical layeri
 
 ### Core Gameplay SFX
 
-| Event                         | Sound Description                                      | Priority | Variation Count |
-| :---------------------------- | :----------------------------------------------------- | :------: | :-------------: |
-| **Deploy: Subject Alpha**     | Light elastic "squish" + bubble pop                    |   High   |        3        |
-| **Deploy: Acid Crawler**      | Wet slither + acidic sizzle                            |   High   |        3        |
-| **Deploy: Bio-Phalanx**       | Heavy thud + metallic shield clang                     |   High   |        3        |
-| **Deploy: Volatile Mass**     | Unstable electrical crackle + ominous hum              |   High   |        2        |
-| **Deploy: Plasmic Leaper**    | Ethereal whoosh + plasma sizzle                        |   High   |        3        |
-| **Deploy: Apex Strain**       | Deep bass impact + ground tremor rumble                | Critical |        2        |
-| **Conversion (1 piece)**      | Crisp pop/chime                                        | Critical |        5        |
-| **Conversion (chain, 2-4)**   | Ascending pitch cascade (chimes pitch up sequentially) | Critical |        3        |
-| **Conversion (mass, 5+)**     | Full cascading musical phrase + reverb swell           | Critical |        2        |
-| **Clone Movement**            | Soft stretch + plop                                    |  Medium  |        3        |
-| **Jump Movement**             | Springy launch + landing thud                          |  Medium  |        3        |
-| **Acid Puddle Created**       | Bubbling acid + corrosive hiss                         |  Medium  |        2        |
-| **Freeze (Cryo-Stasis)**      | Crystallization crackle + deep freeze whoosh           |   High   |        2        |
-| **Sterilization Beam**        | High-energy laser charge + orbital strike blast        | Critical |        1        |
-| **Armor Strip (Bio-Phalanx)** | Glass cracking + shield shatter                        |   High   |        2        |
-| **Volatile Mass Explosion**   | Explosive burst + dissipation fizz                     | Critical |        2        |
-| **Seismic Push (Apex)**       | Deep shockwave + units sliding across surface          | Critical |        1        |
-| **Root Applied**              | Vine/tendril snap + sticky adhesion                    |  Medium  |        2        |
+| Event                            | Sound Description                                                                                  | Priority | Variation Count |
+| :------------------------------- | :------------------------------------------------------------------------------------------------- | :------: | :-------------: |
+| **Deploy: Subject Alpha**        | Light elastic "squish" + bubble pop                                                                |   High   |        3        |
+| **Deploy: Acid Crawler**         | Wet slither + acidic sizzle                                                                        |   High   |        3        |
+| **Deploy: Bio-Phalanx**          | Heavy thud + metallic shield clang                                                                 |   High   |        3        |
+| **Deploy: Volatile Mass**        | Unstable electrical crackle + ominous hum                                                          |   High   |        2        |
+| **Deploy: Plasmic Leaper**       | Ethereal whoosh + plasma sizzle                                                                    |   High   |        3        |
+| **Deploy: Apex Strain**          | Deep bass impact + ground tremor rumble                                                            | Critical |        2        |
+| **Conversion (1 piece)**         | Crisp pop/chime                                                                                    | Critical |        5        |
+| **Conversion (chain, 2-4)**      | Ascending pitch cascade (chimes pitch up sequentially)                                             | Critical |        3        |
+| **Conversion (mass, 5+)**        | Full cascading musical phrase + reverb swell                                                       | Critical |        2        |
+| **Clone Movement**               | Soft stretch + plop                                                                                |  Medium  |        3        |
+| **Jump Movement**                | Springy launch + landing thud                                                                      |  Medium  |        3        |
+| **Acid Puddle Created**          | Bubbling acid + corrosive hiss                                                                     |  Medium  |        2        |
+| **Freeze (Cryo-Stasis)**         | Crystallization crackle + deep freeze whoosh                                                       |   High   |        2        |
+| **Sterilization Beam**           | High-energy laser charge + orbital strike blast                                                    | Critical |        1        |
+| **Armor Strip (Bio-Phalanx)**    | Glass cracking + shield shatter                                                                    |   High   |        2        |
+| **Volatile Mass Explosion**      | Explosive burst + dissipation fizz                                                                 | Critical |        2        |
+| **Seismic Push (Apex)**          | Deep shockwave + units sliding across surface                                                      | Critical |        1        |
+| **Root Applied**                 | Vine/tendril snap + sticky adhesion                                                                |  Medium  |        2        |
+| **Containment Breach Activated** | Two-tone containment alarm + amber energy surge. Must be clearly distinct from the Overtime siren. |   High   |        1        |
+| **Sample Purge (discard)**       | Biohazard disposal hiss + card dissolve                                                            |  Medium  |        2        |
 
 ### Conversion Cascade — The Dopamine Engine
 
@@ -136,25 +140,25 @@ Example: Converting 5 pieces
 
 ### UI & Menu SFX
 
-| Event                       | Sound Description                                                           |
-| :-------------------------- | :-------------------------------------------------------------------------- |
-| **Button Press**            | Crisp digital click (tactile feedback).                                     |
-| **Button Hover**            | Subtle synthetic swoosh.                                                    |
-| **Screen Transition**       | Smooth whoosh with subtle reverb.                                           |
-| **Card Drag Start**         | Soft magnetic pull.                                                         |
-| **Card Drop (Valid)**       | Satisfying snap/lock.                                                       |
-| **Card Drop (Invalid)**     | Gentle buzz/rejection. Short, not punishing.                                |
-| **Chest Appear**            | Metallic materialization shimmer.                                           |
-| **Chest Opening**           | Building anticipation rattle → dramatic lid burst → content reveal fanfare. |
-| **Card Reveal (Common)**    | Brief chime.                                                                |
-| **Card Reveal (Rare)**      | Ascending double chime.                                                     |
-| **Card Reveal (Epic)**      | Dramatic orchestral hit + sparkle.                                          |
-| **Card Reveal (Legendary)** | Full fanfare + bass drop + crowd roar.                                      |
-| **Level Up**                | Ascending power chord + celebratory synth.                                  |
-| **Trophy Gain**             | Uplifting ting + counter increment sound.                                   |
-| **Trophy Loss**             | Soft descending tone. Brief. Not discouraging.                              |
-| **Match Found**             | Alert chime + dramatic whoosh transition.                                   |
-| **Overtime Warning**        | Alarm siren (2 pulses) + heartbeat bass.                                    |
+| Event                           | Sound Description                                                            |
+| :------------------------------ | :--------------------------------------------------------------------------- |
+| **Button Press**                | Crisp digital click (tactile feedback).                                      |
+| **Button Hover**                | Subtle synthetic swoosh.                                                     |
+| **Screen Transition**           | Smooth whoosh with subtle reverb.                                            |
+| **Card Drag Start**             | Soft magnetic pull.                                                          |
+| **Card Drop (Valid)**           | Satisfying snap/lock.                                                        |
+| **Card Drop (Invalid)**         | Gentle buzz/rejection. Short, not punishing.                                 |
+| **Capsule Appear**              | Metallic materialization shimmer.                                            |
+| **Capsule Decapsulation**       | Building anticipation rattle → dramatic seal burst → content reveal fanfare. |
+| **Specimen Reveal (Common)**    | Brief chime.                                                                 |
+| **Specimen Reveal (Rare)**      | Ascending double chime.                                                      |
+| **Specimen Reveal (Epic)**      | Dramatic orchestral hit + sparkle.                                           |
+| **Specimen Reveal (Legendary)** | Full fanfare + bass drop + crowd roar.                                       |
+| **Enhance (Level Up)**          | Ascending power chord + celebratory synth.                                   |
+| **DP Gain**                     | Uplifting ting + counter increment sound.                                    |
+| **DP Loss**                     | Soft descending tone. Brief. Not discouraging.                               |
+| **Match Found**                 | Alert chime + dramatic whoosh transition.                                    |
+| **Overtime Warning**            | Alarm siren (2 pulses) + heartbeat bass.                                     |
 
 ---
 
@@ -170,14 +174,14 @@ Example: Converting 5 pieces
 
 ## Audio Optimization for Mobile
 
-| Technique            | Implementation                                                                                                                  |
-| :------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
-| **Compression**      | All SFX compressed to Vorbis (quality 50-70). BGM streams from disk (no full load into memory).                                 |
-| **Polyphony Limit**  | Maximum **16 simultaneous voices** on mobile. Priority system ensures critical SFX (conversions, deploys) always play.          |
-| **Voice Stealing**   | When polyphony limit is reached, lowest-priority sounds are faded out to make room for high-priority events.                    |
-| **Distance Culling** | Off-screen or distant-hex sounds are attenuated. Board is small enough that 3D positioning is not required — all sounds are 2D. |
-| **Preloading**       | All in-match SFX are preloaded during the loading screen. Menu SFX are loaded on app start.                                     |
-| **Audio Settings**   | Independent volume sliders for: Master, Music, SFX, UI Sounds. Mute toggle.                                                     |
+| Technique            | Implementation                                                                                                                                                                                                                                   |
+| :------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Compression**      | All SFX compressed to Vorbis (quality 50-70). BGM streams from disk (no full load into memory).                                                                                                                                                  |
+| **Polyphony Limit**  | Maximum **16 simultaneous voices** on mobile. Priority system ensures critical SFX (conversions, deploys) always play.                                                                                                                           |
+| **Voice Stealing**   | When polyphony limit is reached, lowest-priority sounds are faded out to make room for high-priority events.                                                                                                                                     |
+| **Spatial Handling** | All sounds are **2D**. The 61-sector surface fits on screen in its entirety, so there is nothing off-screen to cull and no 3D positioning to compute. Simultaneity is managed by the polyphony limit and priority system above, not by distance. |
+| **Preloading**       | All in-match SFX are preloaded during the loading screen. Menu SFX are loaded on app start.                                                                                                                                                      |
+| **Audio Settings**   | Independent volume sliders for: Master, Music, SFX, UI Sounds. Mute toggle.                                                                                                                                                                      |
 
 ---
 
@@ -198,12 +202,14 @@ stateDiagram-v2
     Overtime_BGM --> ExpeditionRecalled_Stinger: Expedition Recalled
     Overtime_BGM --> Stalemate_Stinger: Stalemate
 
-    Victory_Stinger --> Results_BGM: After stinger
-    Defeat_Stinger --> Results_BGM: After stinger
-    Draw_Stinger --> Results_BGM: After stinger
+    DiscoveryComplete_Stinger --> Results_BGM: After stinger
+    ExpeditionRecalled_Stinger --> Results_BGM: After stinger
+    Stalemate_Stinger --> Results_BGM: After stinger
 
-    Results_BGM --> MainMenu_BGM: Return to Menu
-    Results_BGM --> Loading_Transition: Play Again
+    Results_BGM --> StarshipBridge_BGM: Return to Ship
+    Results_BGM --> Loading_Transition: Embark Again
 ```
+
+> **Three stingers, three names, one set.** An earlier version of this diagram carried a second, parallel naming set — `Victory_Stinger`, `Defeat_Stinger`, `Draw_Stinger` — whose states no transition ever entered, alongside a `MainMenu_BGM` that duplicated `StarshipBridge_BGM`. The names above are the only ones: `DiscoveryComplete` for a win, `ExpeditionRecalled` for a loss, `Stalemate` for a draw, and `StarshipBridge_BGM` for the menu. They match the screen banners in `06_Art_Direction_and_UX.md` exactly.
 
 > **Implementation:** The `AudioEventDispatcher` MonoBehaviour listens to `GameState` change events and triggers the appropriate FMOD events. Parameters (`MatchIntensity`, `TerritoryBalance`) are updated every frame via `FMODUnity.RuntimeManager.StudioSystem.setParameterByName()`.

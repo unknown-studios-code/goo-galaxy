@@ -42,19 +42,19 @@ Mobile game UIs must prioritize **instant readability**, especially in real-time
 
 ### Color Palette
 
-| Layer                | Purpose                                   | Color(s)               | Hex Code(s)          | WCAG Contrast vs Background |
-| :------------------- | :---------------------------------------- | :--------------------- | :------------------- | :-------------------------: |
-| **Background**       | "Deep Space" — cosmic void foundation     | Charcoal / Space Black | `#0B0F1A`, `#1B1B1B` |        — (baseline)         |
-| **Grid Lines**       | Sector boundaries — visible but recessive | Synthetic Slate        | `#2B2D42`            |       2.1:1 (subtle)        |
-| **Player 1 Faction** | Specimen color — high visual dominance    | Electric Cyan          | `#00F5FF`            |           12.8:1            |
-| **Player 2 Faction** | Specimen color — opposite wheel position  | Hot Magenta            | `#FF2DAA`            |            5.2:1            |
-| **Critical UI**      | Energy bar, protocol targeting            | Radioactive Lime       | `#39FF14`            |           11.4:1            |
-| **Warning/Urgent**   | Low energy, overtime timer                | Warning Orange         | `#FF6A00`            |            5.7:1            |
-| **Information**      | Timers, costs, scores                     | Pure White             | `#FFFFFF`            |           18.1:1            |
-| **Negative/Error**   | Failed actions, expedition recalled       | Soft Red               | `#FF4444`            |            5.5:1            |
-| **Positive/Success** | Discoveries, assimilations, warp jumps    | Bright Gold            | `#FFD700`            |           11.0:1            |
+| Layer                | Purpose                                   | Color(s)               | Hex Code(s)                                             | WCAG Contrast vs Background |
+| :------------------- | :---------------------------------------- | :--------------------- | :------------------------------------------------------ | :-------------------------: |
+| **Background**       | "Deep Space" — cosmic void foundation     | Charcoal / Space Black | `#1B1B1B` (contrast baseline)<br/>`#0B0F1A` (menu wash) |        — (baseline)         |
+| **Grid Lines**       | Sector boundaries — visible but recessive | Synthetic Slate        | `#2B2D42`                                               |     1.28:1 (decorative)     |
+| **Player 1 Faction** | Specimen color — high visual dominance    | Electric Cyan          | `#00F5FF`                                               |           12.72:1           |
+| **Player 2 Faction** | Specimen color — opposite wheel position  | Hot Magenta            | `#FF2DAA`                                               |           5.09:1            |
+| **Critical UI**      | Energy bar, protocol targeting            | Radioactive Lime       | `#39FF14`                                               |           12.70:1           |
+| **Warning/Urgent**   | Low energy, overtime timer                | Warning Orange         | `#FF6A00`                                               |           6.00:1            |
+| **Information**      | Timers, costs, scores                     | Pure White             | `#FFFFFF`                                               |           17.22:1           |
+| **Negative/Error**   | Failed actions, expedition recalled       | Soft Red               | `#FF4444`                                               |           5.05:1            |
+| **Positive/Success** | Discoveries, assimilations, warp jumps    | Bright Gold            | `#FFD700`                                               |           12.28:1           |
 
-> **Accessibility:** All text and interactive elements achieve a minimum **4.5:1 contrast ratio** against their backgrounds, per WCAG 2.1 Level AA (Section 1.4.3). Neon accents against the deep space backdrop provide maximum readability while maintaining the cosmic sci-fi aesthetic.
+> **Accessibility:** All **text and interactive** elements achieve a minimum **4.5:1 contrast ratio** against their backgrounds, per WCAG 2.1 Level AA (Section 1.4.3). Every ratio in the table is measured against `#1B1B1B`. Grid Lines sit deliberately below the threshold — they are decorative structure, never a carrier of information; sector ownership is always conveyed by fill colour plus the shape and border-pattern markers in the Accessibility section below. Neon accents against the deep space backdrop provide maximum readability while maintaining the cosmic sci-fi aesthetic.
 
 ### Mermaid Documentation Palette
 
@@ -103,7 +103,7 @@ graph TD
 
 ### Researcher Visual Design (Player Avatars)
 
-See `Space_Expedition_Naming_Proposal.md` §10 for the full Researcher cast. Key design specs:
+The five Researchers below are the launch cast. (An earlier draft pointed at a `Space_Expedition_Naming_Proposal.md` for a fuller roster; that document is not in the repository, so this table is the only surviving source. Treat it as canonical and expand it here rather than reinstating the missing reference.) Key design specs:
 
 | Researcher        | Species           | Size (relative) | Distinctive Feature                              | Animation Style                                    |
 | :---------------- | :---------------- | :-------------: | :----------------------------------------------- | :------------------------------------------------- |
@@ -174,7 +174,7 @@ flowchart TD
 | **Expedition Rivals** | Both Researchers' IDs, DP count, Star System badge, equipped Expedition Gear. 3-second countdown.                                                        | Non-interactive. Just visual anticipation.   |
 | **Expedition HUD**    | See HUD layout below.                                                                                                                                    | Active Samples and Energy bar in bottom 30%. |
 | **Results Screen**    | Discovery Complete / Expedition Recalled / Stalemate banner. DP change (+30/-25). Capsule awarded (if win). "Embark Again" and "Return to Ship" buttons. | "Embark Again" prominently in bottom-center. |
-| **Kit Builder**       | 8-specimen Kit grid. Full Catalog below. Sort/filter by rarity, cost, type. Average Energy cost displayed.                                               | Drag-and-drop specimen placement.            |
+| **Kit Builder**       | 8-card Kit grid. Full Catalog below. Sort/filter by rarity, cost, type. Average Energy cost displayed.                                                   | Drag-and-drop card placement.                |
 | **Galaxy Pass**       | 35-tier horizontal scroll. Free track on top, Premium on bottom. Purchase button for Premium upgrade.                                                    | Horizontal scroll with momentum.             |
 
 ---
@@ -255,6 +255,8 @@ Relying solely on color for faction identification is insufficient. The followin
 
 ### Folder Structure (Art Assets)
 
+> **`08_Technical_Architecture_and_Multiplayer.md` owns the `Assets/` layout, and it is the official project standard.** Art lives in `Assets/Art/{Models,Sprites}/`, grouped by use case rather than by subject. The tree below is a **logical grouping for art production** — how to think about the work — not a directory listing. Do not create these folders on disk.
+
 ```
 Assets/
 ├── Art/
@@ -275,10 +277,10 @@ Assets/
 │   │   ├── Environments/   # Board theme backgrounds
 │   │   └── Effects/        # Conversion waves, hazard puddles
 │   └── Cosmetics/
-│       ├── Skins/
+│       ├── SpecimenSkins/
 │       ├── Mascots/
 │       ├── DeployAnimations/
-│       └── BoardThemes/
+│       └── StarshipThemes/
 ```
 
 ### Naming Convention
@@ -289,7 +291,7 @@ Assets/
 Examples:
   UI_Icon_SubjectAlpha_128.png
   Unit_AcidCrawler_Idle_512.png
-  Board_HexTile_Neutral_256.png
-  Cosmetic_Skin_SubjectAlpha_Neon_512.png
-  VFX_Conversion_CyanWave.prefab
+  Board_Sector_Neutral_256.png
+  Cosmetic_SubjectAlphaSkin_Neon_512.png
+  Board_ConversionWave_Cyan_512.prefab
 ```

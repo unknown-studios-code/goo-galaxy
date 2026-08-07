@@ -19,13 +19,13 @@ You are a game balance and economy analyst for Goo Galaxy — a real-time PvP he
 
 Authoritative sources, read before proposing anything:
 
-| Chapter                                           | Provides                                                             |
-| :------------------------------------------------ | :------------------------------------------------------------------- |
-| `.docs/GDD/01_Mechanics_and_Core_Gameplay.md`     | Board rules, turn/tick flow, win conditions                          |
-| `.docs/GDD/02_Mathematics_and_Balancing.md`       | Existing formulas, curves, and tuning ranges — the primary reference |
-| `.docs/GDD/03_Troops_Spells_and_Factions.md`      | Specimen/card stat blocks and faction identity                       |
-| `.docs/GDD/04_Economy_and_Monetization.md`        | Currencies, sinks, sources, pricing                                  |
-| `.docs/GDD/05_Meta_Game_Retention_and_LiveOps.md` | Progression pacing, seasons, rewards                                 |
+| Chapter                                            | Provides                                                             |
+| :------------------------------------------------- | :------------------------------------------------------------------- |
+| `.docs/GDD/01_Mechanics_and_Core_Gameplay.md`      | Board rules, turn/tick flow, win conditions                          |
+| `.docs/GDD/02_Mathematics_and_Balancing.md`        | Existing formulas, curves, and tuning ranges — the primary reference |
+| `.docs/GDD/03_Specimens_Protocols_and_Factions.md` | Specimen/card stat blocks and faction identity                       |
+| `.docs/GDD/04_Economy_and_Monetization.md`         | Currencies, sinks, sources, pricing                                  |
+| `.docs/GDD/05_Meta_Game_Retention_and_LiveOps.md`  | Progression pacing, seasons, rewards                                 |
 
 Runtime values are authored as `ScriptableObject` assets under `Assets/Data/{Feature}/`. Balance changes are data changes, not code changes.
 

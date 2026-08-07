@@ -2,22 +2,26 @@
 
 ## Engine & Foundation
 
-Goo Galaxy is built on **Unity 6 LTS**, following a **SOLID + MVP (Model-View-Presenter)** architecture grounded in **GameObject/MonoBehaviour** composition. All gameplay systems are plain C# classes assembled on GameObjects. The board simulation uses a deterministic rules layer that runs independently from presentation, keeping the match bounded (61 hexes on the primary map) and server-authoritative validation straightforward. Feature domains are separated into assemblies with clear dependency direction (`Shared` ← everyone else), and each domain owns its Models, Presenters, and Views inline — not in separate technical buckets.
+Goo Galaxy is built on **Unity 6000.3.18f1** with **URP 17.3**, following a **SOLID + MVP (Model-View-Presenter)** architecture grounded in **GameObject/MonoBehaviour** composition and wired through **VContainer** dependency injection. All gameplay systems are plain C# classes assembled on GameObjects. The board simulation uses a deterministic rules layer that runs independently from presentation, keeping the match bounded (61 sectors on the primary map) and server-authoritative validation straightforward. Cross-feature facts travel on the `MatchEvents` static bus in `Runtime.Shared`, never by direct reference between feature assemblies. Feature domains are separated into assemblies with clear dependency direction (`Shared` ← everyone else), and each domain owns its Models, Presenters, and Views inline — not in separate technical buckets.
 
 ### Technology Stack
 
-| Component             | Technology                     | Rationale                                                                                                 |
-| :-------------------- | :----------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| **Engine**            | Unity 6 LTS                    | Mature mobile pipeline, URP support, broad tooling ecosystem.                                             |
-| **Language**          | C# (.NET Standard 2.1)         | Native Unity scripting language with strong testability for deterministic systems.                        |
-| **Networking**        | Netcode for GameObjects (NGO)  | Official Unity networking stack; fits server-authoritative board actions well.                            |
-| **Session Services**  | Unity Multiplayer Services SDK | Preferred integration layer for sessions, Lobby, Relay, and Matchmaker in new Unity multiplayer projects. |
-| **Backend**           | Unity Cloud / PlayFab          | Player identity, progression, economy, telemetry aggregation, and live config.                            |
-| **Audio**             | FMOD Studio                    | Adaptive music and scalable event-based audio integration.                                                |
-| **Analytics**         | GameAnalytics + Firebase       | Product KPIs, retention funneling, event instrumentation, and segmentation.                               |
-| **CI/CD**             | Unity Cloud Build + Fastlane   | Mobile build automation and distribution to TestFlight / Google Play Internal Testing.                    |
-| **Version Control**   | Git + Git LFS                  | Clean source control for code plus large binary asset handling.                                           |
-| **Scripting Backend** | IL2CPP                         | Mobile-ready performance profile and required iOS build path.                                             |
+| Component                | Technology                                   | Rationale                                                                                                                                                           |
+| :----------------------- | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Engine**               | Unity **6000.3.18f1** (URP 17.3)             | Pinned in `ProjectSettings/ProjectVersion.txt`. Quote the pinned version, not a release-train label.                                                                |
+| **Language**             | C# (.NET Standard 2.1)                       | Native Unity scripting language with strong testability for deterministic systems.                                                                                  |
+| **Dependency Injection** | **VContainer** (`jp.hadashikick.vcontainer`) | Composition root is `GameLifetimeScope` in `Runtime.Core`. Constructor injection for plain classes, `[Inject]` methods for MonoBehaviours. Never a Service Locator. |
+| **UI**                   | **UI Toolkit** (UXML + USS)                  | The only UI system in the project. uGUI (`Canvas`, `RectTransform`, `Image`, `Text`) is never used.                                                                 |
+| **Input**                | **Unity Input System**                       | The legacy Input Manager is never used.                                                                                                                             |
+| **Async**                | **`Awaitable`**                              | Replaces coroutines for delays and sequencing. Always passed `destroyCancellationToken`.                                                                            |
+| **Networking**           | Netcode for GameObjects (NGO)                | Official Unity networking stack; fits server-authoritative board actions well.                                                                                      |
+| **Session Services**     | Unity Multiplayer Services SDK               | Preferred integration layer for sessions, Lobby, Relay, and Matchmaker in new Unity multiplayer projects.                                                           |
+| **Backend**              | Unity Cloud / PlayFab                        | Researcher identity, progression, economy, telemetry aggregation, and live config.                                                                                  |
+| **Audio**                | FMOD Studio                                  | Adaptive music and scalable event-based audio integration.                                                                                                          |
+| **Analytics**            | GameAnalytics + Firebase                     | Product KPIs, retention funneling, event instrumentation, and segmentation.                                                                                         |
+| **CI/CD**                | **GitHub Actions**                           | Seven workflows in `.github/workflows/`: iOS and Android builds, EditMode and PlayMode test suites, format check, PR check, CodeQL.                                 |
+| **Version Control**      | Git + Git LFS                                | Clean source control for code plus large binary asset handling.                                                                                                     |
+| **Scripting Backend**    | IL2CPP                                       | Mobile-ready performance profile and required iOS build path.                                                                                                       |
 
 ---
 
@@ -25,7 +29,7 @@ Goo Galaxy is built on **Unity 6 LTS**, following a **SOLID + MVP (Model-View-Pr
 
 The repository follows a feature-oriented runtime layout plus explicit content, data, and technical settings roots. This keeps gameplay code, authored data, and production assets separate.
 
-> **On-demand rule:** Subfolders under `Assets/Scripts/Runtime/` are created only when a feature domain needs code. The three runtime assemblies present today are `Board`, `Networking`, and `Shared`. Additional feature assemblies (match orchestration, card logic, HUD, input, progression, etc.) are scaffolded when their respective systems are implemented — not pre-allocated. The same applies to `Data/` and `Prefabs/` subfolders: each is created alongside the feature it serves.
+> **On-demand rule:** Subfolders under `Assets/Scripts/Runtime/` are created only when a feature domain needs code. The set grows over time, so **list the folder rather than trusting a count written here**. Additional feature assemblies (match orchestration, HUD, input, progression, etc.) are scaffolded when their respective systems are implemented — not pre-allocated. The same applies to `Data/` and `Prefabs/` subfolders: each is created alongside the feature it serves.
 
 ```text
 Assets/
@@ -46,6 +50,7 @@ Assets/
 │   ├── Shared/                 # Shared editor-only helpers
 │   ├── Validation/             # Project validation and content checks
 │   └── Windows/                # EditorWindow tools and dashboards
+├── Playtest/                   # GooGalaxy.Playtest — manual iteration harness, not shipped
 ├── Plugins/                    # Third-party SDKs and native/plugin dependencies
 │   └── Roslyn/                 # Roslyn analyzer DLLs for code quality
 ├── Prefabs/                    # Reusable runtime prefabs (subfolders created per feature on demand)
@@ -56,33 +61,44 @@ Assets/
 ├── Scripts/
 │   ├── Runtime/
 │   │   ├── Board/              # GooGalaxy.Runtime.Board — board simulation, hex logic, tile views
+│   │   ├── Cards/              # GooGalaxy.Runtime.Cards — CardDataSO, ICardData, CardDefinition, CardPresenter
+│   │   ├── Core/               # GooGalaxy.Runtime.Core — DI composition root (GameLifetimeScope)
+│   │   ├── Energy/             # GooGalaxy.Runtime.Energy — generation, cap, Komi, catch-up bonus
 │   │   ├── Networking/         # GooGalaxy.Runtime.Networking — NGO integration, session flow, sync
 │   │   └── Shared/             # GooGalaxy.Runtime.Shared — cross-feature contracts, helpers, services
 │   └── Tests/
 │       ├── EditMode/           # Unit tests for deterministic logic and data validation
 │       └── PlayMode/           # Integration tests for scene and networking flows
+├── UI Toolkit/                 # Unity-generated UI Toolkit settings
+├── UI/                         # NOT YET CREATED — required by the UI Toolkit rule
+│   ├── UXML/                   #   UI Toolkit layouts
+│   └── USS/                    #   UI Toolkit stylesheets
 └── Settings/
     ├── Input/                  # Input actions and control maps
     ├── Networking/             # NGO runtime config assets
     ├── Profiles/               # Volume and other engine profile assets
-    └── Rendering/              # URP pipeline assets and render templates
+    ├── Rendering/              # URP pipeline assets, one per quality tier
+    ├── Build Profiles/         # NOT YET CREATED — required by unity-project-configuration Rule 8
+    └── Presets/                # NOT YET CREATED — required by unity-project-configuration Rule 5
 ```
 
 ### Folder Responsibilities
 
-| Folder       | Responsibility                                                                                                                                                                  |
-| :----------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Art**      | Visual content grouped by use case (`Models/`, `Sprites/`). Not organized by importer convenience.                                                                              |
-| **Audio**    | Music, SFX, and VO stored outside `Resources` — referenced intentionally through prefabs, scenes, or authored data.                                                             |
-| **Data**     | Authored `ScriptableObject` definitions, balance sheets, registries, and config assets. The canonical home for design-tunable values. Subfolders created per feature on demand. |
-| **Editor**   | Editor-only tooling (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows). Never contains runtime gameplay logic.                                      |
-| **Plugins**  | Third-party SDKs and native dependencies isolated from game-authored content. Currently hosts Roslyn analyzers.                                                                 |
-| **Prefabs**  | Reusable runtime object graphs. Subfolders created per feature on demand.                                                                                                       |
-| **Scenes**   | Separates startup (`Bootstrap/`), production gameplay (`Gameplay/`), and sandbox iteration scenes (`Sandbox/`).                                                                 |
-| **Scripts**  | Runtime code organized by feature domain (`Board`, `Networking`, `Shared`) plus isolated test assemblies (`EditMode/`, `PlayMode/`). New feature folders added on demand.       |
-| **Settings** | Technical project assets: input maps, URP pipeline assets, networking config, engine profiles.                                                                                  |
+| Folder       | Responsibility                                                                                                                                                                                                                                                                      |
+| :----------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Art**      | Visual content grouped by use case (`Models/`, `Sprites/`). Not organized by importer convenience.                                                                                                                                                                                  |
+| **Audio**    | Music, SFX, and VO stored outside `Resources` — referenced intentionally through prefabs, scenes, or authored data.                                                                                                                                                                 |
+| **Data**     | Authored `ScriptableObject` definitions, balance sheets, registries, and config assets. The canonical home for design-tunable values. Subfolders created per feature on demand.                                                                                                     |
+| **Editor**   | Editor-only tooling (Automation, Build, Importing, Inspectors, Menus, Shared, Validation, Windows). Never contains runtime gameplay logic.                                                                                                                                          |
+| **Plugins**  | Third-party SDKs and native dependencies isolated from game-authored content. Currently hosts Roslyn analyzers.                                                                                                                                                                     |
+| **Prefabs**  | Reusable runtime object graphs. Subfolders created per feature on demand.                                                                                                                                                                                                           |
+| **Scenes**   | Separates startup (`Bootstrap/`), production gameplay (`Gameplay/`), and sandbox iteration scenes (`Sandbox/`).                                                                                                                                                                     |
+| **Scripts**  | Runtime code organized by feature domain plus isolated test assemblies (`EditMode/`, `PlayMode/`). Inside a feature: `Data/`, `Models/`, `Views/`, `Presenters/`, `Services/`, `Interfaces/`, `Utils/`, and `Controllers/` when the feature grows control flow no single view owns. |
+| **Settings** | Technical project assets: input maps, URP pipeline assets, networking config, engine profiles.                                                                                                                                                                                      |
+| **Playtest** | `GooGalaxy.Playtest` — a manual iteration harness for driving systems by hand in the Editor. Never shipped; no runtime assembly references it.                                                                                                                                      |
+| **UI**       | UI Toolkit authoring: `UXML/` layouts and `USS/` stylesheets with matching PascalCase names. Distinct from `UI Toolkit/`, which holds Unity-generated settings.                                                                                                                     |
 
-> **Repository Reality:** The current workspace follows this feature-oriented `Assets` layout. Add new content inside these roots. Do not reintroduce generic buckets like `Core`, `Managers`, `UI`, or large catch-all `Resources` folders.
+> **Repository Reality:** The workspace follows this layout with three exceptions, marked **NOT YET CREATED** above: `Assets/UI/{UXML,USS}`, `Assets/Settings/Build Profiles/`, and `Assets/Settings/Presets/`. Those three are required by `.claude/rules/` and are missing from the repository, not from this document — create them when the first UI layout, build profile, or import preset needs a home. Everything else on the tree exists. Add new content inside these roots; do not reintroduce generic buckets like `Managers` or a catch-all `Resources` folder.
 
 > **On-demand scaffolding:** When a new feature domain needs code (e.g., `Cards`, `Match`, `HUD`), create both the runtime assembly folder (`Assets/Scripts/Runtime/{Feature}/` with its `.asmdef`) and the data folder (`Assets/Data/{Feature}/`) in the same changeset. Prefab and test folders follow when the feature has prefabs or tests to place.
 
@@ -93,17 +109,31 @@ The runtime assembly graph follows a strict dependency direction: **`Shared` ←
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 graph TD
-    SHARED["Runtime.Shared<br/>(contracts, shared services,<br/>cross-feature helpers)"]
-    BOARD["Runtime.Board<br/>(board simulation, hex logic,<br/>tile views)"] --> SHARED
+    SHARED["Runtime.Shared<br/>(contracts, MatchEvents,<br/>commands, shared types)"]
+    BOARD["Runtime.Board<br/>(HexGrid, resolvers,<br/>GridPresenter, tile views)"] --> SHARED
+    CARDS["Runtime.Cards<br/>(CardDataSO, ICardData,<br/>CardDefinition, CardPresenter)"] --> SHARED
+    ENERGY["Runtime.Energy<br/>(EnergyRegenerator, EnergyValidator,<br/>EnergyState, EnergyConfig)"] --> SHARED
     NET["Runtime.Networking<br/>(NGO integration,<br/>session and sync)"] --> SHARED
-    FEATURE["Future Feature Assemblies<br/>(match orchestration, card logic,<br/>HUD, input, progression,<br/>bootstrap, etc.)"] --> SHARED
-    FEATURE --> BOARD
-    FEATURE --> NET
-    DATA["Assets/Data<br/>(authored ScriptableObject configs,<br/>created per feature on demand)"] --> BOARD
-    DATA --> FEATURE
+    NET --> BOARD
+    CORE["Runtime.Core<br/>(DI composition root:<br/>GameLifetimeScope)"] --> SHARED
+    CORE --> BOARD
+    CORE --> CARDS
+    CORE --> NET
+    PLAYTEST["GooGalaxy.Playtest<br/>(Assets/Playtest — manual<br/>iteration harness)"] --> SHARED
+    PLAYTEST --> BOARD
+    PLAYTEST --> CARDS
+    PLAYTEST --> ENERGY
+    DATA["Assets/Data<br/>(authored ScriptableObject configs)"] --> BOARD
+    DATA --> CARDS
     ESHARED["Editor.Shared<br/>(shared editor helpers)"]
     ETOOLS["Editor Tooling<br/>(Automation, Build, Importing,<br/>Inspectors, Menus, Validation, Windows)"] --> ESHARED
 ```
+
+> **`Runtime.Core` is the composition root, not a junk drawer.** It is the assembly permitted to reference features, because registering them is precisely its job. Nothing registers itself, and no feature assembly reaches back into `Core`.
+
+> **Known gap in the graph above:** `Runtime.Core` does **not** currently reference `Runtime.Energy`, so `GameLifetimeScope` cannot register anything from that assembly. Either the reference is added when Energy needs container wiring, or Energy stays a leaf consumed only through `Shared` contracts. Decide before the first Energy service needs injecting — this is the kind of missing edge that surfaces as a resolution failure at runtime rather than a compile error.
+
+> **`MatchEvents` is the cross-assembly event bus** (`Runtime/Shared/Events/MatchEvents.cs`) and one of the project's three established patterns. Publishers call `Raise*`; every event is reset in a `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]` hook because domain reload is disabled. It never crosses the network — see `.claude/rules/unity-design-patterns.md`.
 
 > **Dependency Rule:** `Runtime.Shared` stays small and stable — contracts, interfaces, shared enums, and cross-feature helpers. It never depends on other feature assemblies. Each feature assembly owns its domain logic, and authored assets in `Assets/Data` remain the single source of truth for tunable content.
 
@@ -114,89 +144,98 @@ graph TD
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 classDiagram
-    class MatchFlowController {
-        +MatchState currentState
-        +StartMatch()
-        +EndMatch()
-        +EnterOvertime()
-        +UpdateMatchClock()
+    class HexGrid {
+        Cells : IReadOnlyDictionary~HexCoordinates, HexCell~
+        GetNeighbors()
+        GetSpiralCells()
     }
 
-    class BoardRuntimeService {
-        +Dictionary~Vector2Int, HexTile~ grid
-        +PlaceUnit(PlayCardCommand)
-        +ResolveConversions(HexTile)
-        +ValidatePlacement(PlayCardCommand) bool
-        +GetNeighbors(Vector2Int) List~HexTile~
-        +CalculateDistance(Vector2Int, Vector2Int) int
+    class HexCell {
+        Coordinates
+        OccupantUnitId
+        IsOccupied
+        IsBlocked
+        HasHazard
     }
 
-    class HexTile {
-        +Vector2Int axialCoord
-        +PlayerOwner owner
-        +TroopUnit occupant
-        +TileStatus status
-        +List~StatusEffect~ activeEffects
+    class GridUnit {
+        UnitId
+        CardId
+        PlayerId
+        IsAlive
     }
 
-    class TroopUnit {
-        +CardDefinition data
-        +int currentLevel
-        +float conversionPower
-        +bool hasArmor
-        +Deploy(HexTile target)
-        +TriggerAbility()
-        +OnConverted()
+    class MovementValidator {
+        ValidateClone() MovementResult
+        ValidateJump() MovementResult
+    }
+
+    class MovementResolver {
+        Resolve() MovementResult
+    }
+
+    class ConversionResolver {
+        Resolve()
+    }
+
+    class AbilityResolver {
+        Resolve()
+    }
+
+    class MoveCommand {
+        +MoveType Type
+        +HexCoordinates Source
+        +HexCoordinates Target
+        +int PlayerId
+        +int UnitId
     }
 
     class CardDefinition {
         +string cardId
         +string displayName
-        +Rarity rarity
+        +string description
+        +CardType type
         +int energyCost
-        +BaseStats baseStats
-        +PassiveAbility passive
-        +ImpactAbility impactAbility
+        +bool canClone
+        +bool canJump
+        +bool ignoresHazards
+        +bool hasArmor
+        +int conversionRadius
+        +IReadOnlyList~ImpactEffect~ LandingEffects
     }
 
-    class EnergyRuntimeService {
-        +float currentEnergy
-        +float maxEnergy
-        +float regenRate
-        +bool isOvertime
-        +SpendEnergy(float amount) bool
-        +SetOvertime()
-        +Update()
+    class EnergyState {
+        CurrentEnergy
+        Config
     }
 
-    class DeckRuntimeService {
-        +List~CardDefinition~ deckCards
-        +Queue~CardDefinition~ drawPile
-        +List~CardDefinition~ hand
-        +CardDefinition nextCard
-        +DrawCard()
-        +PlayCard(int handIndex)
-        +ShuffleDeck()
+    class EnergyRegenerator {
+        Tick() float
     }
 
-    class PlayCardCommand {
-        +CardDefinition card
-        +Vector2Int sourceHex
-        +Vector2Int targetHex
-        +MoveType moveType
-        +float timestamp
-        +int playerId
+    class EnergyValidator {
+        CanAfford() bool
     }
 
-    MatchFlowController --> BoardRuntimeService
-    MatchFlowController --> EnergyRuntimeService
-    MatchFlowController --> DeckRuntimeService
-    BoardRuntimeService --> HexTile
-    HexTile --> TroopUnit
-    TroopUnit --> CardDefinition
-    DeckRuntimeService --> CardDefinition
-    BoardRuntimeService ..> PlayCardCommand
+    class CardPresenter {
+        TryGetCard(CardId, out ICardData) bool
+    }
+
+    HexGrid --> HexCell
+    HexCell --> GridUnit
+    GridUnit --> CardDefinition
+    MovementValidator ..> MoveCommand
+    MovementResolver ..> MoveCommand
+    MovementResolver --> ConversionResolver
+    MovementResolver --> AbilityResolver
+    EnergyRegenerator --> EnergyState
+    EnergyValidator --> EnergyState
+    CardPresenter --> CardDefinition
 ```
+
+> **Class names are real; signatures are not authoritative.** Every type named above exists in `Assets/Scripts/Runtime/` — that much is checked, and it is the diagram's job: showing which domain owns what. The **members shown are indicative only**. Real signatures carry accessibility (`internal static` on the resolvers), `in`/`ref` parameters, buffer arguments, and interface-typed collections that a box diagram cannot hold without becoming unreadable and immediately stale. **Read the source before writing a call.** Add a class here only after reading it in the repository — an earlier version invented `PlayCardCommand`, `HexTile`, `TroopUnit`, and three `*RuntimeService` types, none of which exist and whose suffix is not in the project's type-suffix matrix.
+
+> **`CardDefinition` mirrors the shipped schema.** Its members are exactly the fields `CardDataSO` serializes today — see the authoritative table in [`03_Specimens_Protocols_and_Factions.md`](./03_Specimens_Protocols_and_Factions.md#card-data-schema-scriptableobject). `rarity` is design intent with no authored field yet, and no per-specimen power stat exists at all. Keep this diagram in step with that chapter; when they disagree, chapter 03 wins.
 
 > **Placement Rule:** These classes illustrate domain ownership boundaries, not inheritance hierarchies. Board logic lives under `Assets/Scripts/Runtime/Board`, authored definitions under `Assets/Data`, and future domains (match orchestration, card logic, HUD, etc.) follow the same pattern — created on demand. Each domain follows SOLID + MVP: Models hold data/state, Views (UI Toolkit) render and emit events, Presenters handle logic between them — all composed via `MonoBehaviour` GameObjects.
 
@@ -209,40 +248,43 @@ classDiagram
 sequenceDiagram
     participant Player
     participant InputFacade
-    participant DeckRuntimeService
-    participant BoardRuntimeService
-    participant NetworkSessionService
+    participant CardPresenter
+    participant MovementValidator
+    participant MovementResolver
+    participant NetworkSession
     participant Server
     participant VFXSystem
 
-    Player->>InputFacade: Drag card to hex
-    InputFacade->>DeckRuntimeService: Validate card in hand
-    InputFacade->>BoardRuntimeService: ValidatePlacement(command)
-    BoardRuntimeService-->>InputFacade: Local validation result
+    Player->>InputFacade: Select source, then target sector
+    InputFacade->>CardPresenter: TryGetCard(cardId)
+    InputFacade->>MovementValidator: ValidateClone / ValidateJump(grid, MoveCommand)
+    MovementValidator-->>InputFacade: MoveResult
 
     alt Invalid locally
         InputFacade-->>Player: Reject placement
     else Valid locally
         par Client Anticipation
-            InputFacade->>BoardRuntimeService: PreviewUnit(command)
-            BoardRuntimeService->>VFXSystem: TriggerGhostTargetingVFX()
-            BoardRuntimeService->>VFXSystem: TriggerDeployVFX()
+            InputFacade->>MovementResolver: Preview(MoveCommand)
+            MovementResolver->>VFXSystem: TriggerGhostTargetingVFX()
+            MovementResolver->>VFXSystem: TriggerDeployVFX()
         and Server Validation
-            InputFacade->>NetworkSessionService: SendServerRpc(command)
-            NetworkSessionService->>Server: PlayCardCommand
+            InputFacade->>NetworkSession: SendServerRpc(command)
+            NetworkSession->>Server: MoveCommand
             Server->>Server: ValidateMove + Execute
-            Server->>NetworkSessionService: AuthoritativeState (ClientRpc)
+            Server->>NetworkSession: AuthoritativeState (ClientRpc)
         end
 
         alt Server accepts with matching result
-            NetworkSessionService->>BoardRuntimeService: Reconcile(serverState)
-            BoardRuntimeService->>VFXSystem: Finalize anticipated visuals
+            NetworkSession->>MovementResolver: Reconcile(serverState)
+            MovementResolver->>VFXSystem: Finalize anticipated visuals
         else Server corrects or rejects
-            NetworkSessionService->>BoardRuntimeService: Reconcile(authoritativeState)
-            BoardRuntimeService->>VFXSystem: Clear preview and replay valid effects
+            NetworkSession->>MovementResolver: Reconcile(authoritativeState)
+            MovementResolver->>VFXSystem: Clear preview and replay valid effects
         end
     end
 ```
+
+> **Participants not yet in the repository:** `InputFacade`, `NetworkSession`, and `VFXSystem` are **planned** presentation and transport seams, not shipped types — the sequence above is the intended flow, not a description of existing code. `CardPresenter`, `MovementValidator`, and `MovementResolver` do exist.
 
 > **Implementation Note:** NGO supports server-authoritative play well, but full rollback prediction is an advanced custom layer. For Goo Galaxy's discrete board actions, use **client anticipation** (target highlights, ghost previews, optimistic local feedback) for MVP and add heavier reconciliation only if playtests prove it necessary.
 
@@ -299,7 +341,7 @@ flowchart LR
     MM -->|"Assign both players"| GS["Dedicated Game Server<br/>Runs authoritative match state"]
     GS <-->|"ServerRpc / ClientRpc<br/>via NGO"| P1
     GS <-->|"ServerRpc / ClientRpc<br/>via NGO"| P2
-    GS --> DB["Backend DB<br/>(Profiles, kits, DP)"]
+    GS --> DB["Backend DB<br/>(Researcher profiles, Kits, DP)"]
     GS --> AN["Analytics<br/>(GameAnalytics)"]
 ```
 
@@ -321,7 +363,7 @@ flowchart LR
 Critical game state synchronized via `NetworkVariable<T>`:
 
 ```csharp
-public class NetworkedHexTile : NetworkBehaviour
+public class NetworkedHexCell : NetworkBehaviour
 {
     public NetworkVariable<int> OwnerId = new(
         readPerm: NetworkVariableReadPermission.Everyone,
@@ -342,7 +384,7 @@ public class NetworkedHexTile : NetworkBehaviour
 
 | Data                | Sync Method                      | Frequency           |
 | :------------------ | :------------------------------- | :------------------ |
-| Hex ownership       | `NetworkVariable<int>`           | On change           |
+| Sector ownership    | `NetworkVariable<int>`           | On change           |
 | Unit presence       | `NetworkVariable<int>` (card ID) | On change           |
 | Tile status effects | `NetworkVariable<TileStatus>`    | On change           |
 | Energy levels       | `NetworkVariable<float>`         | Every 0.5 sec       |
@@ -386,31 +428,37 @@ public class NetworkedHexTile : NetworkBehaviour
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"primaryColor":"#F7E1E8","secondaryColor":"#DCEBF7","tertiaryColor":"#E4F3E1","primaryBorderColor":"#BFA9B5","lineColor":"#A8B6C8","primaryTextColor":"#4E4A57","clusterBkg":"#FAF5EA","clusterBorder":"#CDBFAF","edgeLabelBackground":"#FFF9F2","noteBkgColor":"#F7F1FA","noteTextColor":"#4E4A57","taskBkgColor":"#DCEBF7","taskTextColor":"#4E4A57","taskTextOutsideColor":"#4E4A57","sectionBkgColor":"#E4F3E1","sectionBorderColor":"#BCD0B9","gridColor":"#E8DDD3","todayLineColor":"#C7A7B5","actorBkg":"#F7E1E8","actorBorder":"#BFA9B5","actorTextColor":"#4E4A57","signalColor":"#A8B6C8","signalTextColor":"#4E4A57","labelBoxBkgColor":"#FFF9F2","labelBoxBorderColor":"#CDBFAF","labelTextColor":"#4E4A57"}}}%%
 flowchart LR
-    DEV["Developer<br/>Push to Git"] --> CI["Unity Cloud Build<br/>(Trigger on push)"]
-    CI --> BUILD_IOS["iOS Build<br/>(.ipa)"]
-    CI --> BUILD_AND["Android Build<br/>(.aab)"]
-    BUILD_IOS --> TEST["Automated Tests<br/>(EditMode + PlayMode)"]
-    BUILD_AND --> TEST
-    TEST --> DIST_IOS["TestFlight<br/>(via Fastlane)"]
-    TEST --> DIST_AND["Google Play<br/>Internal Testing"]
-    DIST_IOS --> QA["QA Team<br/>Manual Testing"]
-    DIST_AND --> QA
-    QA --> RELEASE["Production<br/>Release"]
+    DEV["Developer<br/>Push / open PR"] --> GHA["GitHub Actions<br/>(.github/workflows)"]
+    GHA --> CHECKS["format-check.yml<br/>pr-check.yml<br/>codeql.yml"]
+    GHA --> TESTS["unity-tests-editmode.yml<br/>unity-tests-playmode.yml"]
+    CHECKS --> MERGE["Merge to main"]
+    TESTS --> MERGE
+    MERGE --> BUILD_IOS["unity-build-ios.yml<br/>(.ipa)"]
+    MERGE --> BUILD_AND["unity-build-android.yml<br/>(.aab)"]
+    BUILD_IOS --> DIST_IOS["TestFlight"]
+    BUILD_AND --> DIST_AND["Google Play<br/>Internal Testing"]
+    DIST_IOS --> RELEASE["Production<br/>Release"]
+    DIST_AND --> RELEASE
 ```
+
+> **Local parity:** the format gate is `npm run format` then `npm run check`, and the Husky `pre-commit` hook runs both before anything is staged. `format-check.yml` runs the same `check` in CI, so a hook that passes locally is the same gate CI applies.
+
+> **Never `-batchmode`.** Test and build runs go through the open Editor via the Unity MCP tooling. `Unity.exe -batchmode` takes the project lock, forces the Editor closed, and rewrites render pipeline and project settings as a side effect. See `.claude/rules/unity-editor-automation.md`.
 
 ### Branch Strategy
 
 Goo Galaxy should use a lightweight **GitHub Flow** model: a single stable `main` branch plus short-lived topic branches merged through pull requests.
 
-| Branch      | Purpose                                                                                        | Merge Target                  |
-| :---------- | :--------------------------------------------------------------------------------------------- | :---------------------------- |
-| `main`      | Always-stable branch. Every commit should remain buildable and releasable to internal testers. | —                             |
-| `feature/*` | New gameplay, UI, tooling, docs, or refactor work.                                             | `main`                        |
-| `fix/*`     | Bug fixes, regressions, or production issues discovered during testing.                        | `main`                        |
-| `chore/*`   | CI, dependency updates, project organization, asset pipeline, and non-feature maintenance.     | `main`                        |
-| `spike/*`   | Short-lived technical exploration or prototype branches that may be discarded after learning.  | `main` or close without merge |
+| Branch    | Purpose                                                                                        | Merge Target                  |
+| :-------- | :--------------------------------------------------------------------------------------------- | :---------------------------- |
+| `main`    | Always-stable branch. Every commit should remain buildable and releasable to internal testers. | —                             |
+| `feat/*`  | New gameplay, UI, tooling, docs, or refactor work. Named after the Notion task: `feat/GOOM-1`. | `main`                        |
+| `fix/*`   | Bug fixes and regressions. Named after the Notion task: `fix/GOOE-42`.                         | `main`                        |
+| `chore/*` | CI, dependency updates, project organization, asset pipeline, and non-feature maintenance.     | `main`                        |
+| `spike/*` | Short-lived technical exploration or prototype branches that may be discarded after learning.  | `main` or close without merge |
 
-- Branch from `main` for every new task.
+- Branch from `main` for every new task, naming the branch after its Notion task ID.
+- Commit and PR titles follow Conventional Commits with a **mandatory scope**: `type(scope): subject`.
 - Open small PRs back into `main` as soon as the work is coherent and testable.
 - Ship internal builds, QA builds, and tagged releases from `main`.
 - Do not keep a long-lived `develop` branch.
@@ -460,30 +508,33 @@ The project follows a **feature-oriented runtime layout** where code lives under
 
 ### Runtime Code Convention
 
-Feature assemblies are created on demand. Currently only these exist:
+Feature assemblies are created on demand, so **list `Assets/Scripts/Runtime/` rather than trusting a snapshot written here**. At the time of writing:
 
 ```
 Assets/
 └── Scripts/
     └── Runtime/
         ├── Board/          # GooGalaxy.Runtime.Board.asmdef
+        ├── Cards/          # GooGalaxy.Runtime.Cards.asmdef
+        ├── Core/           # GooGalaxy.Runtime.Core.asmdef
+        ├── Energy/         # GooGalaxy.Runtime.Energy.asmdef
         ├── Networking/     # GooGalaxy.Runtime.Networking.asmdef
         └── Shared/         # GooGalaxy.Runtime.Shared.asmdef
 ```
 
-When a feature needs code, create the folder + `.asmdef` together under `Assets/Scripts/Runtime/{Feature}/`. The naming convention is `GooGalaxy.Runtime.{Feature}`. Examples of future feature domains: match orchestration, card/deck logic, UI Toolkit HUD, input interpretation, meta progression, and bootstrap initialization — each created when needed, not before.
+When a feature needs code, create the folder + `.asmdef` together under `Assets/Scripts/Runtime/{Feature}/`. The naming convention is `GooGalaxy.Runtime.{Feature}`. Examples of future feature domains: match orchestration, UI Toolkit HUD, input interpretation, and meta progression — each created when needed, not before.
 
 ### Key Rules
 
-| Rule                                                            | Explanation                                                                                                                                                              |
-| :-------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`Scripts/` is an organizational container, not a namespace.** | The folder name `Scripts` has no semantic meaning to Unity. Assembly boundaries are defined solely by `.asmdef` files.                                                   |
-| **One `.asmdef` per feature folder.**                           | Each folder under `Scripts/Runtime/` contains exactly one Assembly Definition asset that declares its dependencies.                                                      |
-| **`Runtime.Shared` stays small and stable.**                    | It contains only contracts, interfaces, shared structs/enums, and cross-feature helpers. It must NOT depend on any other feature assembly.                               |
-| **Feature assemblies own their domain.**                        | Board owns hex grid logic. Match orchestration owns gameplay flow. Card logic owns deck/specimen runtime. No circular dependencies.                                      |
-| **Authored data is NOT code.**                                  | `Assets/Data/` holds `ScriptableObject` assets and JSON configs. It is the canonical source of truth for design-tunable values. Subfolders created per feature.          |
-| **New features are scaffolded on demand.**                      | When a feature domain needs code, create `Assets/Scripts/Runtime/{Feature}/` with its `.asmdef` and `Assets/Data/{Feature}/` together. Don't pre-allocate empty folders. |
-| **Editor code is separate.**                                    | Editor-only tooling lives under `Assets/Editor/{ToolDomain}/`. Never reference editor assemblies from runtime assemblies.                                                |
-| **GameObject/MonoBehaviour + SOLID + MVP.**                     | Each domain uses plain C# classes composed on `MonoBehaviour` GameObjects. Models hold data, Views (UI Toolkit) render, Presenters mediate.                              |
+| Rule                                                            | Explanation                                                                                                                                                                                                                                                            |
+| :-------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`Scripts/` is an organizational container, not a namespace.** | The folder name `Scripts` has no semantic meaning to Unity. Assembly boundaries are defined solely by `.asmdef` files.                                                                                                                                                 |
+| **One `.asmdef` per feature folder.**                           | Each folder under `Scripts/Runtime/` contains exactly one Assembly Definition asset that declares its dependencies.                                                                                                                                                    |
+| **`Runtime.Shared` stays small and stable.**                    | It contains only contracts, interfaces, shared structs/enums, and cross-feature helpers. It must NOT depend on any other feature assembly.                                                                                                                             |
+| **Feature assemblies own their domain.**                        | Board owns hex grid logic. Cards owns card data and presentation. Energy owns generation and Komi. Core owns composition only. No circular dependencies.                                                                                                               |
+| **Authored data is NOT code.**                                  | `Assets/Data/` holds `ScriptableObject` assets and JSON configs. It is the canonical source of truth for design-tunable values. Subfolders created per feature.                                                                                                        |
+| **New features are scaffolded on demand.**                      | When a feature domain needs code, create `Assets/Scripts/Runtime/{Feature}/` with its `.asmdef` and `Assets/Data/{Feature}/` together. Don't pre-allocate empty folders.                                                                                               |
+| **Editor code is separate.**                                    | Editor-only tooling lives under `Assets/Editor/{ToolDomain}/`. Never reference editor assemblies from runtime assemblies.                                                                                                                                              |
+| **GameObject/MonoBehaviour + SOLID + MVP + DI.**                | Models hold data, Views (UI Toolkit) render, Presenters mediate, `Services/` hold stateless rules (`*Validator`, `*Resolver`, `*Regenerator`), and `Controllers/` drive gameplay flow. Dependencies arrive by constructor or `[Inject]`, never from a Service Locator. |
 
 > **Why this matters:** This convention prevents the common Unity anti-pattern of sprawling `Core/`, `Managers/`, and `UI/` folders that accumulate unrelated code. Feature ownership stays clear, dependency graphs stay auditable, and new contributors can locate code without tribal knowledge. The SOLID + MVP pattern keeps each domain independently testable — Models can be unit-tested without Unity, Presenters can be tested with mocked Views, and Views stay thin.
