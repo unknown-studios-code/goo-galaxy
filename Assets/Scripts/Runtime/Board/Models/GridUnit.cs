@@ -139,6 +139,39 @@ namespace GooGalaxy.Runtime.Board.Models
             return ConversionOutcome.Converted;
         }
 
+        /// <summary>
+        /// Closes one action window on every condition the unit holds, dropping the ones whose last window
+        /// expires. Internal because the status system owns expiry timing: a caller that ticked directly would
+        /// bypass the ownership rule that decides <i>whose</i> deployment closes the window.
+        /// </summary>
+        /// <remarks>
+        /// Allocation-free.
+        /// </remarks>
+        /// <returns>True when the unit held at least one condition and it was ticked.</returns>
+        internal bool TickStatusDurations()
+        {
+            if (_activeStatuses == null || _activeStatuses.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = _activeStatuses.Count - 1; i >= 0; i--)
+            {
+                StatusMarker marker = _activeStatuses[i];
+                int remaining = marker.RemainingDuration - 1;
+
+                if (remaining <= 0)
+                {
+                    _activeStatuses.RemoveAt(i);
+                    continue;
+                }
+
+                _activeStatuses[i] = new StatusMarker(marker.Type, remaining);
+            }
+
+            return true;
+        }
+
         private int IndexOfStatus(StatusType status)
         {
             if (_activeStatuses == null)

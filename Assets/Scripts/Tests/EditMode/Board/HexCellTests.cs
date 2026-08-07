@@ -156,5 +156,184 @@ namespace GooGalaxy.Tests.EditMode.Board
             Assert.That(cell.OccupantUnitId, Is.EqualTo(3));
             Assert.That(cell.IsOccupied, Is.True);
         }
+
+        [Test]
+        public void Constructor_Default_HasNoHazard()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+
+            // THEN
+            Assert.That(cell.HasHazard, Is.False);
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void SetHazard_NonPositiveDuration_PlacesNothingAndReturnsFalse(int duration)
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+
+            // WHEN
+            bool didReplace = cell.SetHazard(ownerPlayerId: 1, duration: duration);
+
+            // THEN
+            Assert.That(didReplace, Is.False);
+            Assert.That(cell.HasHazard, Is.False);
+        }
+
+        [Test]
+        public void SetHazard_OnAClearCell_SetsHasHazardTrue()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+
+            // WHEN
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // THEN
+            Assert.That(cell.HasHazard, Is.True);
+        }
+
+        [Test]
+        public void SetHazard_OnAClearCell_RecordsTheOwnerAndDuration()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+
+            // WHEN
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // THEN
+            Assert.That(cell.Hazard.OwnerPlayerId, Is.EqualTo(1));
+            Assert.That(cell.Hazard.RemainingDuration, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void SetHazard_OnAClearCell_ReturnsFalse()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+
+            // WHEN
+            bool didReplace = cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // THEN
+            Assert.That(didReplace, Is.False);
+        }
+
+        [Test]
+        public void SetHazard_OverAnActiveHazard_ReturnsTrue()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // WHEN
+            bool didReplace = cell.SetHazard(ownerPlayerId: 2, duration: 5);
+
+            // THEN
+            Assert.That(didReplace, Is.True);
+        }
+
+        [Test]
+        public void SetHazard_OverAnActiveHazard_ReplacesTheOwnerAndDuration()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // WHEN
+            cell.SetHazard(ownerPlayerId: 2, duration: 5);
+
+            // THEN
+            Assert.That(cell.Hazard.OwnerPlayerId, Is.EqualTo(2));
+            Assert.That(cell.Hazard.RemainingDuration, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void TickHazard_ActiveHazard_DecrementsRemainingDuration()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // WHEN
+            cell.TickHazard();
+
+            // THEN
+            Assert.That(cell.Hazard.RemainingDuration, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void TickHazard_HazardReachingZero_ClearsTheHazard()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetHazard(ownerPlayerId: 1, duration: 1);
+
+            // WHEN
+            cell.TickHazard();
+
+            // THEN
+            Assert.That(cell.HasHazard, Is.False);
+        }
+
+        [Test]
+        public void TickHazard_CellWithNoHazard_IsANoOp()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+
+            // WHEN
+            cell.TickHazard();
+
+            // THEN
+            Assert.That(cell.HasHazard, Is.False);
+        }
+
+        [Test]
+        public void ClearHazard_ActiveHazard_SetsHasHazardFalse()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // WHEN
+            cell.ClearHazard();
+
+            // THEN
+            Assert.That(cell.HasHazard, Is.False);
+        }
+
+        [Test]
+        public void SetHazard_DoesNotChangeOccupancy()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetOccupant(3);
+
+            // WHEN
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // THEN
+            Assert.That(cell.IsOccupied, Is.True);
+            Assert.That(cell.OccupantUnitId, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void ClearOccupant_WithAnActiveHazard_LeavesTheHazardIntact()
+        {
+            // GIVEN
+            var cell = new HexCell(new HexCoordinates(0, 0));
+            cell.SetOccupant(3);
+            cell.SetHazard(ownerPlayerId: 1, duration: 3);
+
+            // WHEN
+            cell.ClearOccupant();
+
+            // THEN
+            Assert.That(cell.HasHazard, Is.True);
+        }
     }
 }

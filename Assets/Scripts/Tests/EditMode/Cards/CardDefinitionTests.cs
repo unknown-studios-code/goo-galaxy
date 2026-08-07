@@ -15,7 +15,17 @@ namespace GooGalaxy.Tests.EditMode.Cards
         public void Constructor_FromCardData_CopiesEveryAuthoredValue()
         {
             // GIVEN
-            var source = new FakeCardData("bio_phalanx", "Bio-Phalanx", CardType.Troop, 3, canClone: true, canJump: true, hasArmor: true);
+            var source = new FakeCardData(
+                "bio_phalanx",
+                "Bio-Phalanx",
+                CardType.Troop,
+                3,
+                canClone: true,
+                canJump: true,
+                hasArmor: true,
+                ignoresHazards: true,
+                conversionRadius: 2
+            );
 
             // WHEN
             var definition = new CardDefinition(source);
@@ -28,6 +38,49 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(definition.CanClone, Is.EqualTo(source.CanClone));
             Assert.That(definition.CanJump, Is.EqualTo(source.CanJump));
             Assert.That(definition.HasArmor, Is.EqualTo(source.HasArmor));
+            Assert.That(definition.IgnoresHazards, Is.EqualTo(source.IgnoresHazards));
+            Assert.That(definition.ConversionRadius, Is.EqualTo(source.ConversionRadius));
+        }
+
+        [Test]
+        public void Constructor_FromCardDataWithLandingEffects_CopiesThemFieldForField()
+        {
+            // GIVEN
+            var landingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 3) };
+            var source = new FakeCardData(
+                "cryo_stasis",
+                "Cryo-Stasis",
+                CardType.Spell,
+                2,
+                canClone: false,
+                canJump: false,
+                hasArmor: false,
+                landingEffects: landingEffects
+            );
+
+            // WHEN
+            IAbilityCapable abilityCapable = new CardDefinition(source);
+
+            // THEN
+            Assert.That(abilityCapable.LandingEffects[0].Type, Is.EqualTo(ImpactEffectType.ApplyStatus));
+            Assert.That(abilityCapable.LandingEffects[0].Status, Is.EqualTo(StatusType.Frozen));
+            Assert.That(abilityCapable.LandingEffects[0].Radius, Is.EqualTo(1));
+            Assert.That(abilityCapable.LandingEffects[0].Duration, Is.EqualTo(1));
+            Assert.That(abilityCapable.LandingEffects[0].Target, Is.EqualTo(TargetFilter.Enemy));
+            Assert.That(abilityCapable.LandingEffects[0].ClusterSize, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void Constructor_FromCardDataWithNoLandingEffects_LandingEffectsIsEmptyNotNull()
+        {
+            // GIVEN
+            var source = new FakeCardData("subject_alpha", "Subject Alpha", CardType.Troop, 1, canClone: true, canJump: true, hasArmor: false);
+
+            // WHEN
+            IAbilityCapable abilityCapable = new CardDefinition(source);
+
+            // THEN
+            Assert.That(abilityCapable.LandingEffects, Is.Empty);
         }
 
         [Test]
@@ -101,7 +154,20 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
         private sealed class FakeCardData : ICardData
         {
-            public FakeCardData(string cardId, string displayName, CardType type, int energyCost, bool canClone, bool canJump, bool hasArmor)
+            private static readonly ImpactEffect[] _noLandingEffects = Array.Empty<ImpactEffect>();
+
+            public FakeCardData(
+                string cardId,
+                string displayName,
+                CardType type,
+                int energyCost,
+                bool canClone,
+                bool canJump,
+                bool hasArmor,
+                bool ignoresHazards = false,
+                int conversionRadius = 1,
+                IReadOnlyList<ImpactEffect> landingEffects = null
+            )
             {
                 CardId = new CardId(cardId);
                 DisplayName = displayName;
@@ -110,6 +176,9 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 CanClone = canClone;
                 CanJump = canJump;
                 HasArmor = hasArmor;
+                IgnoresHazards = ignoresHazards;
+                ConversionRadius = conversionRadius;
+                LandingEffects = landingEffects ?? _noLandingEffects;
             }
 
             public CardId CardId { get; }
@@ -125,6 +194,12 @@ namespace GooGalaxy.Tests.EditMode.Cards
             public bool CanJump { get; }
 
             public bool HasArmor { get; }
+
+            public bool IgnoresHazards { get; }
+
+            public int ConversionRadius { get; }
+
+            public IReadOnlyList<ImpactEffect> LandingEffects { get; }
         }
     }
 }

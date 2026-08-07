@@ -15,5 +15,11 @@ namespace GooGalaxy.Runtime.Shared.Interfaces
 
         /// <summary>Whether the entity may relocate itself two hexes away.</summary>
         public bool CanJump { get; }
+
+        /// <summary>
+        /// Whether the entity may land on a hex carrying a hazard. Plasmic Leaper's Hover is the only authored
+        /// case; every other entity is rejected with <c>MovementResult.TargetHazardous</c>.
+        /// </summary>
+        public bool IgnoresHazards { get; }
     }
 }

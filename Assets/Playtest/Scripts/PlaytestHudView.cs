@@ -267,6 +267,55 @@ namespace GooGalaxy.Playtest
             _resultLabel.RemoveFromClassList(ResultVisibleClass);
         }
 
+        /// <summary>
+        /// Reports whether a screen-space point lands on a pickable HUD element, so board input under the HUD
+        /// can be swallowed by the caller instead of falling through to the board's physics pick.
+        /// </summary>
+        /// <remarks>
+        /// The HUD root ("hud-root", class "hud") is a full-screen invisible flex host and carries
+        /// <c>picking-mode="Ignore"</c> as a UXML attribute in PlaytestHud.uxml for exactly this reason:
+        /// <see cref="IPanel.Pick"/> reports a hit for any pickable element under the point, including
+        /// ancestors, and a pickable full-screen root would make this method return true everywhere and
+        /// permanently block the board. With the root ignored, a pick only succeeds over the actual widgets —
+        /// the energy panel, footer, hand cards, and buttons — and returns null everywhere else, including
+        /// over the ignored root itself. Picking mode is not a USS property: written in PlaytestHud.uss it
+        /// warns "Unknown property" once at import, is dropped, and leaves the root pickable with no further
+        /// signal, so the attribute must stay in the UXML.
+        /// <para>
+        /// The panel is resolved on every call rather than cached, because <c>UIDocument</c> attaches its root
+        /// to the runtime panel in its own <c>OnEnable</c> and nothing orders that against this component's.
+        /// A reference taken in <c>OnEnable</c> that lost the race would be null for the rest of the session,
+        /// and this method would answer "not over the UI" for every point — silently, since the root itself is
+        /// non-null by then and no guard fires.
+        /// </para>
+        /// </remarks>
+        /// <param name="screenPosition">Pointer position in screen space, as read from the Input System.</param>
+        /// <returns>True when the point lands on a pickable HUD element.</returns>
+        public bool IsPointerOverUI(Vector2 screenPosition)
+        {
+            if (_document == null)
+            {
+                return false;
+            }
+
+            // rootVisualElement and panel are plain C# objects, so the null-conditional is correct here; only
+            // the UIDocument above needs Unity's overloaded comparison.
+            IPanel panel = _document.rootVisualElement?.panel;
+
+            if (panel == null)
+            {
+                return false;
+            }
+
+            // UI Toolkit panel space has its origin at the top-left with Y increasing downward; screen space
+            // (and the Input System's pointer.position) has its origin at the bottom-left with Y increasing
+            // upward. Picking with the raw screen point silently mirrors the hit test vertically —
+            // RuntimePanelUtils.ScreenToPanel performs the flip.
+            Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(panel, screenPosition);
+
+            return panel.Pick(panelPosition) != null;
+        }
+
         // PERF: EnergyChanged fires every frame, but the bar renders one decimal. Quantising to what is visible
         // drops a per-frame string allocation and UI Toolkit layout pass that produced identical pixels.
         private void HandleEnergyChanged(int playerId, float newEnergy)

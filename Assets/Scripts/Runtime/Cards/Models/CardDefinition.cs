@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
@@ -10,13 +12,18 @@ namespace GooGalaxy.Runtime.Cards.Models
     /// authored asset.
     /// </summary>
     /// <remarks>
-    /// A reference type on purpose: consumers hold it through <see cref="ICardData"/> and
-    /// <see cref="IMoveCapable"/> — the board keeps one per live unit in an <c>IMoveCapable</c> registry — and
-    /// a value type stored behind an interface boxes on every store. One definition is built per card during
+    /// A reference type on purpose: consumers hold it through <see cref="ICardData"/>,
+    /// <see cref="IMoveCapable"/>, <see cref="IConversionCapable"/>, and <see cref="IAbilityCapable"/> — the
+    /// board keeps one per live unit in an <c>IMoveCapable</c> registry and tests it for the other two — and a
+    /// value type stored behind an interface boxes on every store. One definition is built per card during
     /// match setup, never per frame, so the single allocation is outside every hot path.
+    /// The landing impacts are copied into an array this instance owns, so a later edit to the authored asset
+    /// cannot change the rules of a match already in progress.
     /// </remarks>
-    public sealed class CardDefinition : ICardData, IMoveCapable
+    public sealed class CardDefinition : ICardData, IMoveCapable, IConversionCapable, IAbilityCapable
     {
+        private static readonly ImpactEffect[] _noLandingEffects = Array.Empty<ImpactEffect>();
+
         public CardDefinition(ICardData cardData)
         {
             CardId = cardData.CardId;
@@ -26,6 +33,9 @@ namespace GooGalaxy.Runtime.Cards.Models
             CanClone = cardData.CanClone;
             CanJump = cardData.CanJump;
             HasArmor = cardData.HasArmor;
+            IgnoresHazards = cardData.IgnoresHazards;
+            ConversionRadius = cardData.ConversionRadius;
+            LandingEffects = CopyLandingEffects(cardData.LandingEffects);
         }
 
         public CardId CardId { get; }
@@ -41,5 +51,28 @@ namespace GooGalaxy.Runtime.Cards.Models
         public bool CanJump { get; }
 
         public bool HasArmor { get; }
+
+        public bool IgnoresHazards { get; }
+
+        public int ConversionRadius { get; }
+
+        public IReadOnlyList<ImpactEffect> LandingEffects { get; }
+
+        private static ImpactEffect[] CopyLandingEffects(IReadOnlyList<ImpactEffect> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return _noLandingEffects;
+            }
+
+            var effects = new ImpactEffect[source.Count];
+
+            for (int i = 0; i < source.Count; i++)
+            {
+                effects[i] = source[i];
+            }
+
+            return effects;
+        }
     }
 }

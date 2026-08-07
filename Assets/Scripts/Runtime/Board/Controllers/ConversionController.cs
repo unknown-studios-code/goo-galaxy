@@ -2,34 +2,40 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using GooGalaxy.Runtime.Board.Models;
+using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Board.Services;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
+using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using Unity.Profiling;
 using UnityEngine;
 
-namespace GooGalaxy.Runtime.Board.Presenters
+namespace GooGalaxy.Runtime.Board.Controllers
 {
     /// <summary>
     /// Turns every executed move into the conversion attempts it triggers, and publishes what they did through
     /// <c>MatchEvents.ConversionResolved</c>. The rules live in <see cref="ConversionResolver" />; this
-    /// component wires it to the scene's grid and unit registry and owns the buffers it publishes.
+    /// component wires them to the scene's grid and unit registry and owns the buffers it publishes.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// A landing that converts nothing publishes nothing, so downstream systems can treat the event as a fact
-    /// rather than a poll. The published lists are the presenter's own reusable buffers and are only valid for
-    /// the duration of the dispatch.
+    /// rather than a poll. <c>MatchEvents.LandingResolved</c> is raised unconditionally right after, because
+    /// step 4 — the card's landing impact — has to run whether or not step 3 converted anything. The published
+    /// lists are this component's own reusable buffers and are only valid for the duration of the dispatch.
+    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
-    public class ConversionPresenter : MonoBehaviour
+    public class ConversionController : MonoBehaviour
     {
-        // A Jump publishes two coordinates, so the widest neighbourhood one landing can reach is both rings.
+        // A Jump publishes two coordinates, and each reaches the widest area an authored conversion radius
+        // covers. The two areas overlap heavily in practice, so this is a ceiling, not an expected count.
         private const int MaxAffectedCoordinates = 2;
-        private const int MaxAttemptsPerLanding = MaxAffectedCoordinates * BoardMetrics.NeighborsPerCell;
+        private const int MaxAttemptsPerLanding = MaxAffectedCoordinates * BoardMetrics.MaxConversionTargetsPerLanding;
 
-        private static readonly ProfilerMarker _resolveConversionsMarker = new("ConversionPresenter.ResolveConversions");
+        private static readonly ProfilerMarker _resolveConversionsMarker = new("ConversionController.ResolveConversions");
 
         [SerializeField]
         private GridPresenter _gridPresenter;
@@ -37,7 +43,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         [SerializeField]
         private UnitPresenter _unitPresenter;
 
-        private readonly List<HexCell> _neighborBuffer = new(BoardMetrics.NeighborsPerCell);
+        private readonly List<HexCell> _areaBuffer = new(BoardMetrics.MaxImpactAreaCells);
         private readonly HashSet<int> _attemptedUnitIds = new(MaxAttemptsPerLanding);
         private readonly List<int> _convertedUnitIds = new(MaxAttemptsPerLanding);
         private readonly List<int> _armorStrippedUnitIds = new(MaxAttemptsPerLanding);
@@ -111,14 +117,21 @@ namespace GooGalaxy.Runtime.Board.Presenters
                         _unitPresenter.ActiveUnits,
                         affectedCoordinates,
                         command.PlayerId,
-                        _neighborBuffer,
+                        GetConversionRadius(command.UnitId),
+                        _areaBuffer,
                         _attemptedUnitIds,
                         _convertedUnitIds,
                         _armorStrippedUnitIds
                     );
                 }
 
-                PublishConversionResolved(command.PlayerId);
+                // Built once and handed to both publishes: ConversionResolved suppresses an empty result, but
+                // LandingResolved carries it regardless so step 4 can tell "nobody was converted" apart from
+                // "I was never told".
+                var conversions = new ConversionResult(_convertedUnitIdsView, _armorStrippedUnitIdsView);
+
+                PublishConversionResolved(command.PlayerId, conversions);
+                PublishLandingResolved(command, conversions);
             }
             finally
             {
@@ -126,10 +139,8 @@ namespace GooGalaxy.Runtime.Board.Presenters
             }
         }
 
-        private void PublishConversionResolved(int actingPlayerId)
+        private void PublishConversionResolved(int actingPlayerId, ConversionResult result)
         {
-            var result = new ConversionResult(_convertedUnitIdsView, _armorStrippedUnitIdsView);
-
             if (result.IsEmpty)
             {
                 return;
@@ -149,6 +160,32 @@ namespace GooGalaxy.Runtime.Board.Presenters
                 Debug.LogError(BoardLogMessages.ConversionResolvedSubscriberFailed, this);
                 Debug.LogException(exception, this);
             }
+        }
+
+        private void PublishLandingResolved(in MoveCommand command, ConversionResult conversions)
+        {
+            try
+            {
+                MatchEvents.RaiseLandingResolved(command, conversions);
+            }
+            catch (Exception exception)
+            {
+                // Same dispatch-boundary reasoning as the conversion publish above: the move and its conversions
+                // are already committed to the models, so a subscriber's throw must not unwind into the move
+                // pipeline and report a failure over a board that did change.
+                Debug.LogError(BoardLogMessages.LandingResolvedSubscriberFailed, this);
+                Debug.LogException(exception, this);
+            }
+        }
+
+        private int GetConversionRadius(int unitId)
+        {
+            if (!_unitPresenter.TryGetCapability(unitId, out IMoveCapable capability))
+            {
+                return BoardMetrics.DefaultConversionRadius;
+            }
+
+            return capability is IConversionCapable conversionCapable ? conversionCapable.ConversionRadius : BoardMetrics.DefaultConversionRadius;
         }
 
         private bool TryGetHexGrid(out HexGrid grid)

@@ -36,13 +36,43 @@ namespace GooGalaxy.Runtime.Shared.Constants
             "A MoveExecuted subscriber threw. The move itself was applied and the board is correct; the failing subscriber is the defect.";
 
         public const string ConversionBoardUnavailable =
-            "ConversionPresenter is missing its GridPresenter or UnitPresenter, or the hex grid is not initialized! Conversions were skipped for this landing.";
+            "ConversionController is missing its GridPresenter or UnitPresenter, or the hex grid is not initialized! Conversions were skipped.";
 
         public const string ConversionResolveReentered =
-            "ConversionPresenter was re-entered mid-dispatch. Queue follow-up landings instead of raising MoveExecuted during event dispatch.";
+            "ConversionController was re-entered mid-dispatch. Queue follow-up landings instead of raising MoveExecuted during event dispatch.";
 
         public const string ConversionResolvedSubscriberFailed =
             "A ConversionResolved subscriber threw. The conversions themselves were applied and the board is correct; the failing subscriber is the defect.";
+
+        public const string LandingResolvedSubscriberFailed =
+            "A LandingResolved subscriber threw. The move and its conversions were applied and the board is correct; the failing subscriber is the defect.";
+
+        public const string AbilityBoardUnavailable =
+            "AbilityController is missing its GridPresenter or UnitPresenter, or the hex grid is not initialized! Landing impacts were skipped.";
+
+        public const string AbilityResolveReentered =
+            "AbilityController was re-entered mid-dispatch. Queue follow-up landings instead of raising LandingResolved during event dispatch.";
+
+        public const string AbilityResolvedSubscriberFailed =
+            "An AbilityResolved subscriber threw. The impacts themselves were applied and the board is correct; the failing subscriber is the defect.";
+
+        public const string HazardOverwritten =
+            "A landing spawned a hazard on a hex that already carried one. The previous duration was discarded and the new one starts fresh.";
+
+        public const string SelfDestructOnDeadUnit =
+            "A SelfDestruct impact resolved on a unit that is already dead or unregistered. The impact was skipped; the board is unchanged.";
+
+        public const string HazardWithoutVacatedHex =
+            "A SpawnHazard impact resolved on a deployment that vacates no hex. Only a Jump leaves a trail; author it off Clone-only troops and Protocols.";
+
+        public const string SelfDestructWithoutActingUnit =
+            "A SelfDestruct impact resolved on a Protocol, which puts no unit on the board. The impact was skipped; re-author the card.";
+
+        public const string SpellResolveReentered =
+            "AbilityController.ResolveSpell was re-entered mid-dispatch. Queue follow-up deployments instead of resolving them during event dispatch.";
+
+        public const string UnknownImpactEffectType =
+            "A card authored an ImpactEffectType the ability resolver does not handle. That impact was skipped; re-author the card or extend AbilityResolver.";
 
         public const string UnitViewPrefabNotAssigned = "Unit prefab is not assigned on UnitView! Units will not be rendered.";
 

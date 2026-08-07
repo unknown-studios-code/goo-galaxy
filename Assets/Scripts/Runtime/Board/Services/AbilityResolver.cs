@@ -1,0 +1,369 @@
+using System;
+using System.Collections.Generic;
+using GooGalaxy.Runtime.Board.Models;
+using GooGalaxy.Runtime.Shared.Types;
+
+namespace GooGalaxy.Runtime.Board.Services
+{
+    /// <summary>
+    /// Applies the impacts a card authored, once movement and standard conversion have finished — step 4 of the
+    /// GDD's interaction resolution order. Stateless and free of any engine dependency: every buffer is
+    /// caller-owned, nothing is logged, and the entry point stays internal so no assembly outside Board can
+    /// call it — <c>AbilityController</c> is its only production caller, and the EditMode suite reaches it
+    /// through <c>InternalsVisibleTo</c>.
+    /// </summary>
+    /// <remarks>
+    /// Every card is expressible as authored data alone: the resolver dispatches on
+    /// <see cref="ImpactEffectType"/> and reads the impact's own radius, duration, filter, and cluster size, so
+    /// no card needs a code path of its own.
+    /// <para>
+    /// Nothing throws for a card that is authored wrong and nothing aborts the impact loop: an impact the
+    /// resolver cannot handle is skipped and the card's remaining impacts still resolve. Those conditions are
+    /// reported through the <c>diagnostics</c> flags instead of a log, which keeps the resolver a pure function
+    /// of board state — the presenter turns a set flag into a console message, and a test asserts on the flag
+    /// without a log matcher.
+    /// </para>
+    /// <para>
+    /// The resolver never removes a unit. A self-destruct impact only records the acting unit's id, because
+    /// removal is step 6 self-cleanup and must happen after the ability event has been published — a subscriber
+    /// reading the payload would otherwise be looking up units that are already gone from the registry.
+    /// </para>
+    /// Allocation-free on every non-throwing path once the caller's buffers are sized.
+    /// </remarks>
+    internal static class AbilityResolver
+    {
+        /// <summary>
+        /// Checks that a set of player-chosen hexes forms the cluster a Protocol's impact was authored for.
+        /// </summary>
+        /// <remarks>
+        /// The GDD describes a Protocol's target as "a 3-hex cluster (1 center hex + 2 adjacent)", and the two
+        /// authored fields already say exactly that without a new schema:
+        /// <see cref="ImpactEffect.ClusterSize"/> is how many hexes the player picks, and
+        /// <see cref="ImpactEffect.Radius"/> is how far each may sit from the centre.
+        /// <para>
+        /// <c>targets[0]</c> is the centre by definition, and it is measured against itself, so a distance of
+        /// zero always passes. A cluster size of zero fails: on a troop impact zero means "no cap", but a
+        /// Protocol with no target count is not authored, and silently accepting any number of hexes for it
+        /// would be worse than rejecting it.
+        /// </para>
+        /// Allocation-free. Distinctness is a nested indexed scan rather than a set, because the count is the
+        /// authored cluster size — three or four — and a <c>HashSet</c> would cost an allocation to save
+        /// nothing.
+        /// </remarks>
+        /// <param name="targets">The hexes the player picked, centre first.</param>
+        /// <param name="effect">The impact the targets must satisfy.</param>
+        /// <param name="grid">The board every target must exist on.</param>
+        /// <returns>
+        /// True when the count matches the authored cluster size, every hex is on the board, no hex repeats,
+        /// and every hex is within the authored radius of the first one.
+        /// </returns>
+        internal static bool ValidateTargets(IReadOnlyList<HexCoordinates> targets, ImpactEffect effect, HexGrid grid)
+        {
+            if (targets == null || grid == null || effect.ClusterSize <= 0 || targets.Count != effect.ClusterSize)
+            {
+                return false;
+            }
+
+            HexCoordinates centre = targets[0];
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                HexCoordinates target = targets[i];
+
+                if (!grid.TryGetCell(target, out _) || centre.CalculateDistance(target) > effect.Radius)
+                {
+                    return false;
+                }
+
+                for (int j = 0; j < i; j++)
+                {
+                    if (targets[j] == target)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resolves every impact the acting card authored, in order, against the board described by the context.
+        /// </summary>
+        /// <param name="context">
+        /// Who is acting, where, what they vacated, what conversion just did, and — for a Protocol — the hexes
+        /// the player picked. Its lists are borrowed for the call and never retained.
+        /// </param>
+        /// <param name="areaBuffer">Caller-owned scratch buffer for the impact area. Overwritten per impact.</param>
+        /// <param name="affectedUnitIds">Caller-owned buffer receiving the units an impact conditioned. Cleared on entry.</param>
+        /// <param name="affectedHexes">
+        /// Caller-owned buffer receiving the coordinates whose hex state changed — the affected units' hexes,
+        /// plus any hex a hazard was spawned on. Cleared on entry.
+        /// </param>
+        /// <param name="destroyedUnitIds">
+        /// Caller-owned buffer receiving the units a self-destruct impact marked for removal. Cleared on entry.
+        /// The caller performs the removal after publishing.
+        /// </param>
+        /// <param name="diagnostics">The authoring or state problems the resolution ran into, or None.</param>
+        /// <exception cref="ArgumentNullException">The grid, the registry, the impact list, the status system, or any buffer is null.</exception>
+        internal static void Resolve(
+            HexGrid grid,
+            IReadOnlyDictionary<int, GridUnit> units,
+            in AbilityContext context,
+            IReadOnlyList<ImpactEffect> landingEffects,
+            StatusEffectResolver statusEffects,
+            List<HexCell> areaBuffer,
+            List<int> affectedUnitIds,
+            List<HexCoordinates> affectedHexes,
+            List<int> destroyedUnitIds,
+            out AbilityDiagnostic diagnostics
+        )
+        {
+            if (grid == null)
+            {
+                throw new ArgumentNullException(nameof(grid));
+            }
+
+            if (units == null)
+            {
+                throw new ArgumentNullException(nameof(units));
+            }
+
+            if (landingEffects == null)
+            {
+                throw new ArgumentNullException(nameof(landingEffects));
+            }
+
+            if (statusEffects == null)
+            {
+                throw new ArgumentNullException(nameof(statusEffects));
+            }
+
+            if (areaBuffer == null)
+            {
+                throw new ArgumentNullException(nameof(areaBuffer));
+            }
+
+            if (affectedUnitIds == null)
+            {
+                throw new ArgumentNullException(nameof(affectedUnitIds));
+            }
+
+            if (affectedHexes == null)
+            {
+                throw new ArgumentNullException(nameof(affectedHexes));
+            }
+
+            if (destroyedUnitIds == null)
+            {
+                throw new ArgumentNullException(nameof(destroyedUnitIds));
+            }
+
+            diagnostics = AbilityDiagnostic.None;
+            affectedUnitIds.Clear();
+            affectedHexes.Clear();
+            destroyedUnitIds.Clear();
+
+            for (int i = 0; i < landingEffects.Count; i++)
+            {
+                ImpactEffect effect = landingEffects[i];
+
+                switch (effect.Type)
+                {
+                    case ImpactEffectType.None:
+                        break;
+                    case ImpactEffectType.ApplyStatus:
+                        ApplyStatus(grid, units, context, effect, statusEffects, areaBuffer, affectedUnitIds, affectedHexes);
+                        break;
+                    case ImpactEffectType.SpawnHazard:
+                        SpawnHazard(grid, context, effect, affectedHexes, ref diagnostics);
+                        break;
+                    case ImpactEffectType.SelfDestruct:
+                        SelfDestruct(units, context, destroyedUnitIds, ref diagnostics);
+                        break;
+                    default:
+                        diagnostics |= AbilityDiagnostic.UnknownEffectType;
+                        break;
+                }
+            }
+        }
+
+        private static void ApplyStatus(
+            HexGrid grid,
+            IReadOnlyDictionary<int, GridUnit> units,
+            in AbilityContext context,
+            in ImpactEffect effect,
+            StatusEffectResolver statusEffects,
+            List<HexCell> areaBuffer,
+            List<int> affectedUnitIds,
+            List<HexCoordinates> affectedHexes
+        )
+        {
+            if (effect.Status == StatusType.None || effect.Duration <= 0)
+            {
+                return;
+            }
+
+            GatherArea(grid, context, effect, areaBuffer);
+
+            int appliedCount = 0;
+
+            for (int i = 0; i < areaBuffer.Count; i++)
+            {
+                if (effect.ClusterSize > 0 && appliedCount >= effect.ClusterSize)
+                {
+                    return;
+                }
+
+                HexCell cell = areaBuffer[i];
+
+                if (!cell.IsOccupied || !units.TryGetValue(cell.OccupantUnitId, out GridUnit unit) || unit == null || !unit.IsAlive)
+                {
+                    continue;
+                }
+
+                if (!IsTargeted(effect.Target, unit, context))
+                {
+                    continue;
+                }
+
+                statusEffects.ApplyStatus(unit, effect.Status, effect.Duration);
+
+                // The output buffers are cleared once per deployment, not per impact, so a card with two status
+                // impacts would otherwise report the same unit twice — breaking the payload's "at most once
+                // each" contract and pushing both buffers past the single-impact area they are sized for. The
+                // scan is linear because it is bounded by one impact area; a set would be another caller-owned
+                // buffer the payload contract has to document.
+                if (!affectedUnitIds.Contains(unit.UnitId))
+                {
+                    affectedUnitIds.Add(unit.UnitId);
+                    affectedHexes.Add(cell.Coordinates);
+                }
+
+                // Counted even when the unit was already reported, so the cluster cap measures units this
+                // impact acted on rather than units it happened to be the first to report.
+                appliedCount++;
+            }
+        }
+
+        // The one branch that separates a troop landing from a Protocol. A troop expands the impact's radius
+        // around the hex it landed on; a Protocol was handed its hexes by the player and expands nothing, so
+        // the radius has already done its work as a validation rule in ValidateTargets.
+        private static void GatherArea(HexGrid grid, in AbilityContext context, in ImpactEffect effect, List<HexCell> areaBuffer)
+        {
+            if (!context.HasExplicitTargets)
+            {
+                grid.GetSpiralCells(context.OriginHex, effect.Radius, areaBuffer);
+                return;
+            }
+
+            areaBuffer.Clear();
+            IReadOnlyList<HexCoordinates> targets = context.TargetHexes;
+
+            // A spell context with no targets resolves nothing. Falling through to the radius branch would
+            // turn it into an area effect centred on the context's default origin, which is the middle of the
+            // board — a Protocol must never expand a radius, whatever its target list holds.
+            if (targets == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                if (grid.TryGetCell(targets[i], out HexCell cell))
+                {
+                    areaBuffer.Add(cell);
+                }
+            }
+        }
+
+        private static void SpawnHazard(
+            HexGrid grid,
+            in AbilityContext context,
+            in ImpactEffect effect,
+            List<HexCoordinates> affectedHexes,
+            ref AbilityDiagnostic diagnostics
+        )
+        {
+            // The GDD puts the corrosive trail on the hex the unit vacated, and only a Jump vacates one. A
+            // Clone leaves its source occupied and a Protocol never had a hex to leave, so both are no-ops.
+            // Spawning on the chosen hexes instead is deliberately NOT invented here: no card in the GDD asks
+            // for it, and guessing the semantics now would lock in a rule a future card has to fight.
+            if (!context.HasVacatedHex)
+            {
+                diagnostics |= AbilityDiagnostic.HazardWithoutVacatedHex;
+                return;
+            }
+
+            if (effect.Duration <= 0 || !grid.TryGetCell(context.VacatedHex, out HexCell vacatedCell))
+            {
+                return;
+            }
+
+            if (vacatedCell.SetHazard(context.ActingPlayerId, effect.Duration))
+            {
+                diagnostics |= AbilityDiagnostic.HazardOverwritten;
+            }
+
+            affectedHexes.Add(context.VacatedHex);
+        }
+
+        private static void SelfDestruct(
+            IReadOnlyDictionary<int, GridUnit> units,
+            in AbilityContext context,
+            List<int> destroyedUnitIds,
+            ref AbilityDiagnostic diagnostics
+        )
+        {
+            if (!context.HasActingUnit)
+            {
+                diagnostics |= AbilityDiagnostic.SelfDestructWithoutActingUnit;
+                return;
+            }
+
+            if (!units.TryGetValue(context.ActingUnitId, out GridUnit actingUnit) || actingUnit == null || !actingUnit.IsAlive)
+            {
+                diagnostics |= AbilityDiagnostic.SelfDestructOnDeadUnit;
+                return;
+            }
+
+            if (destroyedUnitIds.Contains(context.ActingUnitId))
+            {
+                return;
+            }
+
+            destroyedUnitIds.Add(context.ActingUnitId);
+        }
+
+        private static bool IsTargeted(TargetFilter filter, GridUnit unit, in AbilityContext context)
+        {
+            return filter switch
+            {
+                TargetFilter.Self => context.HasActingUnit && unit.UnitId == context.ActingUnitId,
+                TargetFilter.Enemy => unit.PlayerId != context.ActingPlayerId,
+                TargetFilter.All => true,
+                TargetFilter.Ally => unit.PlayerId == context.ActingPlayerId,
+                TargetFilter.NewlyConverted => ContainsUnitId(context.Conversions.ConvertedUnitIds, unit.UnitId),
+                _ => false,
+            };
+        }
+
+        private static bool ContainsUnitId(IReadOnlyList<int> unitIds, int unitId)
+        {
+            if (unitIds == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < unitIds.Count; i++)
+            {
+                if (unitIds[i] == unitId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+}

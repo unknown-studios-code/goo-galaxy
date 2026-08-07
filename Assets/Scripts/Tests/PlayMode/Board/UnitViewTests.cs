@@ -29,6 +29,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private const float CellVisualSize = 1.0f;
         private const float PositionTolerance = 0.0001f;
         private const string SourceCardIdValue = "acid_crawler";
+        private const int ShortStatusDurationInActionWindows = 1;
 
         private static readonly Color _playerOneColor = new(0f, 1f, 1f, 1f);
         private static readonly Color _playerTwoColor = new(1f, 0f, 1f, 1f);
@@ -42,6 +43,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private GameObject _boardGO;
         private GameObject _detachedGO;
         private GameObject _unitPrefabGO;
+        private GameObject _shieldOverlayPrefabGO;
+        private GameObject _frozenOverlayPrefabGO;
         private GridLayoutSO _gridLayout;
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
@@ -58,6 +61,14 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _unitPrefabGO.AddComponent<SpriteRenderer>();
             _unitPrefabGO.SetActive(false);
 
+            _shieldOverlayPrefabGO = new GameObject("ShieldOverlayPrefab_Test");
+            _shieldOverlayPrefabGO.AddComponent<SpriteRenderer>();
+            _shieldOverlayPrefabGO.SetActive(false);
+
+            _frozenOverlayPrefabGO = new GameObject("FrozenOverlayPrefab_Test");
+            _frozenOverlayPrefabGO.AddComponent<SpriteRenderer>();
+            _frozenOverlayPrefabGO.SetActive(false);
+
             _boardGO = new GameObject("UnitView_Test");
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
@@ -66,6 +77,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _unitView.SetViewConfiguration(_unitPrefabGO, null, null, null, CellVisualSize);
+            _unitView.SetOverlayConfiguration(_shieldOverlayPrefabGO, _frozenOverlayPrefabGO);
             _unitView.SetFactionColors(_playerOneColor, _playerTwoColor);
 
             _convertedUnitIds.Clear();
@@ -92,6 +104,16 @@ namespace GooGalaxy.Tests.PlayMode.Board
             if (_unitPrefabGO != null)
             {
                 Object.Destroy(_unitPrefabGO);
+            }
+
+            if (_shieldOverlayPrefabGO != null)
+            {
+                Object.Destroy(_shieldOverlayPrefabGO);
+            }
+
+            if (_frozenOverlayPrefabGO != null)
+            {
+                Object.Destroy(_frozenOverlayPrefabGO);
             }
 
             if (_gridLayout != null)
@@ -214,6 +236,65 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         [UnityTest]
         [Timeout(5000)]
+        public IEnumerator HandleAbilityResolved_SelfDestructedUnit_ReleasesItsVisual()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            RaiseMoveExecuted(_firstCoords);
+            Assert.That(_unitView.TryGetUnitVisual(UnitId, out GameObject _), Is.True, "Test setup expects the unit to have a visual before self-destructing.");
+
+            // WHEN
+            RaiseAbilityResolved(PlayerId, UnitId);
+
+            // THEN
+            Assert.That(_unitView.TryGetUnitVisual(UnitId, out GameObject _), Is.False);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleAbilityResolved_SelfDestructedUnit_RenderedUnitCountMatchesActiveUnitsCount()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            RegisterUnitAt(KnownUnitId, RivalPlayerId, _secondCoords);
+            _unitView.SyncUnitVisuals();
+            Assert.That(_unitPresenter.UnregisterUnit(UnitId), Is.True, "Test setup expects the self-destructed unit to leave the registry.");
+
+            // WHEN
+            RaiseAbilityResolved(PlayerId, UnitId);
+
+            // THEN
+            Assert.That(_unitView.RenderedUnitCount, Is.EqualTo(_unitPresenter.ActiveUnits.Count));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleAbilityResolved_RepeatedSelfDestructLandings_RenderedUnitCountNeverGrows()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+            const int cycleCount = 3;
+
+            // WHEN / THEN
+            for (int i = 0; i < cycleCount; i++)
+            {
+                int unitId = UnitId + i;
+                RegisterUnitAt(unitId, PlayerId, _firstCoords);
+                _unitView.SyncUnitVisuals();
+                Assert.That(_unitPresenter.UnregisterUnit(unitId), Is.True, $"Test setup expects unit {unitId} to leave the registry.");
+
+                RaiseAbilityResolved(PlayerId, unitId);
+
+                Assert.That(_unitView.RenderedUnitCount, Is.EqualTo(0), $"Cycle {i}: a self-destructed unit's visual must not accumulate.");
+            }
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ReleaseUnitVisual_UnknownUnitId_IsANoOp()
         {
             // GIVEN
@@ -282,6 +363,197 @@ namespace GooGalaxy.Tests.PlayMode.Board
             Assert.That(detachedView.RenderedUnitCount, Is.EqualTo(0));
         }
 
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ReleaseUnitVisual_UnitWithShieldAndFrozenOverlays_LeavesNoOverlayParentedUnderTheReleasedVisual()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords, hasArmor: true);
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+            _unitView.SyncUnitVisuals();
+
+            Assert.That(
+                _unitView.TryGetShieldOverlay(UnitId, out GameObject _),
+                Is.True,
+                "Test setup expects the shield overlay to be attached before release."
+            );
+            Assert.That(
+                _unitView.TryGetFrozenOverlay(UnitId, out GameObject _),
+                Is.True,
+                "Test setup expects the frozen overlay to be attached before release."
+            );
+            Assert.That(_unitView.TryGetUnitVisual(UnitId, out GameObject visual), Is.True, "Test setup expects the unit to have a visual before release.");
+
+            // WHEN
+            _unitView.ReleaseUnitVisual(UnitId);
+
+            // THEN
+            Assert.That(visual.transform.childCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ReleaseUnitVisual_UnitWithShieldAndFrozenOverlays_ReturnsBothOverlaysToTheirPools()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            int baselineShieldOverlayInactiveCount = _unitView.ShieldOverlayPoolInactiveCount;
+            int baselineFrozenOverlayInactiveCount = _unitView.FrozenOverlayPoolInactiveCount;
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords, hasArmor: true);
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+            _unitView.SyncUnitVisuals();
+
+            // WHEN
+            _unitView.ReleaseUnitVisual(UnitId);
+
+            // THEN
+            Assert.That(_unitView.ShieldOverlayPoolInactiveCount, Is.EqualTo(baselineShieldOverlayInactiveCount));
+            Assert.That(_unitView.FrozenOverlayPoolInactiveCount, Is.EqualTo(baselineFrozenOverlayInactiveCount));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleAbilityResolved_SelfDestructedUnitWithShieldAndFrozenOverlays_LeavesNoOverlayParentedUnderTheReleasedVisual()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords, hasArmor: true);
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+            _unitView.SyncUnitVisuals();
+
+            Assert.That(
+                _unitView.TryGetShieldOverlay(UnitId, out GameObject _),
+                Is.True,
+                "Test setup expects the shield overlay to be attached before self-destruct."
+            );
+            Assert.That(
+                _unitView.TryGetFrozenOverlay(UnitId, out GameObject _),
+                Is.True,
+                "Test setup expects the frozen overlay to be attached before self-destruct."
+            );
+            Assert.That(
+                _unitView.TryGetUnitVisual(UnitId, out GameObject visual),
+                Is.True,
+                "Test setup expects the unit to have a visual before self-destruct."
+            );
+
+            // WHEN
+            RaiseAbilityResolved(PlayerId, UnitId);
+
+            // THEN
+            Assert.That(visual.transform.childCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleAbilityResolved_SelfDestructedUnitWithShieldAndFrozenOverlays_ReturnsBothOverlaysToTheirPools()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            int baselineShieldOverlayInactiveCount = _unitView.ShieldOverlayPoolInactiveCount;
+            int baselineFrozenOverlayInactiveCount = _unitView.FrozenOverlayPoolInactiveCount;
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords, hasArmor: true);
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+            _unitView.SyncUnitVisuals();
+
+            // WHEN
+            RaiseAbilityResolved(PlayerId, UnitId);
+
+            // THEN
+            Assert.That(_unitView.ShieldOverlayPoolInactiveCount, Is.EqualTo(baselineShieldOverlayInactiveCount));
+            Assert.That(_unitView.FrozenOverlayPoolInactiveCount, Is.EqualTo(baselineFrozenOverlayInactiveCount));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator LateUpdate_FrozenAppliedAndExpiredWithinSameDeployment_ShowsThePostExpiryStateNextFrame()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            RaiseMoveExecuted(_firstCoords);
+
+            // WHEN
+            ApplyAndExpireFrozenWithinOneDeployment(unit, PlayerId);
+            yield return null;
+
+            // THEN
+            Assert.That(_unitView.TryGetFrozenOverlay(UnitId, out GameObject _), Is.False);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ReleaseUnitVisual_FrozenOverlayDestroyedExternally_DropsTheStaleTrackedEntry()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+            _unitView.SyncUnitVisuals();
+
+            Assert.That(
+                _unitView.TryGetFrozenOverlay(UnitId, out GameObject frozenOverlay),
+                Is.True,
+                "Test setup expects the frozen overlay to be attached before it is destroyed externally."
+            );
+
+            Object.Destroy(frozenOverlay);
+            yield return null;
+
+            // WHEN
+            _unitView.ReleaseUnitVisual(UnitId);
+
+            // THEN
+            Assert.That(_unitView.TrackedFrozenOverlayCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator OnEnable_UnitUnregisteredWhileDisabled_RenderedUnitCountDropsToZero()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            RaiseMoveExecuted(_firstCoords);
+            _boardGO.SetActive(false);
+            Assert.That(_unitPresenter.UnregisterUnit(UnitId), Is.True, "Test setup expects the unit to unregister while the view is disabled.");
+
+            // WHEN
+            _boardGO.SetActive(true);
+
+            // THEN
+            Assert.That(_unitView.RenderedUnitCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator OnEnable_FrozenStatusAppliedWhileDisabled_ShowsTheOverlayOnReSync()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            RaiseMoveExecuted(_firstCoords);
+            _boardGO.SetActive(false);
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+
+            // WHEN
+            _boardGO.SetActive(true);
+
+            // THEN
+            Assert.That(_unitView.TryGetFrozenOverlay(UnitId, out GameObject _), Is.True);
+        }
+
         private static Vector3 ExpectedWorldPosition(HexCoordinates coordinates)
         {
             return HexMathUtils.ProjectToWorldSpace(coordinates, CellVisualSize);
@@ -326,9 +598,30 @@ namespace GooGalaxy.Tests.PlayMode.Board
             MatchEvents.RaiseConversionResolved(actingPlayerId, new ConversionResult(_convertedUnitIds, _armorStrippedUnitIds));
         }
 
-        private GridUnit RegisterUnitAt(int unitId, int playerId, HexCoordinates position)
+        private void RaiseAbilityResolved(int actingPlayerId, int destroyedUnitId)
         {
-            var unit = new GridUnit(unitId, playerId, new CardId(SourceCardIdValue), position);
+            var destroyedUnitIds = new List<int> { destroyedUnitId };
+            MatchEvents.RaiseAbilityResolved(actingPlayerId, new AbilityResult(null, null, destroyedUnitIds));
+        }
+
+        private void RaiseAbilityResolvedWithNoDestroyedUnits(int actingPlayerId)
+        {
+            MatchEvents.RaiseAbilityResolved(actingPlayerId, new AbilityResult(null, null, null));
+        }
+
+        // Mirrors AbilityController.ResolveDeployment: the impact applies the status (step 4), AbilityResolved
+        // publishes before self-cleanup runs, and only then does step 6 tick the duration that expires it — all
+        // synchronously, inside the same deployment, before any frame boundary.
+        private void ApplyAndExpireFrozenWithinOneDeployment(GridUnit unit, int actingPlayerId)
+        {
+            unit.AddStatus(StatusType.Frozen, ShortStatusDurationInActionWindows);
+            RaiseAbilityResolvedWithNoDestroyedUnits(actingPlayerId);
+            unit.TickStatusDurations();
+        }
+
+        private GridUnit RegisterUnitAt(int unitId, int playerId, HexCoordinates position, bool hasArmor = false)
+        {
+            var unit = new GridUnit(unitId, playerId, new CardId(SourceCardIdValue), position, hasArmor);
             Assert.That(_unitPresenter.RegisterUnit(unit, _capability), Is.True, $"Test setup expects unit {unitId} to register at {position}.");
 
             return unit;
@@ -339,6 +632,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public bool CanClone => true;
 
             public bool CanJump => true;
+
+            public bool IgnoresHazards => false;
         }
     }
 }

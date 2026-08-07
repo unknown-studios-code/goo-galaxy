@@ -880,6 +880,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public bool CanClone { get; }
 
             public bool CanJump { get; }
+
+            public bool IgnoresHazards => false;
         }
 
         private sealed class FakeUnitSpawner : IUnitSpawner

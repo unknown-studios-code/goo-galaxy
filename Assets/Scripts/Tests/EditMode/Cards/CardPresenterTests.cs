@@ -2,9 +2,11 @@ using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Cards.Presenters;
+using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace GooGalaxy.Tests.EditMode.Cards
 {
@@ -48,6 +50,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
             // GIVEN
             CardDataSO first = CreateCard("acid_crawler", "Acid Crawler (First)", CardType.Troop, 2, canClone: true, canJump: true, hasArmor: false);
             CardDataSO duplicate = CreateCard("acid_crawler", "Acid Crawler (Duplicate)", CardType.Troop, 2, canClone: true, canJump: true, hasArmor: false);
+            duplicate.name = "AcidCrawlerDuplicate";
+            LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DuplicateCardIdFormat, "acid_crawler", "AcidCrawlerDuplicate"));
             CardPresenter presenter = CreatePresenter(first, duplicate);
 
             // WHEN
@@ -90,7 +94,18 @@ namespace GooGalaxy.Tests.EditMode.Cards
         private static CardDataSO CreateCard(string cardId, string displayName, CardType type, int energyCost, bool canClone, bool canJump, bool hasArmor)
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
-            card.SetAuthoredData(cardId, displayName, type, energyCost, canClone, canJump, hasArmor);
+            card.SetAuthoredData(
+                cardId,
+                displayName,
+                type,
+                energyCost,
+                canClone,
+                canJump,
+                hasArmor,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null
+            );
 
             return card;
         }

@@ -18,4 +18,13 @@ MonoBehaviour:
   _energyCost: 2
   _canClone: 1
   _canJump: 1
+  _ignoresHazards: 0
   _hasArmor: 0
+  _conversionRadius: 1
+  _landingEffects:
+  - _type: 2
+    _status: 0
+    _radius: 0
+    _duration: 2
+    _target: 0
+    _clusterSize: 0

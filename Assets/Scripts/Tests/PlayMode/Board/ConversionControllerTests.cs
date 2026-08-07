@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using GooGalaxy.Runtime.Board.Controllers;
 using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Presenters;
@@ -18,7 +19,7 @@ using Object = UnityEngine.Object;
 namespace GooGalaxy.Tests.PlayMode.Board
 {
     [TestFixture]
-    public class ConversionPresenterTests
+    public class ConversionControllerTests
     {
         private const int BoardRadius = 4;
         private const int ActingPlayerId = 1;
@@ -54,11 +55,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
             _gridLayout.SetAuthoredData(BoardRadius);
 
-            _boardGO = new GameObject("ConversionPresenter_Test");
+            _boardGO = new GameObject("ConversionController_Test");
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
-            _boardGO.AddComponent<ConversionPresenter>();
+            _boardGO.AddComponent<ConversionController>();
 
             _gridPresenter.SetGridLayout(_gridLayout);
 
@@ -154,7 +155,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator HandleMoveExecuted_MissingBoardReferences_LogsErrorAndRaisesNothing()
         {
             // GIVEN
-            CreateDetachedConversionPresenter();
+            CreateDetachedConversionController();
             yield return null;
 
             var command = new MoveCommand(MoveType.Clone, _distantCoords, _origin, ActingPlayerId, ActingUnitId);
@@ -275,10 +276,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return null;
         }
 
-        private void CreateDetachedConversionPresenter()
+        private void CreateDetachedConversionController()
         {
-            _detachedGO = new GameObject("DetachedConversionPresenter_Test");
-            _detachedGO.AddComponent<ConversionPresenter>();
+            _detachedGO = new GameObject("DetachedConversionController_Test");
+            _detachedGO.AddComponent<ConversionController>();
         }
 
         private void HandleConversionResolved(int actingPlayerId, ConversionResult result)
@@ -320,6 +321,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public bool CanClone => true;
 
             public bool CanJump => true;
+
+            public bool IgnoresHazards => false;
         }
     }
 }

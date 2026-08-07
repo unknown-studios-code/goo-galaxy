@@ -134,6 +134,7 @@ GameObject:
   - component: {fileID: 652506889}
   - component: {fileID: 652506888}
   - component: {fileID: 652506894}
+  - component: {fileID: 652506895}
   m_Layer: 0
   m_Name: Board
   m_TagString: Untagged
@@ -159,6 +160,7 @@ MonoBehaviour:
   _gridView: {fileID: 1244279058}
   _unitView: {fileID: 1630103204}
   _energyPresenter: {fileID: 652506894}
+  _abilityController: {fileID: 652506895}
   _hudView: {fileID: 2135654227}
   _startingUnits:
   - CardId: subject_alpha
@@ -186,9 +188,12 @@ MonoBehaviour:
   - acid_crawler
   - bio_phalanx
   - volatile_mass
+  - cryo_stasis
+  _cellVisualSize: 1
   _cellLayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 1
+  _isStatusReadoutEnabled: 0
 --- !u!114 &652506889
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -284,6 +289,20 @@ MonoBehaviour:
     <MaxEnergy>k__BackingField: 10
     <RegenRate>k__BackingField: 0.35714287
     <StartingEnergy>k__BackingField: 5.5
+--- !u!114 &652506895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 652506887}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1130dbf5730e4de4b9f2fe867191d74d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Board::GooGalaxy.Runtime.Board.Presenters.AbilityPresenter
+  _gridPresenter: {fileID: 652506892}
+  _unitPresenter: {fileID: 652506891}
 --- !u!1 &1244279057
 GameObject:
   m_ObjectHideFlags: 0
@@ -517,6 +536,8 @@ MonoBehaviour:
   _deployEffectPrefab: {fileID: 6689869447850704509, guid: 2d3017d74fb5d98499e74a8b83ef11f7, type: 3}
   _conversionEffectPrefab: {fileID: 7459305194829230369, guid: 84ac69af4ee2bf8469dcf13b191e2f53, type: 3}
   _armorBreakEffectPrefab: {fileID: 8120705427576824541, guid: 1bb7e345cf6cae449a4aeb84cbbbde1d, type: 3}
+  _shieldOverlayPrefab: {fileID: 1805461338288949545, guid: 5861626a20ba77343920b465d52aec18, type: 3}
+  _frozenOverlayPrefab: {fileID: 5568147879733101407, guid: 0cee46bf7e9ab1843b36d280fd723ada, type: 3}
   _cellVisualSize: 1
   _unitSortingOrder: 10
   _effectSortingOrder: 20

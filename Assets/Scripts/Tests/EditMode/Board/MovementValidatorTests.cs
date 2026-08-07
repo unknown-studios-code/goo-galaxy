@@ -35,6 +35,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private static readonly IMoveCapable _fullCapability = new FakeMoveCapability(canClone: true, canJump: true);
         private static readonly IMoveCapable _jumpOnlyCapability = new FakeMoveCapability(canClone: false, canJump: true);
         private static readonly IMoveCapable _cloneOnlyCapability = new FakeMoveCapability(canClone: true, canJump: false);
+        private static readonly IMoveCapable _hazardIgnoringCapability = new FakeMoveCapability(canClone: true, canJump: true, ignoresHazards: true);
 
         private HexGrid _grid;
         private Dictionary<int, GridUnit> _units;
@@ -562,6 +563,114 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        public void ValidateClone_HazardousUnoccupiedUnblockedTarget_ReturnsTargetHazardous()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_adjacentCoords);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateClone(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetHazardous));
+        }
+
+        [Test]
+        public void ValidateJump_HazardousUnoccupiedUnblockedTarget_ReturnsTargetHazardous()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_distantCoords);
+            var command = new MoveCommand(MoveType.Jump, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateJump(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetHazardous));
+        }
+
+        [Test]
+        public void ValidateClone_HazardousTargetWithHazardIgnoringCapability_ReturnsSuccess()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_adjacentCoords);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateClone(_grid, _units, command, _hazardIgnoringCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
+        public void ValidateJump_HazardousTargetWithHazardIgnoringCapability_ReturnsSuccess()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_distantCoords);
+            var command = new MoveCommand(MoveType.Jump, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateJump(_grid, _units, command, _hazardIgnoringCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
+        public void ValidateClone_TargetOccupiedAndHazardous_ReturnsTargetOccupied()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            PlaceUnit(RivalUnitId, RivalPlayerId, _adjacentCoords);
+            SetHazard(_adjacentCoords);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateClone(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetOccupied));
+        }
+
+        [Test]
+        public void ValidateClone_TargetBlockedAndHazardous_ReturnsTargetBlocked()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            BlockCell(_adjacentCoords);
+            SetHazard(_adjacentCoords);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateClone(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetBlocked));
+        }
+
+        [Test]
+        public void ValidateBoardState_HazardousTarget_ReturnsSuccessBecauseTheHazardRuleIsCapabilityRelative()
+        {
+            // GIVEN — pinned per the documented invariant: ValidateBoardState skips the hazard rule so a legal
+            // Hover landing does not throw when MovementResolver re-checks board state without a capability.
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_adjacentCoords);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateBoardState(_grid, _units, command, MoveType.Clone, out _, out _, out _);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
         public void ValidateClone_RepeatedCalls_AllocatesNoManagedMemory()
         {
             // GIVEN
@@ -605,6 +714,12 @@ namespace GooGalaxy.Tests.EditMode.Board
             cell.IsBlocked = true;
         }
 
+        private void SetHazard(HexCoordinates coordinates)
+        {
+            Assert.That(_grid.TryGetCell(coordinates, out HexCell cell), Is.True, $"Test setup expects {coordinates} to exist on the grid.");
+            cell.SetHazard(RivalPlayerId, 1);
+        }
+
         private sealed class FakeGridLayout : IGridLayout
         {
             public int GridRadius { get; set; } = BoardRadius;
@@ -614,15 +729,18 @@ namespace GooGalaxy.Tests.EditMode.Board
 
         private sealed class FakeMoveCapability : IMoveCapable
         {
-            public FakeMoveCapability(bool canClone, bool canJump)
+            public FakeMoveCapability(bool canClone, bool canJump, bool ignoresHazards = false)
             {
                 CanClone = canClone;
                 CanJump = canJump;
+                IgnoresHazards = ignoresHazards;
             }
 
             public bool CanClone { get; }
 
             public bool CanJump { get; }
+
+            public bool IgnoresHazards { get; }
         }
     }
 }

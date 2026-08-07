@@ -15,8 +15,12 @@ namespace GooGalaxy.Runtime.Board.Services
     /// The commanded unit is resolved from <c>MoveCommand.UnitId</c> against the supplied registry and
     /// cross-checked against the source cell's occupant, so the grid and the registry can never drift
     /// unnoticed. Callers must supply a non-null grid and registry.
-    /// Checks run in a fixed order so the returned code is predictable when several rules are broken at
-    /// once: source presence, unit identity, ownership, status, capability, range, target passability, target vacancy.
+    /// Checks run in a fixed order so the returned code is predictable when several rules are broken at once:
+    /// source presence, unit identity, ownership, status, capability, range, target passability, target vacancy,
+    /// target hazard. The hazard check is last because it is the only target rule that depends on the moving
+    /// unit rather than on the board alone — the same reason ownership and capability sit after source presence.
+    /// A cell that is both occupied and hazardous therefore reports <c>TargetOccupied</c>, the reason that holds
+    /// for every unit.
     /// </remarks>
     public static class MovementValidator
     {
@@ -48,12 +52,20 @@ namespace GooGalaxy.Runtime.Board.Services
 
         /// <summary>
         /// Validates every rule that depends only on the board: source presence, unit identity, range, and
-        /// target passability and vacancy. Ownership and capability are excluded because they describe the
-        /// commanding player rather than the board.
+        /// target passability and vacancy. Ownership, capability, and the target hazard rule are excluded
+        /// because they describe the commanding player and its unit rather than the board.
         /// </summary>
         /// <remarks>
         /// Shared with <see cref="MovementResolver"/> so its pre-mutation guards cannot drift away from the
         /// rules enforced here.
+        /// <para>
+        /// The hazard rule is deliberately <b>not</b> re-checked. It is capability-relative, and re-checking it
+        /// without the capability would reject the one unit type the rule exists to exempt: a Hover unit that
+        /// full validation legally cleared onto a hazardous hex would then fail the resolver's pre-mutation
+        /// guard and throw over a perfectly legal move. A non-Hover unit can never reach the resolver with a
+        /// hazardous target, because <see cref="ValidateClone"/> and <see cref="ValidateJump"/> already
+        /// rejected it, so nothing is lost by leaving the check out.
+        /// </para>
         /// </remarks>
         /// <param name="grid">The board being played on.</param>
         /// <param name="units">The registry of live units, keyed by unit id.</param>
@@ -81,7 +93,7 @@ namespace GooGalaxy.Runtime.Board.Services
                 return sourceResult;
             }
 
-            return ValidateTarget(grid, command, moveType, out targetCell);
+            return ValidateTarget(grid, command, moveType, null, out targetCell);
         }
 
         private static MovementResult Validate(
@@ -114,7 +126,7 @@ namespace GooGalaxy.Runtime.Board.Services
                 return MovementResult.CapabilityMissing;
             }
 
-            return ValidateTarget(grid, command, moveType, out _);
+            return ValidateTarget(grid, command, moveType, capability, out _);
         }
 
         private static MovementResult ValidateSource(
@@ -140,7 +152,9 @@ namespace GooGalaxy.Runtime.Board.Services
             return MovementResult.Success;
         }
 
-        private static MovementResult ValidateTarget(HexGrid grid, in MoveCommand command, MoveType moveType, out HexCell targetCell)
+        // A null capability means the caller is checking board rules only, so the hazard rule — the one
+        // target rule that depends on the moving unit — is skipped along with ownership and capability.
+        private static MovementResult ValidateTarget(HexGrid grid, in MoveCommand command, MoveType moveType, IMoveCapable capability, out HexCell targetCell)
         {
             targetCell = null;
 
@@ -157,6 +171,11 @@ namespace GooGalaxy.Runtime.Board.Services
             if (targetCell.IsOccupied)
             {
                 return MovementResult.TargetOccupied;
+            }
+
+            if (capability != null && !capability.IgnoresHazards && targetCell.HasHazard)
+            {
+                return MovementResult.TargetHazardous;
             }
 
             return MovementResult.Success;

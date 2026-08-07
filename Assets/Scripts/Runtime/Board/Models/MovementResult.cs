@@ -75,5 +75,13 @@ namespace GooGalaxy.Runtime.Board.Models
         /// so the in-flight affected-coordinate payload stays valid; queue the follow-up move instead.
         /// </summary>
         ResolverBusy = 12,
+
+        /// <summary>
+        /// The target cell carries a hazard and the moving unit cannot ignore hazards. Appended rather than
+        /// inserted next to <see cref="TargetBlocked"/>, which it reads like, because the numbers travel to the
+        /// client as a rejection reason: renumbering the members between here and there would silently change
+        /// what an older peer reads for every code above the insertion point.
+        /// </summary>
+        TargetHazardous = 13,
     }
 }

@@ -58,6 +58,48 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </summary>
         public static event Action<int, ConversionResult> ConversionResolved;
 
+        /// <summary>
+        /// Raised on every executed move once its conversions have resolved, carrying the command and what
+        /// those conversions did. Unlike <see cref="ConversionResolved"/> it is raised unconditionally,
+        /// including when the landing converted nothing, because an impact ability still has to resolve.
+        /// </summary>
+        /// <remarks>
+        /// This is the hand-off from step 3 to step 4 of the GDD's interaction resolution order: it exists so
+        /// landing-impact abilities run <b>after</b> standard conversion by construction, instead of resting on
+        /// the order in which two independent subscribers happened to register on <see cref="MoveExecuted"/>.
+        /// The command already carries the source and target hexes, which is everything step 4 needs to place
+        /// an impact, so no coordinate buffer travels with this event. The payload's second half is what step 3
+        /// just did, so step 4 can target the units conversion flipped without re-deriving them; an empty
+        /// <see cref="ConversionResult"/> means nobody was converted, which is a normal landing and not an
+        /// error.
+        /// <para>
+        /// The result's lists are owned by the publisher and are only valid for the duration of the callback;
+        /// subscribers must copy what they keep rather than retain the reference, and must read them with an
+        /// indexed <c>for</c> loop — <c>foreach</c> over the interface boxes the backing enumerator, one
+        /// allocation per subscriber per landing.
+        /// </para>
+        /// </remarks>
+        public static event Action<MoveCommand, ConversionResult> LandingResolved;
+
+        /// <summary>
+        /// Raised after a deployment's impact abilities have resolved, carrying the acting player id and what
+        /// the impacts did. Raised once per deployment whose card authors at least one impact, even when the
+        /// impacts affected nothing; a card with no impacts publishes nothing at all.
+        /// </summary>
+        /// <remarks>
+        /// Both kinds of deployment publish it. A troop landing places its impacts around the hex its acting
+        /// unit landed on. A Protocol has neither an acting unit nor a landing — it resolves on the hexes the
+        /// player picked — so nothing in its payload is relative to a unit, and a subscriber must not read one
+        /// back from it.
+        /// <para>
+        /// The lists inside the payload are owned by the publisher and are only valid for the duration of the
+        /// callback; subscribers must copy what they keep, and must read them with an indexed <c>for</c> loop —
+        /// <c>foreach</c> over the interface boxes the backing enumerator, one allocation per subscriber per
+        /// deployment.
+        /// </para>
+        /// </remarks>
+        public static event Action<int, AbilityResult> AbilityResolved;
+
         /// <summary>Publishes <see cref="MatchStarted"/>.</summary>
         /// <param name="config">The configuration the match runs with.</param>
         public static void RaiseMatchStarted(MatchConfiguration config)
@@ -122,6 +164,38 @@ namespace GooGalaxy.Runtime.Shared.Events
         }
 
         /// <summary>
+        /// Publishes <see cref="LandingResolved"/>. Called on every executed move once its conversions have
+        /// been applied, whether or not any unit was converted.
+        /// </summary>
+        /// <param name="command">
+        /// The move whose landing has finished converting. Its source and target are where an impact places
+        /// itself, so no separate coordinate buffer is published.
+        /// </param>
+        /// <param name="conversions">
+        /// What step 3 just did, so a landing impact can target the units it flipped. Empty when nothing was
+        /// converted, which is normal. Its lists are owned by the caller and only valid for the duration of the
+        /// dispatch, so subscribers must copy what they intend to keep.
+        /// </param>
+        public static void RaiseLandingResolved(MoveCommand command, ConversionResult conversions)
+        {
+            LandingResolved?.Invoke(command, conversions);
+        }
+
+        /// <summary>
+        /// Publishes <see cref="AbilityResolved"/>. Called only after every impact of the deployment — a troop
+        /// landing or a Protocol — has been applied to the units and the board.
+        /// </summary>
+        /// <param name="actingPlayerId">The player whose deployment resolved the impacts.</param>
+        /// <param name="result">
+        /// The units and hexes the impacts changed. Its lists are owned by the caller and only valid for the
+        /// duration of the dispatch, so subscribers must copy what they keep.
+        /// </param>
+        public static void RaiseAbilityResolved(int actingPlayerId, AbilityResult result)
+        {
+            AbilityResolved?.Invoke(actingPlayerId, result);
+        }
+
+        /// <summary>
         /// Drops every subscriber. Runs automatically on subsystem registration because domain reload is
         /// disabled, and is called by tests to isolate fixtures from one another.
         /// </summary>
@@ -135,6 +209,8 @@ namespace GooGalaxy.Runtime.Shared.Events
             EnergySpent = null;
             MoveExecuted = null;
             ConversionResolved = null;
+            LandingResolved = null;
+            AbilityResolved = null;
         }
     }
 }
