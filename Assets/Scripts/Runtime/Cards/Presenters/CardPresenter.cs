@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Interfaces;
+using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
@@ -48,7 +49,7 @@ namespace GooGalaxy.Runtime.Cards.Presenters
             {
                 if (!_cardsById.TryAdd(card.CardId, card))
                 {
-                    Debug.LogWarning($"CardPresenter: duplicate CardId '{card.CardId}' on '{card.name}' was skipped.", card);
+                    Debug.LogWarning(string.Format(CardLogMessages.DuplicateCardIdFormat, card.CardId.Value, card.name), card);
                 }
             }
         }

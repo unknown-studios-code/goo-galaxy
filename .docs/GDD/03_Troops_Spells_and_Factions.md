@@ -371,59 +371,120 @@ To keep card behavior deterministic, launch troops follow these additional rules
 
 ---
 
+## Landing Impact Targeting
+
+Every landing impact — a troop's own impact ability or a Protocol's spell effect — is authored as one or more entries with a `Target` filter, a `Radius`, a `Duration`, and a `ClusterSize`. This section documents how those fields resolve in play, because `01_Mechanics_and_Core_Gameplay.md`'s [Interaction Resolution Priority](./01_Mechanics_and_Core_Gameplay.md#interaction-resolution-priority) has a consequence a card author needs before choosing a `Target` value: standard conversion (step 3) has already run by the time the landing impact (step 4) reads unit ownership.
+
+### Target Filter Semantics
+
+| Filter             | Meaning                                                                                                                                                                                                                        |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Self**             | The unit that just landed. A Protocol has no acting unit on the board, so `Self` selects nobody on a spell.                                                                                                                 |
+| **Ally**             | Belongs to the acting player **at the moment the impact resolves** — this includes the pieces this very landing just converted.                                                                                            |
+| **Enemy**            | Does **not** belong to the acting player at the moment the impact resolves. In practice, this is "whoever survived the conversion": armored units that only lost their shell, frozen units that were immune, and anything standing outside the card's conversion radius but inside the impact's own radius. |
+| **NewlyConverted**   | Exactly the units standard conversion flipped on this landing, and nothing else.                                                                                                                                             |
+| **All**              | Every living unit in the area, friendly and hostile alike.                                                                                                                                                                   |
+
+> **Implementation Note:** `Enemy` and `NewlyConverted` are genuinely different sets, and the difference is load-bearing. Plasmic Leaper's Binding Plasma says it "applies Root to all newly converted enemy pieces" and explicitly "does NOT root pieces that were already owned by the player." A Bio-Phalanx standing adjacent that only lost its armor was never converted — flipping it needs a second, separate conversion event — so it is not part of the set this landing took. `Enemy` would still select that Bio-Phalanx, because it does not belong to the acting player; that is the wrong set for Binding Plasma. `NewlyConverted` is the filter that means "the pieces I actually just took," which is why it exists as its own value instead of folding into `Enemy`.
+
+> **Design Caution:** Pair `Ally` carefully with a restrictive status (`Frozen`, `Rooted`). Because standard conversion runs before the landing impact, an `Ally` filter carrying a restrictive status lands that status on the spoils of the very same deployment. Nothing exempts a deployment from the conditions it just applied, so those pieces stay locked through the acting player's own next action window. A cleansing effect reading its own newly-taken pieces is the intended shape for `Ally`; a restrictive status belongs on `Enemy` or `NewlyConverted` instead.
+
+### Protocol Target Clusters
+
+A Protocol's target area is authored with the same two fields a troop's impact uses — `ClusterSize` and `Radius` — read together as one contract instead of two independent settings:
+
+- **`ClusterSize`** is the exact number of hexes the player must pick.
+- **`Radius`** is the maximum distance every picked hex may sit from the **first** hex the player picked, which is the cluster's center.
+
+Target validation requires all four of the following: the player picked exactly `ClusterSize` hexes, every hex exists on the board, no hex repeats, and every hex sits within `Radius` of the center hex.
+
+> **UI Contract:** Order matters. The center hex must be the **first** hex the targeting UI emits, because validation measures every other picked hex's distance against the first one in the list. Three hexes in a straight line pass validation with the middle hex emitted first, and fail it with either end hex emitted first — the targeting UI is responsible for always emitting the center first; the resolver has no way to infer it.
+
+`ClusterSize` and `Radius` are already committed to for all three Protocols this GDD defines by cluster — the two launch-roster Protocols (Cryo-Stasis, Sterilization Beam) and the Season 3 addition (Purge Pulse, see the Future Expansion Roadmap below):
+
+| Protocol            | ClusterSize | Radius | GDD Description                            |
+| :------------------- | :---------: | :----: | :------------------------------------------ |
+| Cryo-Stasis           |      3      |   1    | 3-hex cluster (1 center hex + 2 adjacent)   |
+| Sterilization Beam    |      4      |   1    | 4-hex cluster (1 center hex + 3 adjacent)   |
+| Purge Pulse           |      3      |   1    | 3-hex cluster                               |
+
+> **Implementation Status:** Only Cryo-Stasis has a shipped `CardDataSO` asset today (`Assets/Data/Cards/Spell/CryoStasis.asset`). Sterilization Beam and Purge Pulse are not yet authored into the asset pipeline; the values above are what the ability resolver is already built to validate against once those assets exist, not a claim that they are playable now.
+
+> **Implementation Note:** `ClusterSize` means something different depending on the card's type. On a troop's landing impact it is a ceiling — zero means no cap, so an occupied area wider than the authored cluster still resolves, just capped at that many units. On a Protocol it is the exact hex count the player must pick, and zero is not "no cap" there — it is a count no selection can ever satisfy, so the card fails target validation and is unplayable. Author a Protocol's `ClusterSize` explicitly; the card asset's own validation warns in the Inspector when a Spell-type card ships a landing effect with `ClusterSize` left at zero.
+
+---
+
 ## Card Data Schema (ScriptableObject)
 
-All card data is authored as **ScriptableObject** assets in Unity and stored under `Assets/Data/Cards`. Below is the canonical data structure:
+All card data is authored as **ScriptableObject** assets in Unity (`CardDataSO`, `Assets/Scripts/Runtime/Cards/Data/CardDataSO.cs`) and stored under `Assets/Data/Cards`. The schema below reflects the fields `CardDataSO` actually serializes today. It is intentionally smaller than an earlier draft of this document, which described visual/audio asset references and level-scaling data that have not been authored into the pipeline yet — those are called out under "Planned Fields" below instead of being silently dropped.
+
+### Implemented Fields
+
+Every `CardDataSO` asset serializes:
+
+| Field              | Type                                          | Meaning                                                                                                    |
+| :------------------ | :--------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| `cardId`             | string                                          | Unique, stable lookup key.                                                                                  |
+| `displayName`        | string                                          | Player-facing name.                                                                                          |
+| `type`               | `CardType` (`Troop` \| `Spell`)                 | Troop deploys a unit; Spell resolves a Protocol.                                                             |
+| `energyCost`         | int                                              | Energy required to play the card.                                                                            |
+| `canClone`           | bool                                             | Whether the card may perform a 1-hex Clone.                                                                   |
+| `canJump`            | bool                                             | Whether the card may perform a 2-hex Jump.                                                                    |
+| `ignoresHazards`     | bool                                             | Whether the card's unit may land on a hazardous hex (Plasmic Leaper's Hover, once authored).                 |
+| `hasArmor`           | bool                                             | Whether the unit needs two conversion events to flip (Bio-Phalanx). Always a single layer — see Planned Fields. |
+| `conversionRadius`   | int (1-2)                                        | Hex rings around the landing whose enemies receive a conversion attempt. 1 is standard; 2 is Volatile Mass.   |
+| `landingEffects`     | array of impact entries                          | Zero or more impacts resolved on landing, in authored order, after standard conversion. Empty for a card with no landing ability. |
+
+Each entry in `landingEffects` is one authored impact:
+
+| Field         | Type                                                                 | Meaning                                                                                                                    |
+| :------------- | :--------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| `type`          | `None` \| `ApplyStatus` \| `SpawnHazard` \| `SelfDestruct`               | What the impact does. `None` is a no-op — the value a forgotten field defaults to.                                          |
+| `status`        | `None` \| `Frozen` \| `Rooted`                                          | The condition applied. Only read by `ApplyStatus`.                                                                          |
+| `radius`        | int                                                                     | Hex rings around the landing hex this impact reaches. On a Protocol, doubles as one half of the target-cluster contract above. |
+| `duration`      | int                                                                     | How long the result lasts, in action windows. Zero or less is a no-op.                                                       |
+| `target`        | `Self` \| `Enemy` \| `All` \| `Ally` \| `NewlyConverted`                | Which units inside the radius are affected — see [Target Filter Semantics](#target-filter-semantics) above.                 |
+| `clusterSize`   | int                                                                     | Ceiling on affected units on a troop (0 = no ceiling); exact required hex count on a Protocol (0 = unplayable).              |
+
+This is a real authored example — Cryo-Stasis, exactly as it ships in `Assets/Data/Cards/Spell/CryoStasis.asset`:
 
 ```json
 {
-  "cardId": "troop_subject_alpha",
-  "displayName": "Subject Alpha",
-  "rarity": "Common",
-  "cardType": "Troop",
-  "energyCost": 1,
-  "description": "The fundamental biomass unit. Standard conversion, no frills.",
-  "baseStats": {
-    "conversionPower": 100,
-    "conversionRadius": 1,
-    "canClone": true,
-    "canJump": true,
-    "hasArmor": false,
-    "armorLayers": 0,
-    "selfDestructs": false
-  },
-  "passive": {
-    "id": "none",
-    "displayName": "",
-    "description": ""
-  },
-  "impactAbility": {
-    "id": "standard_conversion",
-    "displayName": "Standard Conversion",
-    "description": "Converts all adjacent enemy units within 1-hex radius.",
-    "radius": 1,
-    "statusEffect": "none",
-    "statusDuration": 0
-  },
-  "visualAssets": {
-    "cardArtAsset": "Assets/Art/Sprites/Cards/SubjectAlpha",
-    "unitPrefabAsset": "Assets/Prefabs/Cards/Units/SubjectAlpha",
-    "deployVFXAsset": "Assets/Prefabs/Shared/Runtime/DeployVFX_Standard",
-    "conversionVFXAsset": "Assets/Prefabs/Shared/Runtime/ConversionVFX_Standard"
-  },
-  "audioAssets": {
-    "deploySFX": "Assets/Audio/SFX/Gameplay/Squish_Light",
-    "conversionSFX": "Assets/Audio/SFX/Gameplay/Pop_Cascade",
-    "abilitySFX": ""
-  },
-  "upgradeScaling": {
-    "statMultiplierPerLevel": 1.1,
-    "maxLevel": 14
-  }
+  "cardId": "cryo_stasis",
+  "displayName": "Cryo-Stasis",
+  "type": "Spell",
+  "energyCost": 2,
+  "canClone": false,
+  "canJump": false,
+  "ignoresHazards": false,
+  "hasArmor": false,
+  "conversionRadius": 1,
+  "landingEffects": [
+    {
+      "type": "ApplyStatus",
+      "status": "Frozen",
+      "radius": 1,
+      "duration": 1,
+      "target": "All",
+      "clusterSize": 3
+    }
+  ]
 }
 ```
 
-> **Implementation Note:** Each `CardDataSO` ScriptableObject should live in `Assets/Data/Cards` and reference prefabs, sprites, and audio from their dedicated content roots rather than loading general gameplay assets from `Resources`. Runtime card deployment then resolves those references through the feature services described in `08_Technical_Architecture_and_Multiplayer.md`.
+> **Implementation Note:** Each `CardDataSO` asset lives under `Assets/Data/Cards` (`Troops/` or `Spell/`), referenced by `CardPresenter` through its `CardId`. Runtime code programs against the read-only `ICardData` interface, never against `CardDataSO` directly — see `08_Technical_Architecture_and_Multiplayer.md`.
+
+### Planned Fields (Not Yet Implemented)
+
+The fields below appear elsewhere in this GDD's card tables and roadmap but have no field on `CardDataSO` yet. Treat them as design intent, not shipped schema, until a task adds them:
+
+- **`rarity`** — Common/Rare/Epic/Legendary, used throughout this chapter's roster tables. Not yet an authored field; nothing reads it at runtime.
+- **`description`** — Player-facing ability text. Not yet authored.
+- **`conversionPower`** — The "Base Conversion Power" values in the roster tables (100, 130, 110, 140) are `02_Mathematics_and_Balancing.md` design values, not a `CardDataSO` field. Conversion in code reads only `conversionRadius` and unit ownership; no per-card conversion-power number is read at runtime.
+- **`armorLayers`** — `hasArmor` is a single boolean; there is no authored layer count. Armor is always exactly one layer today, matching the launch ruleset in `01_Mechanics_and_Core_Gameplay.md`.
+- **`selfDestructs`** — Expressed today as a `SelfDestruct`-type entry in `landingEffects`, not as its own boolean field.
+- **`visualAssets` / `audioAssets`** — Card art, unit prefab, VFX, and SFX references are not yet part of `CardDataSO`.
+- **`upgradeScaling`** — Level-based stat scaling (referenced in the Bio-Phalanx strategic notes as "the 10% stat scaling") has no authored field yet.
 
 ---
 

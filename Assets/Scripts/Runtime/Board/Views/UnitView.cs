@@ -35,11 +35,40 @@ namespace GooGalaxy.Runtime.Board.Views
         private const int UnitPoolDefaultCapacity = BoardMetrics.DefaultBoardCellCount;
         private const int UnitPoolMaxSize = BoardMetrics.DefaultBoardCellCount;
 
-        // One landing converts at most a full ring, and two landings routinely overlap inside one effect lifetime.
-        private const int EffectPoolDefaultCapacity = BoardMetrics.NeighborsPerCell * 2;
-        private const int EffectPoolMaxSize = 32;
+        // Pre-warmed to the widest single landing — a radius-2 conversion reaches 18 units, so a full-ring
+        // premise would Instantiate the difference on the frame a Volatile Mass commits. Max size doubles it
+        // because two landings routinely overlap inside one effect lifetime, and a release past max size
+        // destroys the instance instead of returning it.
+        private const int EffectPoolDefaultCapacity = BoardMetrics.MaxConversionTargetsPerLanding;
+        private const int EffectPoolMaxSize = BoardMetrics.MaxConversionTargetsPerLanding * 2;
+
+        // A shield lives as long as the armor does, so shields accumulate across a match rather than coming and
+        // going: a board of nothing but Bio-Phalanx would show 61 at once. Pre-warming to that would cost more
+        // at load than it ever saves, so the warm-up covers the widest single landing — a radius-2 conversion,
+        // which is the one event that can reveal or strip a whole ring of them at once.
+        private const int ShieldOverlayPoolDefaultCapacity = BoardMetrics.MaxConversionTargetsPerLanding;
+
+        // Frozen is bounded by what one Protocol picks — an authored cluster of at most four — and the marker
+        // expires an action window later, so the live count never approaches the conversion ring the shields
+        // are sized from. Pre-warming to a full ring would leave most of the instances idle for the match.
+        private const int FrozenOverlayPoolDefaultCapacity = BoardMetrics.MaxSpellClusterSize;
+
+        // Both max sizes are the true ceiling — one overlay per unit — so a release always returns the instance
+        // instead of destroying it. A pool that destroys on release only shrinks, and the next landing pays an
+        // Instantiate for what it just handed back.
+        private const int OverlayPoolMaxSize = BoardMetrics.DefaultBoardCellCount;
+
+        // Both overlays render above the unit's ring and body, and below the transient effects, so a conversion
+        // pop still reads on top of a shielded or frozen piece. Frozen sits above the shield: a frozen armored
+        // unit is primarily frozen, because that is what stops it being converted at all.
+        private const int ShieldOverlaySortingOffset = 2;
+        private const int FrozenOverlaySortingOffset = 3;
 
         private static readonly ProfilerMarker _conversionFeedbackMarker = new("UnitView.ApplyConversionFeedback");
+
+        // The view's only whole-registry pass, and it runs from LateUpdate behind a boolean gate — without its
+        // own marker a non-deep profile cannot tell the pass apart from the frames that only test the gate.
+        private static readonly ProfilerMarker _refreshStatusOverlaysMarker = new("UnitView.RefreshStatusOverlays");
 
         [Header("Prefabs")]
         [SerializeField]
@@ -52,11 +81,25 @@ namespace GooGalaxy.Runtime.Board.Views
         private GameObject _conversionEffectPrefab;
 
         [Tooltip(
-            "Played when a landing breaks an armored unit's shell without flipping it."
+            "Played when a landing breaks an armored unit's shell without flipping it. "
                 + "Per GDD 06, armor is a white shell, so this reads as the shell shattering — never as an ownership flip."
         )]
         [SerializeField]
         private GameObject _armorBreakEffectPrefab;
+
+        [Tooltip(
+            "Persistent aura parented to an armored unit while its shell is intact. "
+                + "Per GDD 03 this is the Armored Membrane's translucent shield; it is removed the moment the armor is spent, not replayed."
+        )]
+        [SerializeField]
+        private GameObject _shieldOverlayPrefab;
+
+        [Tooltip(
+            "Persistent aura parented to a unit while it is under Cryo-Stasis. "
+                + "This is the only readout of Frozen — nothing else on screen says a unit cannot move or be converted."
+        )]
+        [SerializeField]
+        private GameObject _frozenOverlayPrefab;
 
         [Header("Layout")]
         [Tooltip("Distance from a hex center to its corner vertex, in world units. Must match GridView's cell visual size or units drift off their cells.")]
@@ -86,7 +129,7 @@ namespace GooGalaxy.Runtime.Board.Views
 
         [Header("Card Colors")]
         [Tooltip(
-            "Body tint per card id, so a troop's type is readable at a glance."
+            "Body tint per card id, so a troop's type is readable at a glance. "
                 + "Placeholder for the per-card silhouettes GDD 06 calls for; a card with no entry keeps the owner's colour."
         )]
         [SerializeField]
@@ -110,6 +153,8 @@ namespace GooGalaxy.Runtime.Board.Views
         private readonly Dictionary<int, GameObject> _unitVisuals = new(BoardMetrics.DefaultBoardCellCount);
         private readonly Dictionary<int, SpriteRenderer> _unitRenderers = new(BoardMetrics.DefaultBoardCellCount);
         private readonly Dictionary<int, SpriteRenderer> _unitBodyRenderers = new(BoardMetrics.DefaultBoardCellCount);
+        private readonly Dictionary<int, GameObject> _shieldOverlays = new(BoardMetrics.DefaultBoardCellCount);
+        private readonly Dictionary<int, GameObject> _frozenOverlays = new(BoardMetrics.DefaultBoardCellCount);
         private readonly List<int> _staleUnitIds = new(BoardMetrics.DefaultBoardCellCount);
         private readonly List<SpriteRenderer> _rendererBuffer = new(2);
 
@@ -117,9 +162,34 @@ namespace GooGalaxy.Runtime.Board.Views
         private ObjectPool<GameObject> _deployEffectPool;
         private ObjectPool<GameObject> _conversionEffectPool;
         private ObjectPool<GameObject> _armorBreakEffectPool;
+        private ObjectPool<GameObject> _shieldOverlayPool;
+        private ObjectPool<GameObject> _frozenOverlayPool;
+        private bool _areStatusOverlaysDirty;
 
         /// <summary>The number of units currently rendered. Pooled-but-idle instances are not counted.</summary>
         internal int RenderedUnitCount => _unitVisuals.Count;
+
+        /// <remarks>
+        /// A destroyed-externally overlay is not dropped from tracking until the next call that touches its
+        /// unit's overlay state (<see cref="ReleaseUnitVisual"/> or a status refresh), so this can briefly
+        /// disagree with a live scene scan.
+        /// </remarks>
+        internal int TrackedShieldOverlayCount => _shieldOverlays.Count;
+
+        /// <remarks>Same lazy-cleanup caveat as <see cref="TrackedShieldOverlayCount"/>.</remarks>
+        internal int TrackedFrozenOverlayCount => _frozenOverlays.Count;
+
+        /// <remarks>
+        /// Reads the pool's own inactive count; 0 both when the pool is empty and when no shield overlay prefab
+        /// was assigned for <c>Awake</c> to build one from.
+        /// </remarks>
+        internal int ShieldOverlayPoolInactiveCount => _shieldOverlayPool?.CountInactive ?? 0;
+
+        /// <remarks>
+        /// Reads the pool's own inactive count; 0 both when the pool is empty and when no frozen overlay prefab
+        /// was assigned for <c>Awake</c> to build one from.
+        /// </remarks>
+        internal int FrozenOverlayPoolInactiveCount => _frozenOverlayPool?.CountInactive ?? 0;
 
         private void Awake()
         {
@@ -155,22 +225,67 @@ namespace GooGalaxy.Runtime.Board.Views
                 _armorBreakEffectPool = CreatePool(_armorBreakEffectPrefab, EffectPoolDefaultCapacity, EffectPoolMaxSize);
             }
 
+            if (_shieldOverlayPrefab != null)
+            {
+                _shieldOverlayPool = CreatePool(_shieldOverlayPrefab, ShieldOverlayPoolDefaultCapacity, OverlayPoolMaxSize);
+            }
+
+            if (_frozenOverlayPrefab != null)
+            {
+                _frozenOverlayPool = CreatePool(_frozenOverlayPrefab, FrozenOverlayPoolDefaultCapacity, OverlayPoolMaxSize);
+            }
+
             PrewarmPool(_unitPool, UnitPoolDefaultCapacity);
             PrewarmPool(_deployEffectPool, EffectPoolDefaultCapacity);
             PrewarmPool(_conversionEffectPool, EffectPoolDefaultCapacity);
             PrewarmPool(_armorBreakEffectPool, EffectPoolDefaultCapacity);
+            PrewarmPool(_shieldOverlayPool, ShieldOverlayPoolDefaultCapacity);
+            PrewarmPool(_frozenOverlayPool, FrozenOverlayPoolDefaultCapacity);
         }
 
         private void OnEnable()
         {
             MatchEvents.MoveExecuted += HandleMoveExecuted;
             MatchEvents.ConversionResolved += HandleConversionResolved;
+            MatchEvents.AbilityResolved += HandleAbilityResolved;
+
+            // While disabled the view is unsubscribed from all three events, so every deployment in that window
+            // is invisible to it: statuses are stale, and a unit destroyed meanwhile never reached
+            // HandleAbilityResolved, so its pooled visual — and any overlay parented to that visual — stays
+            // checked out for the rest of the match, permanently shrinking a pool whose max size is the whole
+            // board. A full resync rather than the dirty flag alone, because only the registry pass in
+            // SyncUnitVisuals can find a visual whose unit no longer exists.
+            if (_unitPresenter == null || _unitPool == null)
+            {
+                _areStatusOverlaysDirty = true;
+                return;
+            }
+
+            SyncUnitVisuals();
+        }
+
+        // The refresh is deferred to the end of the frame rather than run inside the handler that flagged it,
+        // because a status can still change after the last event goes out: step 6 of the GDD chain expires
+        // durations *after* AbilityResolved is published, and nothing is raised once it has. Waiting until the
+        // whole synchronous deployment chain has unwound is what makes an expiry visible on the deployment that
+        // caused it rather than one deployment later. The flag keeps this a per-deployment registry pass, not a
+        // per-frame one — an idle frame costs a single boolean test.
+        private void LateUpdate()
+        {
+            if (!_areStatusOverlaysDirty)
+            {
+                return;
+            }
+
+            _areStatusOverlaysDirty = false;
+            RefreshStatusOverlays();
         }
 
         private void OnDisable()
         {
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
             MatchEvents.ConversionResolved -= HandleConversionResolved;
+            MatchEvents.AbilityResolved -= HandleAbilityResolved;
         }
 
         private void OnDestroy()
@@ -178,17 +293,23 @@ namespace GooGalaxy.Runtime.Board.Views
             _unitVisuals.Clear();
             _unitRenderers.Clear();
             _unitBodyRenderers.Clear();
+            _shieldOverlays.Clear();
+            _frozenOverlays.Clear();
             _staleUnitIds.Clear();
 
             _unitPool?.Dispose();
             _deployEffectPool?.Dispose();
             _conversionEffectPool?.Dispose();
             _armorBreakEffectPool?.Dispose();
+            _shieldOverlayPool?.Dispose();
+            _frozenOverlayPool?.Dispose();
 
             _unitPool = null;
             _deployEffectPool = null;
             _conversionEffectPool = null;
             _armorBreakEffectPool = null;
+            _shieldOverlayPool = null;
+            _frozenOverlayPool = null;
         }
 
         /// <summary>
@@ -232,6 +353,10 @@ namespace GooGalaxy.Runtime.Board.Views
                     ShowUnit(entry.Key, entry.Value.Position, entry.Value.PlayerId, entry.Value.CardId);
                 }
             }
+
+            // Run now rather than flagged: a bulk rebuild is already whole-board work, and a Reset must leave
+            // the overlays correct without waiting for the next frame.
+            RefreshStatusOverlays();
         }
 
         /// <summary>
@@ -245,6 +370,11 @@ namespace GooGalaxy.Runtime.Board.Views
             {
                 return;
             }
+
+            // Before the unit visual goes back, because the overlays are parented to it — releasing the parent
+            // first would send its children into the unit pool and hand them out again with the next unit.
+            SetOverlayState(_shieldOverlays, _shieldOverlayPool, unitId, false, ShieldOverlaySortingOffset);
+            SetOverlayState(_frozenOverlays, _frozenOverlayPool, unitId, false, FrozenOverlaySortingOffset);
 
             _unitVisuals.Remove(unitId);
             _unitRenderers.Remove(unitId);
@@ -277,6 +407,25 @@ namespace GooGalaxy.Runtime.Board.Views
             return true;
         }
 
+        /// <remarks>
+        /// Returns false both for a unit that never had a shield and for one whose tracked entry was already
+        /// dropped after an external destroy — the two are indistinguishable here; use
+        /// <see cref="TrackedShieldOverlayCount"/> when the distinction itself is what is under test.
+        /// </remarks>
+        internal bool TryGetShieldOverlay(int unitId, out GameObject instance)
+        {
+            return _shieldOverlays.TryGetValue(unitId, out instance) && instance != null;
+        }
+
+        /// <remarks>
+        /// Same indistinguishable-false caveat as <see cref="TryGetShieldOverlay"/>; use
+        /// <see cref="TrackedFrozenOverlayCount"/> for the tracked-entry distinction.
+        /// </remarks>
+        internal bool TryGetFrozenOverlay(int unitId, out GameObject instance)
+        {
+            return _frozenOverlays.TryGetValue(unitId, out instance) && instance != null;
+        }
+
         /// <summary>Assigns the pooled prefabs and board metrics before <c>Awake</c> builds the pools from them.</summary>
         internal void SetViewConfiguration(
             GameObject unitPrefab,
@@ -291,6 +440,16 @@ namespace GooGalaxy.Runtime.Board.Views
             _conversionEffectPrefab = conversionEffectPrefab;
             _armorBreakEffectPrefab = armorBreakEffectPrefab;
             _cellVisualSize = cellVisualSize;
+        }
+
+        /// <remarks>
+        /// Same "call before the GameObject is activated" contract as <see cref="SetViewConfiguration"/> —
+        /// <c>Awake</c> builds the overlay pools from these fields and never rebuilds them afterward.
+        /// </remarks>
+        internal void SetOverlayConfiguration(GameObject shieldOverlayPrefab, GameObject frozenOverlayPrefab)
+        {
+            _shieldOverlayPrefab = shieldOverlayPrefab;
+            _frozenOverlayPrefab = frozenOverlayPrefab;
         }
 
         /// <summary>Assigns the per-player tints, so a test can assert against values it owns.</summary>
@@ -328,6 +487,10 @@ namespace GooGalaxy.Runtime.Board.Views
             }
 
             PlayEffect(_deployEffectPool, command.Target);
+
+            // Covers the deployment that carries no impact at all: a plain Clone still spawns a unit that may
+            // need a shield, and still closes the action window that expires someone else's Frozen.
+            _areStatusOverlaysDirty = true;
         }
 
         private void HandleConversionResolved(int actingPlayerId, ConversionResult result)
@@ -344,6 +507,39 @@ namespace GooGalaxy.Runtime.Board.Views
                 // owner's color, while a broken shell is only the Armored white-shell overlay coming off.
                 ApplyConversionFeedback(result.ConvertedUnitIds, _conversionEffectPool, shouldRefreshOwnerTint: true);
                 ApplyConversionFeedback(result.ArmorStrippedUnitIds, _armorBreakEffectPool, shouldRefreshOwnerTint: false);
+            }
+
+            // Belt and braces, and knowingly so: in production this event is only ever raised from inside a
+            // MoveExecuted dispatch that already set the flag, and the LateUpdate deferral makes the order of
+            // those two subscribers irrelevant. It stays because ConversionResolved is a public bus event that
+            // carries the one fact an overlay depends on — armor spent — and nothing enforces that a future
+            // publisher raises it nested inside a move. Setting a boolean twice costs nothing.
+            _areStatusOverlaysDirty = true;
+        }
+
+        // Released from the id alone, deliberately without a registry lookup: AbilityController publishes this
+        // event before its step 6 cleanup runs, so a self-destructed unit is still alive and still registered
+        // right now. Gating on the registry would find it and skip nothing, then the cleanup would drop it and
+        // strand its pooled visual for the rest of the match — and every stranded instance permanently shrinks
+        // a pool whose max size is the whole board.
+        private void HandleAbilityResolved(int actingPlayerId, AbilityResult result)
+        {
+            // Flagged before the early return: an impact that applied a status changed no unit's existence, so
+            // the destroyed list is empty and the overlays are the only thing that moved.
+            _areStatusOverlaysDirty = true;
+
+            IReadOnlyList<int> destroyedUnitIds = result.DestroyedUnitIds;
+
+            if (destroyedUnitIds == null)
+            {
+                return;
+            }
+
+            // Indexed rather than foreach: the payload is handed over as an interface, which boxes its backing
+            // enumerator once per landing per subscriber.
+            for (int i = 0; i < destroyedUnitIds.Count; i++)
+            {
+                ReleaseUnitVisual(destroyedUnitIds[i]);
             }
         }
 
@@ -376,6 +572,89 @@ namespace GooGalaxy.Runtime.Board.Views
 
                 PlayEffect(effectPool, unit.Position);
             }
+        }
+
+        // Frozen and Shield are persistent, not transient: they last as long as the state does, so they cannot
+        // ride the fire-and-forget PlayEffect path. There is no expiry event to listen for either — the status
+        // system drops a marker silently — but a status can only change at a deployment boundary, applied in
+        // step 4 and expired in step 6. Revalidating the whole registry once per deployment is therefore both
+        // sufficient and bounded: at most 61 units, and only on a frame where something actually resolved.
+        private void RefreshStatusOverlays()
+        {
+            if (_unitPresenter == null)
+            {
+                return;
+            }
+
+            using (_refreshStatusOverlaysMarker.Auto())
+            {
+                // ActiveUnitValues, not ActiveUnits.Values: the interface-typed collection boxes its enumerator.
+                foreach (GridUnit unit in _unitPresenter.ActiveUnitValues)
+                {
+                    if (unit == null)
+                    {
+                        continue;
+                    }
+
+                    bool isAlive = unit.IsAlive;
+
+                    SetOverlayState(_shieldOverlays, _shieldOverlayPool, unit.UnitId, isAlive && unit.HasArmor, ShieldOverlaySortingOffset);
+                    SetOverlayState(_frozenOverlays, _frozenOverlayPool, unit.UnitId, isAlive && unit.HasStatus(StatusType.Frozen), FrozenOverlaySortingOffset);
+                }
+            }
+        }
+
+        private void SetOverlayState(Dictionary<int, GameObject> overlays, ObjectPool<GameObject> pool, int unitId, bool shouldShow, int sortingOffset)
+        {
+            bool isTracked = overlays.TryGetValue(unitId, out GameObject overlay);
+            bool isShown = isTracked && overlay != null;
+
+            // A tracked entry whose instance was destroyed from outside is not shown and never will be, and the
+            // equality test below would early-return on it forever. Dropping it here is what keeps the entry
+            // from outliving a unit that dies in that state — the next show would have healed it, but a unit
+            // that never gets one leaves the key behind for the rest of the match.
+            if (isTracked && !isShown)
+            {
+                overlays.Remove(unitId);
+            }
+
+            // Only what changed is touched, so a board sitting on the same statuses costs a dictionary probe
+            // per unit and nothing else.
+            if (shouldShow == isShown)
+            {
+                return;
+            }
+
+            if (!shouldShow)
+            {
+                overlays.Remove(unitId);
+
+                if (overlay != null && pool != null)
+                {
+                    // Re-parented out of the unit visual first, or it would still be a child when that visual
+                    // is released and would come back attached to whichever unit borrows it next.
+                    overlay.transform.SetParent(transform, false);
+                    pool.Release(overlay);
+                }
+
+                return;
+            }
+
+            if (pool == null || !_unitVisuals.TryGetValue(unitId, out GameObject unitVisual) || unitVisual == null)
+            {
+                return;
+            }
+
+            overlay = pool.Get();
+            overlay.transform.SetParent(unitVisual.transform, false);
+            overlay.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+            if (overlay.TryGetComponent(out SpriteRenderer overlayRenderer))
+            {
+                overlayRenderer.sortingOrder = _unitSortingOrder + sortingOffset;
+            }
+
+            overlays[unitId] = overlay;
         }
 
         // The visual is two sprites: the root ring carries the owner's colour and the child body carries the

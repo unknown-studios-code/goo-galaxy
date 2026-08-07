@@ -1,9 +1,9 @@
 ---
 description: "Use when writing Unity UI Toolkit code, UXML, or USS. Covers USS/CSS differences, BEM naming, flexbox, data binding, MVP, custom elements, and ListView virtualization."
 paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/UI/**/*.uxml"
-  - "Assets/UI/**/*.uss"
+  - "Assets/**/*.cs"
+  - "Assets/**/*.uxml"
+  - "Assets/**/*.uss"
 ---
 
 # Unity UI Toolkit Reference
@@ -21,12 +21,12 @@ This document defines coding, styling, and architectural rules for building UI w
 ## 3. Core Rules
 
 - **Rule 1 (File Organization & Naming):** Keep UXML in `Assets/UI/UXML/` and USS in `Assets/UI/USS/`, with matching PascalCase names (`MainMenuView.uxml` / `MainMenuView.uss`). Reference stylesheets from UXML with `<Style src="project://database/..."/>`; USS has no `@import`. Format `.uxml` and `.uss` with 2-space indentation and a 120-character line limit, per `.editorconfig`.
-- **Rule 2 (USS Is a CSS Subset):** Flexbox only — no `display: grid`. Lengths in `px` and `%` only — no `em`, `rem`, `vh`, `vw`, or `calc()`. No `z-index`: stacking follows the UXML declaration order. No `@media` queries. Colors use `rgb()`/`rgba()` or a `var()` token — hexadecimal is not parsed. `box-sizing: border-box` is the default and cannot be changed. Custom properties are declared in `:root {}` only.
+- **Rule 2 (USS Is a CSS Subset):** Flexbox only — no `display: grid`. Lengths in `px` and `%` only — no `em`, `rem`, `vh`, `vw`, or `calc()`. No `z-index`: stacking follows the UXML declaration order. No `@media` queries. Colors use `rgb()`/`rgba()` or a `var()` token — hexadecimal is not parsed. `box-sizing: border-box` is the default and cannot be changed. Custom properties are declared in `:root {}` only. Hit testing is **not** styleable: `picking-mode` is a UXML attribute and a C# property (`VisualElement.pickingMode`), never a USS declaration — writing it in USS logs one "Unknown property" warning at asset import and is then dropped, so the element silently keeps `PickingMode.Position`. An unknown USS property never fails a build and never re-warns at play time, which is what makes this class of mistake survive review.
 - **Rule 3 (Unity-Specific Properties):** Text and background styling use Unity's namespaced properties, not their CSS counterparts: `-unity-font-definition`, `-unity-font-style`, `-unity-text-align` (`upper|middle|lower` + `left|center|right`), `-unity-text-outline-width/-color`, `-unity-background-scale-mode`, `-unity-background-image-tint-color`, and `-unity-slice-left/right/top/bottom` with `-unity-slice-scale` for 9-slice sprites. Asset URLs use `url('project://database/Assets/...')` for project assets or `resource('...')` for `Resources`; relative `url('../Icons/icon.png')` resolves from the USS file.
 - **Rule 4 (Selectors & Pseudo-Classes):** USS supports `:hover`, `:active`, `:focus`, `:checked`, `:disabled`, `:enabled`, and `:root`. It does not support `:nth-child()`, `:not()`, `:first-child`, `:last-child`, `:is()`, or `:where()`. Keep selectors flat and specific (`.block__element`) — deep descendant chains are brittle and slower to match.
 - **Rule 5 (BEM & Element Identity):** Name USS classes `block-name__element-name--modifier-name` and UXML `name` attributes in kebab-case. Use `name` for elements queried from C# and keep it unique inside its block; use `class` for styling and reuse. Express runtime state as additive modifier classes (`.is-selected`, `.is-disabled`) toggled with `AddToClassList`/`RemoveFromClassList`/`EnableInClassList`, never by writing inline styles. Centralize selector strings as `const` in a static class so a rename is a compile error rather than a silent no-op.
 - **Rule 6 (Flexbox Layout):** Lay out with flex containers: `flex-direction`, `justify-content`, `align-items`, `flex-grow`/`flex-shrink`/`flex-basis`, and `position: absolute` only to leave the flow deliberately. `gap` is not supported — space children with `margin` on the children. Use `display: none` to remove an element from layout, and `visibility: hidden` when the space must be preserved; do not toggle `display` every frame.
-- **Rule 7 (Element Querying & Caching):** Query with `Q<T>("element-name")` once, when the panel is available, and cache the references in fields. Never call `Q`/`Query` inside `Update`, a binding callback, or a `ListView` bind callback. Guard against a null result and fail loudly — a null element means the UXML name changed.
+- **Rule 7 (Element Querying & Caching):** Query with `Q<T>("element-name")` once, when the panel is available, and cache the references in fields. Never call `Q`/`Query` inside `Update`, a binding callback, or a `ListView` bind callback. Guard against a null result and fail loudly — a null element means the UXML name changed. When code asks "is the pointer over the UI?" with `panel.Pick(...)`, remember that a UXML root is a full-screen flex host with the default `PickingMode.Position`: it answers "yes" for every point on screen and blocks all world input behind the panel. Mark every purely structural container `picking-mode="Ignore"` in UXML so picks reach the real widgets or nothing, and convert the screen point with `RuntimePanelUtils.ScreenToPanel` — panel space is top-left origin, screen space is bottom-left, and picking with the raw point mirrors the hit test vertically.
 - **Rule 8 (Event Subscription):** Register UI callbacks with `RegisterCallback<T>` when the view initializes and unregister them symmetrically when it tears down; the pairing is the same discipline as `OnEnable`/`OnDisable`. Prefer named handler methods so unregistration is possible.
 - **Rule 9 (Custom Visual Elements):** Declare custom elements with `[UxmlElement]` on a `partial` class deriving from `VisualElement`, and expose inspector-facing fields with `[UxmlAttribute]`. The `UxmlFactory`/`UxmlTraits` pair is removed in Unity 6 and must not be used.
 - **Rule 10 (MVP & Data Binding):** Separate Model (engine-free data), View (elements, styling, and raising user intent), and Presenter (decisions and state). Bind runtime data by assigning `dataSource` and marking bound members with `[CreateProperty]`; implement `INotifyBindablePropertyChanged` on the source and raise it in setters, otherwise the UI updates only on the initial assignment. `SerializedObject.Bind()` is editor-only and never appears in runtime code.
@@ -52,6 +52,12 @@ This document defines coding, styling, and architectural rules for building UI w
   width: calc(100% - 20px);
 }
 
+/* ❌ picking-mode is not a USS property. This warns once at import, is dropped, and the element keeps
+   PickingMode.Position — a full-screen host styled this way silently swallows every world-space click. */
+.hud-root {
+  picking-mode: ignore;
+}
+
 .navbar-menu :nth-child(2) {
   color: rgb(255, 255, 255);
 }
@@ -62,8 +68,11 @@ This document defines coding, styling, and architectural rules for building UI w
 ```xml
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
   <Style src="project://database/Assets/UI/USS/MainStyles.uss" />
-  <ui:VisualElement name="navbar-menu" class="navbar-menu">
-    <ui:Button name="navbar-menu__shop-button" class="navbar-menu__shop-button button button--primary" text="Shop" />
+  <!-- ✅ Structural hosts opt out of picking here, not in USS, so world input reaches the board behind them -->
+  <ui:VisualElement name="hud-root" class="hud" picking-mode="Ignore">
+    <ui:VisualElement name="navbar-menu" class="navbar-menu">
+      <ui:Button name="navbar-menu__shop-button" class="navbar-menu__shop-button button button--primary" text="Shop" />
+    </ui:VisualElement>
   </ui:VisualElement>
 </ui:UXML>
 ```
@@ -228,12 +237,13 @@ public class <ViewComponent> : MonoBehaviour
 | Text align     | `text-align: center`        | `-unity-text-align: middle-center`                   |
 | Transform      | `transform: scale(1.1)`     | Individual `scale`, `rotate`, `translate` properties |
 | Box model      | Configurable `box-sizing`   | Always `border-box`                                  |
+| Hit testing    | `pointer-events: none`      | Not a USS property — UXML `picking-mode` or C#       |
 
-| Problem Symptom         | Primary Cause                       | Troubleshooting Checklist                                                                                   |
-| :---------------------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------------- |
-| UI elements are missing | display/visibility or parent bounds | Ensure `display: flex`, `visibility: visible`, and a non-zero container size in the UI Toolkit Debugger     |
-| Clicks do not fire      | Blocking overlay or picking mode    | Set `picking-mode: position` on the target, `ignore` on decorative overlays; confirm the element is enabled |
-| Query returns null      | Wrong name or query ran too early   | Verify the `name` in UXML (case-sensitive) and query after the panel exists                                 |
-| Bindings never update   | Source does not notify              | `[CreateProperty]` on the member and `INotifyBindablePropertyChanged` raised in the setter                  |
-| List scrolling stutters | Work inside `bindItem`              | Remove allocations and queries from `bindItem`; set `fixedItemHeight`; reuse the row built by `makeItem`    |
-| Styles do not apply     | Broken stylesheet reference         | Check the `<Style src="..."/>` path and case-sensitive class names                                          |
+| Problem Symptom         | Primary Cause                       | Troubleshooting Checklist                                                                                  |
+| :---------------------- | :---------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| UI elements are missing | display/visibility or parent bounds | Ensure `display: flex`, `visibility: visible`, and a non-zero container size in the UI Toolkit Debugger    |
+| Clicks do not fire      | Blocking overlay or picking mode    | Set picking mode in **UXML** (`picking-mode="Ignore"`) or C# — never USS; check the full-screen root first |
+| Query returns null      | Wrong name or query ran too early   | Verify the `name` in UXML (case-sensitive) and query after the panel exists                                |
+| Bindings never update   | Source does not notify              | `[CreateProperty]` on the member and `INotifyBindablePropertyChanged` raised in the setter                 |
+| List scrolling stutters | Work inside `bindItem`              | Remove allocations and queries from `bindItem`; set `fixedItemHeight`; reuse the row built by `makeItem`   |
+| Styles do not apply     | Broken stylesheet reference         | Check the `<Style src="..."/>` path and case-sensitive class names                                         |

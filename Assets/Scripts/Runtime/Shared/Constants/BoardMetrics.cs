@@ -19,10 +19,39 @@ namespace GooGalaxy.Runtime.Shared.Constants
         /// </summary>
         public const int DefaultBoardCellCount = 61;
 
-        /// <summary>
-        /// Cells adjacent to any one cell on a hex board. Also the ceiling on units a single landing can
-        /// convert, since conversion reaches exactly one ring.
-        /// </summary>
+        /// <summary>Cells adjacent to any one cell on a hex board.</summary>
         public const int NeighborsPerCell = 6;
+
+        /// <summary>
+        /// The reach of a conversion whose card authors no wider one, counted in rings around the landing hex.
+        /// </summary>
+        public const int DefaultConversionRadius = 1;
+
+        /// <summary>
+        /// The widest conversion any card is authored at, counted in rings around the landing hex. Volatile
+        /// Mass is the only card at this reach; raising it widens every buffer sized from
+        /// <see cref="MaxConversionTargetsPerLanding" />.
+        /// </summary>
+        public const int MaxConversionRadius = 2;
+
+        /// <summary>
+        /// Cells within <see cref="MaxConversionRadius" /> of one landing hex, excluding that hex, and so the
+        /// ceiling on units a single landing coordinate can convert. Derived from the hex area formula rather
+        /// than written out, so widening <see cref="MaxConversionRadius" /> cannot leave this behind.
+        /// </summary>
+        public const int MaxConversionTargetsPerLanding = 3 * MaxConversionRadius * (MaxConversionRadius + 1);
+
+        /// <summary>
+        /// Cells one landing-impact area covers at its widest, including the landing hex itself. The size a
+        /// spiral scratch buffer is built at so a full-radius impact never grows it.
+        /// </summary>
+        public const int MaxImpactAreaCells = MaxConversionTargetsPerLanding + 1;
+
+        /// <summary>
+        /// Hexes the widest authored Protocol cluster covers — Sterilization Beam's 4 — and so the ceiling on
+        /// the units one cast can condition. Nothing enforces it: a card authored wider simply grows whatever
+        /// was sized from it.
+        /// </summary>
+        public const int MaxSpellClusterSize = 4;
     }
 }

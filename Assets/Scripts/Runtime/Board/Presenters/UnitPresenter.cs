@@ -158,6 +158,26 @@ namespace GooGalaxy.Runtime.Board.Presenters
         }
 
         /// <summary>
+        /// Looks up the capability object registered with a unit — in practice its card definition.
+        /// </summary>
+        /// <remarks>
+        /// The registry is typed to <see cref="IMoveCapable"/> because movement is the capability every unit
+        /// has, but the object behind it carries the rest of the card's contracts too. Callers that need one of
+        /// those test the returned reference for it (<c>capability is IConversionCapable conversionCapable</c>)
+        /// and fall back to a default when it does not implement it, rather than assuming a concrete type.
+        /// </remarks>
+        /// <param name="unitId">The identifier of the unit to look up.</param>
+        /// <param name="capability">
+        /// The registered capability. Null is a legitimate value — <see cref="RegisterUnit" /> accepts a unit
+        /// with no capability — so callers must null-check even when this returns true.
+        /// </param>
+        /// <returns>True when the unit is registered; false when it is unknown.</returns>
+        public bool TryGetCapability(int unitId, out IMoveCapable capability)
+        {
+            return _unitCapabilities.TryGetValue(unitId, out capability);
+        }
+
+        /// <summary>
         /// Validates and, when legal, executes a move, publishing <c>MatchEvents.MoveExecuted</c> on success.
         /// Nothing is published and the board is left untouched for any non-Success result.
         /// </summary>

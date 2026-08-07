@@ -24,14 +24,18 @@ namespace GooGalaxy.Tests.EditMode.Board
         private const int JunkUnitId = 9999;
         private const int JunkConvertedUnitId = 8888;
         private const int JunkArmorStrippedUnitId = 7777;
+        private const int StandardConversionRadius = 1;
+        private const int WideConversionRadius = 2;
         private const string SourceCardIdValue = "acid_crawler";
         private const string ArmoredCardIdValue = "bio_phalanx";
 
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _adjacentCoords = new(1, 0);
         private static readonly HexCoordinates _secondAdjacentCoords = new(0, -1);
+        private static readonly HexCoordinates _twoHexCoords = new(2, 0);
         private static readonly HexCoordinates _distantCoords = new(3, 0);
         private static readonly HexCoordinates _outsideGridCoords = new(9, 0);
+        private static readonly HexCoordinates _farLandingCoords = new(-2, 0);
 
         private HexGrid _grid;
         private Dictionary<int, GridUnit> _units;
@@ -230,6 +234,34 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        public void Resolve_EnemyAdjacentOnlyToAVacatedJumpSourceAtConversionRadiusTwo_IsUntouched()
+        {
+            // GIVEN — a wider spiral makes more of the vacated source's own reach newly overlap an enemy; the
+            // !landingCell.IsOccupied guard on that vacated coordinate must still suppress the attempt.
+            PlaceUnit(EnemyUnitId, RivalPlayerId, _twoHexCoords);
+            PlaceUnit(ActingUnitId, ActingPlayerId, _farLandingCoords);
+            _affectedCoordinates.Add(_origin);
+            _affectedCoordinates.Add(_farLandingCoords);
+
+            // WHEN
+            ConversionResolver.Resolve(
+                _grid,
+                _units,
+                _affectedCoordinates,
+                ActingPlayerId,
+                WideConversionRadius,
+                _neighborBuffer,
+                _attemptedUnitIds,
+                _convertedUnitIds,
+                _armorStrippedUnitIds
+            );
+
+            // THEN
+            Assert.That(_convertedUnitIds, Is.Empty);
+            Assert.That(_armorStrippedUnitIds, Is.Empty);
+        }
+
+        [Test]
         public void Resolve_FriendlyArmoredNeighbor_IsNeverAttempted()
         {
             // GIVEN
@@ -326,6 +358,106 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        public void Resolve_ConversionRadiusTwo_ConvertsEnemyTwoHexesFromLanding()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            GridUnit enemyUnit = PlaceUnit(EnemyUnitId, RivalPlayerId, _twoHexCoords);
+            _affectedCoordinates.Add(_origin);
+
+            // WHEN
+            ConversionResolver.Resolve(
+                _grid,
+                _units,
+                _affectedCoordinates,
+                ActingPlayerId,
+                WideConversionRadius,
+                _neighborBuffer,
+                _attemptedUnitIds,
+                _convertedUnitIds,
+                _armorStrippedUnitIds
+            );
+
+            // THEN
+            Assert.That(_convertedUnitIds, Does.Contain(enemyUnit.UnitId));
+        }
+
+        [Test]
+        public void Resolve_ConversionRadiusTwo_LeavesEnemyThreeHexesFromLandingUntouched()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            GridUnit enemyUnit = PlaceUnit(EnemyUnitId, RivalPlayerId, _distantCoords);
+            _affectedCoordinates.Add(_origin);
+
+            // WHEN
+            ConversionResolver.Resolve(
+                _grid,
+                _units,
+                _affectedCoordinates,
+                ActingPlayerId,
+                WideConversionRadius,
+                _neighborBuffer,
+                _attemptedUnitIds,
+                _convertedUnitIds,
+                _armorStrippedUnitIds
+            );
+
+            // THEN
+            Assert.That(_convertedUnitIds, Has.No.Member(enemyUnit.UnitId));
+        }
+
+        [Test]
+        public void Resolve_ConversionRadiusTwo_ActingUnitOnLandingCellIsNeverAttempted()
+        {
+            // GIVEN
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            _affectedCoordinates.Add(_origin);
+
+            // WHEN
+            ConversionResolver.Resolve(
+                _grid,
+                _units,
+                _affectedCoordinates,
+                ActingPlayerId,
+                WideConversionRadius,
+                _neighborBuffer,
+                _attemptedUnitIds,
+                _convertedUnitIds,
+                _armorStrippedUnitIds
+            );
+
+            // THEN
+            Assert.That(_attemptedUnitIds, Has.No.Member(actingUnit.UnitId));
+        }
+
+        [TestCase(0)]
+        [TestCase(-3)]
+        public void Resolve_NonPositiveConversionRadius_ClampsUpToTheStandardAdjacentReach(int radius)
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            GridUnit enemyUnit = PlaceUnit(EnemyUnitId, RivalPlayerId, _adjacentCoords);
+            _affectedCoordinates.Add(_origin);
+
+            // WHEN
+            ConversionResolver.Resolve(
+                _grid,
+                _units,
+                _affectedCoordinates,
+                ActingPlayerId,
+                radius,
+                _neighborBuffer,
+                _attemptedUnitIds,
+                _convertedUnitIds,
+                _armorStrippedUnitIds
+            );
+
+            // THEN
+            Assert.That(_convertedUnitIds, Does.Contain(enemyUnit.UnitId));
+        }
+
+        [Test]
         public void Resolve_NullGrid_ThrowsArgumentNullException()
         {
             // GIVEN
@@ -338,6 +470,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _units,
                     _affectedCoordinates,
                     ActingPlayerId,
+                    StandardConversionRadius,
                     _neighborBuffer,
                     _attemptedUnitIds,
                     _convertedUnitIds,
@@ -361,6 +494,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     null,
                     _affectedCoordinates,
                     ActingPlayerId,
+                    StandardConversionRadius,
                     _neighborBuffer,
                     _attemptedUnitIds,
                     _convertedUnitIds,
@@ -379,7 +513,17 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                ConversionResolver.Resolve(_grid, _units, null, ActingPlayerId, _neighborBuffer, _attemptedUnitIds, _convertedUnitIds, _armorStrippedUnitIds);
+                ConversionResolver.Resolve(
+                    _grid,
+                    _units,
+                    null,
+                    ActingPlayerId,
+                    StandardConversionRadius,
+                    _neighborBuffer,
+                    _attemptedUnitIds,
+                    _convertedUnitIds,
+                    _armorStrippedUnitIds
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -398,6 +542,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _units,
                     _affectedCoordinates,
                     ActingPlayerId,
+                    StandardConversionRadius,
                     null,
                     _attemptedUnitIds,
                     _convertedUnitIds,
@@ -421,6 +566,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _units,
                     _affectedCoordinates,
                     ActingPlayerId,
+                    StandardConversionRadius,
                     _neighborBuffer,
                     null,
                     _convertedUnitIds,
@@ -444,6 +590,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _units,
                     _affectedCoordinates,
                     ActingPlayerId,
+                    StandardConversionRadius,
                     _neighborBuffer,
                     _attemptedUnitIds,
                     null,
@@ -462,7 +609,17 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                ConversionResolver.Resolve(_grid, _units, _affectedCoordinates, ActingPlayerId, _neighborBuffer, _attemptedUnitIds, _convertedUnitIds, null);
+                ConversionResolver.Resolve(
+                    _grid,
+                    _units,
+                    _affectedCoordinates,
+                    ActingPlayerId,
+                    StandardConversionRadius,
+                    _neighborBuffer,
+                    _attemptedUnitIds,
+                    _convertedUnitIds,
+                    null
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -475,6 +632,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                 _units,
                 _affectedCoordinates,
                 ActingPlayerId,
+                StandardConversionRadius,
                 _neighborBuffer,
                 _attemptedUnitIds,
                 _convertedUnitIds,

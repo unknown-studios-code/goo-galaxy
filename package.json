@@ -34,11 +34,11 @@
   },
   "scripts": {
     "check": "npm run check:csharpier && npm run check:editorconfig && npm run check:prettier",
-    "check:csharpier": "dotnet csharpier check Assets/Scripts --ignore-path .formatterignore",
-    "check:editorconfig": "cd Assets/Scripts && editorconfig-checker -config ../../.editorconfig-checker.json",
+    "check:csharpier": "dotnet csharpier check Assets/Scripts Assets/Playtest Assets/Editor --ignore-path .formatterignore",
+    "check:editorconfig": "editorconfig-checker -config .editorconfig-checker.json Assets/Scripts Assets/Playtest Assets/Editor",
     "check:prettier": "prettier --check \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
     "format": "npm run format:csharpier && npm run format:prettier",
-    "format:csharpier": "dotnet csharpier format Assets/Scripts --ignore-path .formatterignore",
+    "format:csharpier": "dotnet csharpier format Assets/Scripts Assets/Playtest Assets/Editor --ignore-path .formatterignore",
     "format:prettier": "prettier --write \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
     "prepare": "husky && dotnet tool restore"
   }

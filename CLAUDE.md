@@ -20,7 +20,7 @@ Run `format` first, then `check`: `format` fixes what a formatter can, and `chec
 
 The Husky `pre-commit` hook runs `format`, then `check`, then `git add -u`. The `check` after the `format` is the point: whatever the formatters could not fix — a long line, above all — fails the hook instead of reaching CI, and nothing is staged. Commits created with `HUSKY=0` (see the `create-commit` skill) skip all of it, so run both explicitly in that path.
 
-**Never run tests, launch Unity, or start a build.** There is no local test CLI: the user runs EditMode and PlayMode suites from the Unity Test Runner and reports the results. Finish by naming the tests worth running. CI runs them on PRs.
+**Run tests and builds through the open editor, never through batch mode.** `run_tests` and `build` drive the running editor and report back; `Unity.exe -batchmode` needs the project lock, forces the editor closed, and rewrites render pipeline and project settings as a side effect. See `.claude/rules/unity-editor-automation.md`. CI runs both suites on PRs.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ Runtime code is split into one assembly per feature domain — `Assets/Scripts/R
 
 ## Conventions
 
-Detailed rules live in `.claude/rules/`, scoped with `paths:` frontmatter so each one loads when you touch the files it governs (`Assets/Scripts/**/*.cs`, `.uxml`/`.uss`, `.asmdef`). Read the matching file before writing or reviewing code — **subagents do not receive them automatically and must open them by path.**
+Detailed rules live in `.claude/rules/`. Most carry `paths:` frontmatter so they load when you touch the files they govern (`Assets/**/*.cs`, `.uxml`/`.uss`, `.asmdef`); `unity-editor-automation.md` deliberately has none, because how to reach the editor is not triggered by opening a particular file. Read the matching file before writing or reviewing code — **subagents do not receive them automatically and must open them by path.**
 
 The rules that get violated most:
 
@@ -54,7 +54,7 @@ The project skills own each step (`/create-commit`, `/open-pull-request`, `/refi
 ## Boundaries
 
 - **Never write `.asset`, `.meta`, `.prefab`, or `.unity` files directly.** Unity authors them; writing the bytes from an agent corrupts GUIDs and serialized references. The `deny` rules in `.claude/settings.json` enforce this — a denial there is policy, not a bug.
-- **Authoring those assets through the Unity MCP is allowed**, because the editor still writes the files and GUIDs stay valid. `Unity_RunCommand` is the reliable path: the MCP's `component_properties` setters have silently reported success without applying the change (materials, collider state, nested `ParticleSystem` modules). Prefer `SerializedObject` + `PrefabUtility` in a `RunCommand` over per-property tool calls. Note the sandbox blocks `using System.Reflection;` and `HashSet<T>` — fully qualify reflection types and use arrays. With no MCP connected, fall back to step-by-step in-editor instructions (menu path, fields, values).
+- **Changing those assets through the Unity MCP is allowed and is the expected path**, because the editor writes the files and GUIDs stay valid. Prefer the named tool — `set_serialized_field`, `set_component_properties`, `move_asset`, `delete_asset` — over `eval`, and read the value back with a different tool before asserting it landed. A denial on a direct write means "use the editor", not "this cannot be done". With no MCP connected, `unity status` says whether the editor is alive before you conclude anything. Full guidance in `.claude/rules/unity-editor-automation.md`.
 - **`ProjectSettings/` and render pipeline assignment stay the user's call.** Ask before changing Graphics/Quality settings or anything project-wide.
 - **Never commit, push, or open a PR** unless asked.
 

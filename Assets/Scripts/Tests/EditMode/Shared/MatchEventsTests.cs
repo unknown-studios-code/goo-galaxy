@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
@@ -163,6 +165,110 @@ namespace GooGalaxy.Tests.EditMode
             // WHEN
             // THEN
             Assert.DoesNotThrow(() => MatchEvents.RaiseGamePhaseChanged(1));
+        }
+
+        [Test]
+        public void RaiseLandingResolved_WithSubscriber_DeliversTheCommandIntact()
+        {
+            // GIVEN
+            MoveCommand receivedCommand = default;
+            MatchEvents.LandingResolved += (command, conversions) => receivedCommand = command;
+            var command = new MoveCommand(MoveType.Jump, new HexCoordinates(0, 0), new HexCoordinates(2, 0), 1, 5);
+
+            // WHEN
+            MatchEvents.RaiseLandingResolved(command, default);
+
+            // THEN
+            Assert.That(receivedCommand.Source, Is.EqualTo(command.Source));
+            Assert.That(receivedCommand.Target, Is.EqualTo(command.Target));
+        }
+
+        [Test]
+        public void RaiseLandingResolved_WithSubscriber_DeliversTheConversionsIntact()
+        {
+            // GIVEN
+            ConversionResult receivedConversions = default;
+            MatchEvents.LandingResolved += (command, conversions) => receivedConversions = conversions;
+            var convertedUnitIds = new List<int> { 4 };
+            var conversions = new ConversionResult(convertedUnitIds, null);
+
+            // WHEN
+            MatchEvents.RaiseLandingResolved(default, conversions);
+
+            // THEN
+            Assert.That(receivedConversions.ConvertedUnitIds, Is.EqualTo(convertedUnitIds));
+        }
+
+        [Test]
+        public void RaiseLandingResolved_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+            // no subscriber registered
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseLandingResolved(default, default));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsLandingResolved_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.LandingResolved += (_, _) => hasFired = true;
+            MatchEvents.ResetEvents();
+
+            // WHEN
+            MatchEvents.RaiseLandingResolved(default, default);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "LandingResolved should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseAbilityResolved_WithSubscriber_DeliversThePlayerIdAndResultIntact()
+        {
+            // GIVEN
+            int receivedPlayerId = -1;
+            AbilityResult receivedResult = default;
+            MatchEvents.AbilityResolved += (playerId, result) =>
+            {
+                receivedPlayerId = playerId;
+                receivedResult = result;
+            };
+            var affectedUnitIds = new List<int> { 7 };
+            var result = new AbilityResult(affectedUnitIds, null, null);
+
+            // WHEN
+            MatchEvents.RaiseAbilityResolved(3, result);
+
+            // THEN
+            Assert.That(receivedPlayerId, Is.EqualTo(3));
+            Assert.That(receivedResult.AffectedUnitIds, Is.EqualTo(affectedUnitIds));
+        }
+
+        [Test]
+        public void RaiseAbilityResolved_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+            // no subscriber registered
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseAbilityResolved(1, default));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsAbilityResolved_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.AbilityResolved += (_, _) => hasFired = true;
+            MatchEvents.ResetEvents();
+
+            // WHEN
+            MatchEvents.RaiseAbilityResolved(1, default);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "AbilityResolved should have no subscribers after ResetEvents.");
         }
 
         [Test]

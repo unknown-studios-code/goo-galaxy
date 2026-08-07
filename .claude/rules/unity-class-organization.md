@@ -1,8 +1,7 @@
 ---
 description: "Use when writing or reviewing Unity C# files — classes, MonoBehaviours, ScriptableObjects, static classes, structs, records, interfaces, enums, and editor types. Covers file layout and strict member ordering."
 paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/Editor/**/*.cs"
+  - "Assets/**/*.cs"
 ---
 
 # Unity Class Organization

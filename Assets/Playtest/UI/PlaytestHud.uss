@@ -8,6 +8,11 @@
   --spacing-m: 16px;
 }
 
+/* This root is a full-screen invisible flex host, not a widget. Left pickable, it reports every point on
+  screen as "over the HUD" to PlaytestHudView.IsPointerOverUI and permanently blocks board input; ignoring it
+  lets picks fall through to the real widgets (energy panel, footer, hand cards, buttons) or to nothing.
+  picking-mode is not a USS property — Unity warns "Unknown property" once, at import — so it is set as a
+  UXML attribute on hud-root instead. */
 .hud {
   flex-grow: 1;
   justify-content: space-between;
