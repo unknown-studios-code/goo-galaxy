@@ -12,9 +12,8 @@
       "url": "https://mcp.notion.com/mcp"
     },
     "unity": {
-      "command": "${USERPROFILE}\\.unity\\relay\\relay_win.exe",
-      "args": ["--mcp"],
-      "env": {}
+      "command": "unity",
+      "args": ["mcp"]
     }
   }
 }
