@@ -1,8 +1,7 @@
 ---
 description: "Use when debugging or troubleshooting Unity C# code. Covers diagnostic priority, null references, lifecycle timing, transforms, Input System, physics, animation, and async pitfalls."
 paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/Editor/**/*.cs"
+  - "Assets/**/*.cs"
 ---
 
 # Unity Debugging Guide

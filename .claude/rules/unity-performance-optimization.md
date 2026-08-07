@@ -1,8 +1,7 @@
 ---
 description: "Use when writing performance-sensitive Unity C# code. Covers update loop rules, allocation avoidance, caching, collections, physics, rendering, and the LINQ ban."
 paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/Editor/**/*.cs"
+  - "Assets/**/*.cs"
 ---
 
 # Unity Performance Optimization

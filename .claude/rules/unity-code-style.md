@@ -1,8 +1,7 @@
 ---
 description: "Use when writing or reviewing Unity C# code. Covers formatting, naming, braces, fields, properties, methods, events, async, pooling, and file conventions."
 paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/Editor/**/*.cs"
+  - "Assets/**/*.cs"
 ---
 
 # Unity C# Code Style

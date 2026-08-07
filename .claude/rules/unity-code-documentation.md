@@ -1,8 +1,7 @@
 ---
 description: "Use when documenting Unity C# code. Covers when XML docs are required, inspector tooltips, self-documenting code, and comment conventions."
 paths:
-  - "Assets/Scripts/**/*.cs"
-  - "Assets/Editor/**/*.cs"
+  - "Assets/**/*.cs"
 ---
 
 # Unity Code Documentation
@@ -24,7 +23,7 @@ Every comment is a maintenance liability. A comment that contradicts the code is
 
 - **Rule 1 (Structure First):** Before writing a comment, try to remove the need for it: rename the symbol, extract the condition into a named boolean property (`CanJump`, `IsWithinRange`), extract the block into a method whose name states the intent, replace a magic value with a named constant, or replace a flag pair with an enum. Only document what survives that pass.
 - **Rule 2 (Where XML Docs Are Required):** Write `///` docs on the API a caller consumes without reading the body: public and protected members of interfaces and abstract types, public types and members reachable across an `.asmdef` boundary, and general-purpose utilities and extension methods. Document the contract — meaning of parameters, meaning of the return value, what counts as invalid input — not the implementation.
-- **Rule 3 (Where XML Docs Are Forbidden):** No `///` on private or internal members, Unity lifecycle callbacks, overrides that add nothing to the base contract, serialized fields, or any member whose signature already says everything (`public int Health => _health;`). On an implementation of a documented interface, use `<inheritdoc />` rather than copying the text.
+- **Rule 3 (Where XML Docs Are Forbidden):** No `///` on private members, Unity lifecycle callbacks, overrides that add nothing to the base contract, serialized fields, or any member whose signature already says everything (`public int Health => _health;`). An `internal` member takes no `<summary>`, `<param>`, or `<returns>` for the same reason — its callers compile against the body — but it **may** carry a `<remarks>` stating an invariant Rule 4 requires, because an invariant is invisible at every accessibility level. On an implementation of a documented interface, use `<inheritdoc />` rather than copying the text.
 - **Rule 4 (Document Invariants, Not Mechanics):** When a member carries a rule the signature cannot express, state it: ownership and lifetime of a buffer passed to subscribers, allocation guarantees on a hot path, the order in which checks run when several can fail, "must be called after X", units and coordinate space. These are the notes that earn their place; a `<remarks>` block restating the method body is not.
 - **Rule 5 (Inline Comments Explain Why):** Use `//` only for a reason that is invisible in the code: an engine bug or platform quirk being worked around, a deliberate performance trade-off, a non-obvious formula (hex axial math, easing curves) with a reference, or a deliberate omission. Never narrate what the next line does. Prefix workarounds with `// WORKAROUND:` and performance-driven oddities with `// PERF:` so they can be found and revisited.
 - **Rule 6 (Inspector Tooltips):** Add `[Tooltip]` to serialized fields a designer or artist tunes, and make it earn its space: state the unit, the practical range, and what breaks outside it. Skip it on wiring references whose name and type already say everything (`[SerializeField] private UnitPresenter _unitPresenter;`). Group related serialized fields with `[Header]`; use `[Range]`, `[Min]`, and `[Space]` where they make the constraint enforceable rather than described.
@@ -148,6 +147,7 @@ public void ValidateClone_TargetOccupied_ReturnsTargetBlocked()
 | Generic utility or extension method          | `/// <summary>`                    | Reused far from its definition                        |
 | Implementation of a documented interface     | `<inheritdoc />`                   | One source of truth for the contract                  |
 | Invariant, ownership, allocation guarantee   | `/// <remarks>`                    | Cannot be expressed in the signature                  |
+| Internal member carrying such an invariant   | `/// <remarks>` only               | Accessibility does not make an invariant visible      |
 | Private helper, override, lifecycle callback | **None**                           | Short, self-named methods carry it                    |
 | Serialized field a designer tunes            | `[Tooltip]` (+ `[Range]`)          | Units, safe bounds, and consequence, in the Inspector |
 | Serialized wiring reference                  | **None**                           | Name and type already say it                          |
