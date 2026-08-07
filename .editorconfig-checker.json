@@ -29,6 +29,7 @@
     "\\.shadervariants$",
     "\\.preset$",
     "\\.spriteatlas$",
+    "\\.spriteatlasv2$",
     "\\.mixer$",
     "\\.playable$",
     "\\.signal$",
