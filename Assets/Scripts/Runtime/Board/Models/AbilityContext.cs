@@ -104,6 +104,10 @@ namespace GooGalaxy.Runtime.Board.Models
         /// </remarks>
         public bool HasExplicitTargets { get; }
 
+        /// <summary>
+        /// Builds a context for a troop landing, where every impact derives its own area by expanding its radius
+        /// from the landing hex.
+        /// </summary>
         /// <param name="actingPlayerId">The player whose deployment this is.</param>
         /// <param name="actingUnitId">
         /// The unit standing on the landing hex. This is not always the commanded unit: a Clone leaves the
@@ -126,6 +130,10 @@ namespace GooGalaxy.Runtime.Board.Models
             return new AbilityContext(actingPlayerId, actingUnitId, landingHex, hasVacatedHex, vacatedHex, false, null, conversions);
         }
 
+        /// <summary>
+        /// Builds a context for a Protocol, where the player-picked cluster is the impact area and no impact
+        /// expands beyond it.
+        /// </summary>
         /// <remarks>
         /// A Protocol has no acting unit and vacates no hex, so a <see cref="ImpactEffectType.SelfDestruct"/>
         /// or <see cref="ImpactEffectType.SpawnHazard"/> impact authored on one resolves as a no-op and reports
