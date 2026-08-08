@@ -24,8 +24,11 @@ namespace GooGalaxy.Runtime.Board.Services
     /// </remarks>
     public static class MovementValidator
     {
+        private const int NoAuthoredDistance = 0;
+
         /// <summary>
-        /// Validates a Clone: an adjacent (distance 1) duplication that leaves the source unit in place.
+        /// Validates a Clone: a duplication that leaves the source unit in place, over the exact hex distance
+        /// the capability authors.
         /// </summary>
         /// <param name="grid">The board being played on.</param>
         /// <param name="units">The registry of live units, keyed by unit id.</param>
@@ -38,7 +41,8 @@ namespace GooGalaxy.Runtime.Board.Services
         }
 
         /// <summary>
-        /// Validates a Jump: a distance 2 relocation of the source unit itself.
+        /// Validates a Jump: a relocation of the source unit itself, over the exact hex distance the capability
+        /// authors.
         /// </summary>
         /// <param name="grid">The board being played on.</param>
         /// <param name="units">The registry of live units, keyed by unit id.</param>
@@ -70,7 +74,8 @@ namespace GooGalaxy.Runtime.Board.Services
         /// <param name="grid">The board being played on.</param>
         /// <param name="units">The registry of live units, keyed by unit id.</param>
         /// <param name="command">The requested move.</param>
-        /// <param name="moveType">The move type whose hex distance the command must match.</param>
+        /// <param name="moveType">The move type selecting which authored distance the command must match.</param>
+        /// <param name="capability">The commanded unit's movement capability, read for its authored distances only.</param>
         /// <param name="sourceCell">The source cell, set when the result is Success.</param>
         /// <param name="sourceUnit">The commanded unit, set when the result is Success.</param>
         /// <param name="targetCell">The target cell, set when the result is Success.</param>
@@ -80,6 +85,7 @@ namespace GooGalaxy.Runtime.Board.Services
             IReadOnlyDictionary<int, GridUnit> units,
             in MoveCommand command,
             MoveType moveType,
+            IMoveCapable capability,
             out HexCell sourceCell,
             out GridUnit sourceUnit,
             out HexCell targetCell
@@ -93,7 +99,7 @@ namespace GooGalaxy.Runtime.Board.Services
                 return sourceResult;
             }
 
-            return ValidateTarget(grid, command, moveType, null, out targetCell);
+            return ValidateTarget(grid, command, GetRequiredDistance(capability, moveType), capability: null, out targetCell);
         }
 
         private static MovementResult Validate(
@@ -126,7 +132,7 @@ namespace GooGalaxy.Runtime.Board.Services
                 return MovementResult.CapabilityMissing;
             }
 
-            return ValidateTarget(grid, command, moveType, capability, out _);
+            return ValidateTarget(grid, command, GetRequiredDistance(capability, moveType), capability, out _);
         }
 
         private static MovementResult ValidateSource(
@@ -152,13 +158,17 @@ namespace GooGalaxy.Runtime.Board.Services
             return MovementResult.Success;
         }
 
-        // A null capability means the caller is checking board rules only, so the hazard rule — the one
-        // target rule that depends on the moving unit — is skipped along with ownership and capability.
-        private static MovementResult ValidateTarget(HexGrid grid, in MoveCommand command, MoveType moveType, IMoveCapable capability, out HexCell targetCell)
+        private static MovementResult ValidateTarget(
+            HexGrid grid,
+            in MoveCommand command,
+            int requiredDistance,
+            IMoveCapable capability,
+            out HexCell targetCell
+        )
         {
             targetCell = null;
 
-            if (command.Source.CalculateDistance(command.Target) != (int)moveType)
+            if (command.Source.CalculateDistance(command.Target) != requiredDistance)
             {
                 return MovementResult.OutOfRange;
             }
@@ -188,7 +198,27 @@ namespace GooGalaxy.Runtime.Board.Services
                 return false;
             }
 
-            return moveType == MoveType.Clone ? capability.CanClone : capability.CanJump;
+            return moveType switch
+            {
+                MoveType.Clone => capability.CanClone,
+                MoveType.Jump => capability.CanJump,
+                _ => false,
+            };
+        }
+
+        private static int GetRequiredDistance(IMoveCapable capability, MoveType moveType)
+        {
+            if (capability == null)
+            {
+                return NoAuthoredDistance;
+            }
+
+            return moveType switch
+            {
+                MoveType.Clone => capability.CloneDistance,
+                MoveType.Jump => capability.JumpDistance,
+                _ => NoAuthoredDistance,
+            };
         }
     }
 }

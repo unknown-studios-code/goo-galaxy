@@ -118,7 +118,7 @@ There are **three distinct actions**, and the distinction is load-bearing: a **D
 - Gated by the source unit's **`canJump`** flag. For Volatile Mass the Jump is also the detonation — see its roster entry.
 - **Strategic use:** flanking, escaping a contested edge, and triggering Jump-specific abilities. Acid Crawler's Corrosive Trail fires here, and it fires because **the unit that jumped is an Acid Crawler** — abilities belong to the unit on the board, never to whatever card happens to be in hand.
 
-> **Energy cost of Clone and Jump is not yet fixed.** A free move type cannot work — landing converts, so a free move is free conversion, repeatable without limit in real time. `.docs/refinement/clone-and-jump-energy-cost.md` proposes flat costs (~1.0 for a Clone, ~0.5 for a Jump) with the reasoning and the open tuning questions. Until that lands as a task, treat the costs as **to be determined, but non-zero**.
+> **Energy cost of Clone and Jump is not yet fixed.** A free move type cannot work — landing converts, so a free move is free conversion, repeatable without limit in real time. The working proposal is a flat cost per action — roughly **1.0 for a Clone** and **0.5 for a Jump**, priced independently of the card so the $P_v \propto E^2$ budget stays untouched. Until it lands as a task, treat the costs as **to be determined, but non-zero**.
 
 Abilities trigger **upon landing**, for all three actions.
 

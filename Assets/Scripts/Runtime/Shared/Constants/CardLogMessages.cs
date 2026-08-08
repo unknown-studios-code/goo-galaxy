@@ -13,6 +13,8 @@ namespace GooGalaxy.Runtime.Shared.Constants
     {
         public const string CardIdEmptyFormat = "{0}: CardId is empty. Assign a unique, stable id before referencing this card in a CardPresenter.";
 
+        public const string DescriptionEmptyFormat = "{0}: Description is empty. The card face renders blank until it is authored.";
+
         public const string SpellClusterSizeMissingFormat =
             "{0}: landing effect {1} has a Cluster Size of 0 on a Spell. "
             + "On a Protocol that field is the number of hexes the player picks, so this card will be rejected as InvalidTargets. "

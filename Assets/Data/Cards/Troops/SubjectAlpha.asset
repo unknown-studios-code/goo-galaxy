@@ -14,10 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: GooGalaxy.Runtime.Cards::GooGalaxy.Runtime.Cards.Data.CardDataSO
   _cardId: subject_alpha
   _displayName: Subject Alpha
+  _description: The fundamental biomass unit. Cheap enough to deploy almost continuously.
   _type: 0
   _energyCost: 1
   _canClone: 1
   _canJump: 1
+  _cloneDistance: 1
+  _jumpDistance: 2
   _ignoresHazards: 0
   _hasArmor: 0
   _conversionRadius: 1

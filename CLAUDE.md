@@ -16,7 +16,7 @@ npm run check          # csharpier + editorconfig + prettier, verify only — wh
 
 Run `format` first, then `check`: `format` fixes what a formatter can, and `check` reports what is left. Per-formatter variants exist as `format:csharpier`, `format:prettier` and the matching `check:*`. `check:editorconfig` has no `format:` counterpart — the tool only verifies, so anything it flags (indentation, line endings, the 160-character limit) has to be fixed by hand.
 
-**There is deliberately no `dotnet format`.** It needs the Unity-generated `.csproj`/`.slnx`, which are untracked, so it cannot run in CI or on a fresh clone; and in write mode a csproj that is stale relative to the `.asmdef` files makes it delete `using` directives it wrongly reads as unused. See `.docs/refinement/csharp-analysis-in-a-unity-project.md`.
+**There is deliberately no `dotnet format`.** It needs the Unity-generated `.csproj`/`.slnx`, which are untracked, so it cannot run in CI or on a fresh clone; and in write mode a csproj that is stale relative to the `.asmdef` files makes it delete `using` directives it wrongly reads as unused.
 
 The Husky `pre-commit` hook runs `format`, then `check`, then `git add -u`. The `check` after the `format` is the point: whatever the formatters could not fix — a long line, above all — fails the hook instead of reaching CI, and nothing is staged. Commits created with `HUSKY=0` (see the `create-commit` skill) skip all of it, so run both explicitly in that path.
 

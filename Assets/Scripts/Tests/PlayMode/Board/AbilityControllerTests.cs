@@ -1259,6 +1259,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             public bool IgnoresHazards { get; set; }
 
+            public int CloneDistance { get; set; } = BoardMetrics.DefaultCloneDistance;
+
+            public int JumpDistance { get; set; } = BoardMetrics.DefaultJumpDistance;
+
             public int ConversionRadius { get; set; } = 1;
 
             public IReadOnlyList<ImpactEffect> LandingEffects { get; set; } = _noLandingEffects;
@@ -1271,6 +1275,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public bool CanJump => true;
 
             public bool IgnoresHazards => false;
+
+            public int CloneDistance => BoardMetrics.DefaultCloneDistance;
+
+            public int JumpDistance => BoardMetrics.DefaultJumpDistance;
         }
 
         private sealed class FakeUnitSpawner : IUnitSpawner

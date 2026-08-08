@@ -14,10 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: GooGalaxy.Runtime.Cards::GooGalaxy.Runtime.Cards.Data.CardDataSO
   _cardId: volatile_mass
   _displayName: Volatile Mass
+  _description: Assimilates two sector rings on landing. Cannot Clone; detonates
+    on its Jump, or on its own after three seconds.
   _type: 0
   _energyCost: 4
   _canClone: 0
   _canJump: 1
+  _cloneDistance: 1
+  _jumpDistance: 2
   _ignoresHazards: 0
   _hasArmor: 0
   _conversionRadius: 2

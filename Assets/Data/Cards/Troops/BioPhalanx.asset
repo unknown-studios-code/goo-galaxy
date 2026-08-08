@@ -14,10 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: GooGalaxy.Runtime.Cards::GooGalaxy.Runtime.Cards.Data.CardDataSO
   _cardId: bio_phalanx
   _displayName: Bio-Phalanx
+  _description: Armored membrane. The first assimilation attempt strips the armor;
+    only a second one flips it.
   _type: 0
   _energyCost: 3
   _canClone: 1
   _canJump: 1
+  _cloneDistance: 1
+  _jumpDistance: 2
   _ignoresHazards: 0
   _hasArmor: 1
   _conversionRadius: 1

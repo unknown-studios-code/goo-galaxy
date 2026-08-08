@@ -22,6 +22,21 @@ namespace GooGalaxy.Runtime.Shared.Constants
         /// <summary>Cells adjacent to any one cell on a hex board.</summary>
         public const int NeighborsPerCell = 6;
 
+        /// <summary>The hex distance a Clone covers on a card that authors no other value.</summary>
+        public const int DefaultCloneDistance = 1;
+
+        /// <summary>The hex distance a Jump covers on a card that authors no other value.</summary>
+        public const int DefaultJumpDistance = 2;
+
+        /// <summary>The shortest authorable move. Zero would make a move's target its own source.</summary>
+        public const int MinMoveDistance = 1;
+
+        /// <summary>
+        /// The longest authorable move, being the widest separation two cells on a
+        /// <see cref="DefaultGridRadius" /> board can have. A card authored past it can never find a legal target.
+        /// </summary>
+        public const int MaxMoveDistance = DefaultGridRadius * 2;
+
         /// <summary>
         /// The reach of a conversion whose card authors no wider one, counted in rings around the landing hex.
         /// </summary>

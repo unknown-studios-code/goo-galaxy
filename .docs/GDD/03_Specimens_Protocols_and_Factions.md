@@ -479,7 +479,7 @@ This is a real authored example — Cryo-Stasis, exactly as it ships in `Assets/
 {
   "cardId": "cryo_stasis",
   "displayName": "Cryo-Stasis",
-  "description": "Freezes every unit in a three-hex cluster.",
+  "description": "Freezes every unit in a three-sector cluster.",
   "type": "Spell",
   "energyCost": 2,
   "canClone": false,

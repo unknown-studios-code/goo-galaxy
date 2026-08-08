@@ -14,10 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: GooGalaxy.Runtime.Cards::GooGalaxy.Runtime.Cards.Data.CardDataSO
   _cardId: cryo_stasis
   _displayName: Cryo-Stasis
+  _description: Freezes every unit in a three-sector cluster.
   _type: 1
   _energyCost: 2
   _canClone: 0
   _canJump: 0
+  _cloneDistance: 1
+  _jumpDistance: 2
   _ignoresHazards: 0
   _hasArmor: 0
   _conversionRadius: 1

@@ -4,6 +4,7 @@ using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
+using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Services
@@ -31,6 +32,7 @@ namespace GooGalaxy.Runtime.Board.Services
         /// <param name="units">The registry of live units, keyed by unit id. A Clone adds its new unit here.</param>
         /// <param name="spawner">The factory used to create the cloned unit. Only consulted for Clone.</param>
         /// <param name="command">The already-validated move.</param>
+        /// <param name="capability">The moved unit's movement capability, supplying the authored hex distance to re-check.</param>
         /// <param name="affectedCoordinates">
         /// Caller-owned buffer that receives the coordinates whose contents changed: the target for a Clone,
         /// source then target for a Jump. Cleared on entry, and left empty when the move is not applied.
@@ -39,12 +41,13 @@ namespace GooGalaxy.Runtime.Board.Services
         /// <returns>Success once the board has been mutated, or SpawnFailed when the spawner produced no usable unit.</returns>
         /// <exception cref="ArgumentNullException">The affected-coordinate buffer is null.</exception>
         /// <exception cref="InvalidOperationException">The command does not match the current board state.</exception>
-        /// <exception cref="ArgumentException">The command carries an unsupported move type.</exception>
+        /// <exception cref="ArgumentException">The command carries a move type other than Clone or Jump.</exception>
         internal static MovementResult Resolve(
             HexGrid grid,
             Dictionary<int, GridUnit> units,
             IUnitSpawner spawner,
             in MoveCommand command,
+            IMoveCapable capability,
             List<HexCoordinates> affectedCoordinates,
             out GridUnit spawnedUnit
         )
@@ -57,11 +60,19 @@ namespace GooGalaxy.Runtime.Board.Services
             spawnedUnit = null;
             affectedCoordinates.Clear();
 
+            // Ahead of the board-state guard so an unsupported type reports what it actually is, rather than
+            // the OutOfRange it would collect from authoring no distance.
+            if (command.Type != MoveType.Clone && command.Type != MoveType.Jump)
+            {
+                throw new ArgumentException(FormatUnvalidatedMessage(command), nameof(command));
+            }
+
             MovementResult boardState = MovementValidator.ValidateBoardState(
                 grid,
                 units,
                 command,
                 command.Type,
+                capability,
                 out HexCell sourceCell,
                 out GridUnit sourceUnit,
                 out HexCell targetCell

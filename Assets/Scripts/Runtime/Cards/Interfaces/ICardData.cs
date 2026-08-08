@@ -15,6 +15,12 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
 
         public string DisplayName { get; }
 
+        /// <summary>
+        /// Player-facing flavour and rules text shown beside the card. Plain text: no markup and no
+        /// localization key, and empty on a card whose text has not been authored yet.
+        /// </summary>
+        public string Description { get; }
+
         public CardType Type { get; }
 
         public int EnergyCost { get; }
@@ -22,6 +28,12 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
         public bool CanClone { get; }
 
         public bool CanJump { get; }
+
+        /// <summary>Exact hex distance a Clone by this card's units must cover. One for every launch card.</summary>
+        public int CloneDistance { get; }
+
+        /// <summary>Exact hex distance a Jump by this card's units must cover. Two for every launch card.</summary>
+        public int JumpDistance { get; }
 
         public bool HasArmor { get; }
 

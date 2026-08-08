@@ -10,11 +10,23 @@ namespace GooGalaxy.Runtime.Shared.Interfaces
     /// </remarks>
     public interface IMoveCapable
     {
-        /// <summary>Whether the entity may duplicate itself onto an adjacent hex.</summary>
+        /// <summary>Whether the entity may duplicate itself onto a nearby hex.</summary>
         public bool CanClone { get; }
 
-        /// <summary>Whether the entity may relocate itself two hexes away.</summary>
+        /// <summary>Whether the entity may relocate itself to a nearby hex.</summary>
         public bool CanJump { get; }
+
+        /// <summary>
+        /// Exact hex distance a Clone by this entity must cover. One for every launch card; a card authoring a
+        /// wider reach clones only at that distance, never at anything shorter.
+        /// </summary>
+        public int CloneDistance { get; }
+
+        /// <summary>
+        /// Exact hex distance a Jump by this entity must cover. Two for every launch card; a card authoring a
+        /// wider reach jumps only at that distance, never at anything shorter.
+        /// </summary>
+        public int JumpDistance { get; }
 
         /// <summary>
         /// Whether the entity may land on a hex carrying a hazard. Plasmic Leaper's Hover is the only authored
