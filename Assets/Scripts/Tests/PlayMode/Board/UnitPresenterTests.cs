@@ -30,7 +30,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private const int FirstSpawnedUnitId = 100;
         private const string SourceCardIdValue = "acid_crawler";
 
-        private const MoveType UndefinedMoveType = (MoveType)3;
+        private const MoveType UndefinedMoveType = (MoveType)99;
 
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _adjacentCoords = new(1, 0);
@@ -388,6 +388,24 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
             var command = new MoveCommand(UndefinedMoveType, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.InvalidCommand));
+            Assert.That(_publishedEventCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_DeployMoveType_ReturnsInvalidCommandAndPublishesNothing()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var command = new MoveCommand(MoveType.Deploy, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
             MovementResult result = _unitPresenter.ResolveMove(command);
@@ -871,10 +889,17 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private sealed class FakeMoveCapability : IMoveCapable
         {
-            public FakeMoveCapability(bool canClone, bool canJump)
+            public FakeMoveCapability(
+                bool canClone,
+                bool canJump,
+                int cloneDistance = BoardMetrics.DefaultCloneDistance,
+                int jumpDistance = BoardMetrics.DefaultJumpDistance
+            )
             {
                 CanClone = canClone;
                 CanJump = canJump;
+                CloneDistance = cloneDistance;
+                JumpDistance = jumpDistance;
             }
 
             public bool CanClone { get; }
@@ -882,6 +907,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public bool CanJump { get; }
 
             public bool IgnoresHazards => false;
+
+            public int CloneDistance { get; }
+
+            public int JumpDistance { get; }
         }
 
         private sealed class FakeUnitSpawner : IUnitSpawner

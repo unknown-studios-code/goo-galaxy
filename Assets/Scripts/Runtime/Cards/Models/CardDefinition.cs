@@ -28,10 +28,13 @@ namespace GooGalaxy.Runtime.Cards.Models
         {
             CardId = cardData.CardId;
             DisplayName = cardData.DisplayName;
+            Description = cardData.Description;
             Type = cardData.Type;
             EnergyCost = cardData.EnergyCost;
             CanClone = cardData.CanClone;
             CanJump = cardData.CanJump;
+            CloneDistance = cardData.CloneDistance;
+            JumpDistance = cardData.JumpDistance;
             HasArmor = cardData.HasArmor;
             IgnoresHazards = cardData.IgnoresHazards;
             ConversionRadius = cardData.ConversionRadius;
@@ -42,6 +45,8 @@ namespace GooGalaxy.Runtime.Cards.Models
 
         public string DisplayName { get; }
 
+        public string Description { get; }
+
         public CardType Type { get; }
 
         public int EnergyCost { get; }
@@ -49,6 +54,10 @@ namespace GooGalaxy.Runtime.Cards.Models
         public bool CanClone { get; }
 
         public bool CanJump { get; }
+
+        public int CloneDistance { get; }
+
+        public int JumpDistance { get; }
 
         public bool HasArmor { get; }
 

@@ -22,10 +22,11 @@ namespace GooGalaxy.Runtime.Energy.Presenters
 
         [Tooltip(
             "The starting energy configuration for Player 2.\n"
-                + "MaxEnergy is the ceiling, RegenRate is energy per second, and StartingEnergy is the initial amount (includes Komi bonus)."
+                + "MaxEnergy is the ceiling, RegenRate is energy per second, and StartingEnergy is the initial amount. "
+                + "Keep StartingEnergy equal to Player 1 on symmetric maps; Komi applies only to deliberately asymmetric ones."
         )]
         [SerializeField]
-        private EnergyConfig _playerTwoConfig = new(10f, 1f / 2.8f, 5.5f);
+        private EnergyConfig _playerTwoConfig = new(10f, 1f / 2.8f, 5f);
 
         private readonly Dictionary<int, EnergyState> _playerStates = new();
 

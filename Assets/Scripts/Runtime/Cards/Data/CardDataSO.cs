@@ -22,6 +22,13 @@ namespace GooGalaxy.Runtime.Cards.Data
         [SerializeField]
         private string _displayName;
 
+        [Tooltip(
+            "Player-facing text for the card face, in one or two short sentences. Plain text — markup renders literally, and there is no localization yet."
+        )]
+        [TextArea(2, 4)]
+        [SerializeField]
+        private string _description;
+
         [Tooltip("Whether this card deploys a troop unit or resolves a one-time spell effect.")]
         [SerializeField]
         private CardType _type;
@@ -32,13 +39,23 @@ namespace GooGalaxy.Runtime.Cards.Data
         private int _energyCost = 1;
 
         [Header("Movement")]
-        [Tooltip("Whether this card can perform a 1-hex Clone move.")]
+        [Tooltip("Whether this card can Clone at all. How far it clones is the distance authored below.")]
         [SerializeField]
         private bool _canClone;
 
-        [Tooltip("Whether this card can perform a 2-hex Jump move.")]
+        [Tooltip("Whether this card can Jump at all. How far it jumps is the distance authored below.")]
         [SerializeField]
         private bool _canJump;
+
+        [Tooltip("Exact hex distance a Clone covers. 1 is standard; a wider reach clones only at that distance, never closer.")]
+        [Range(BoardMetrics.MinMoveDistance, BoardMetrics.MaxMoveDistance)]
+        [SerializeField]
+        private int _cloneDistance = BoardMetrics.DefaultCloneDistance;
+
+        [Tooltip("Exact hex distance a Jump covers. 2 is standard; a wider reach jumps only at that distance, never closer.")]
+        [Range(BoardMetrics.MinMoveDistance, BoardMetrics.MaxMoveDistance)]
+        [SerializeField]
+        private int _jumpDistance = BoardMetrics.DefaultJumpDistance;
 
         [Tooltip("Hover: whether this card may land on hazardous hexes. Leave off for everything but Plasmic Leaper, or acid puddles stop denying area.")]
         [SerializeField]
@@ -66,6 +83,14 @@ namespace GooGalaxy.Runtime.Cards.Data
 
         public string DisplayName => _displayName;
 
+        /// <inheritdoc />
+        /// <remarks>
+        /// Coalesced on read. Unity's serializer gives a string field an empty value, but
+        /// <c>ScriptableObject.CreateInstance</c> does not deserialize at all, so an asset built in code would
+        /// otherwise hand back null against a contract that promises empty.
+        /// </remarks>
+        public string Description => _description ?? string.Empty;
+
         public CardType Type => _type;
 
         public int EnergyCost => _energyCost;
@@ -73,6 +98,23 @@ namespace GooGalaxy.Runtime.Cards.Data
         public bool CanClone => _canClone;
 
         public bool CanJump => _canJump;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// An unauthored value resolves to <see cref="BoardMetrics.DefaultCloneDistance" /> rather than to the
+        /// shared minimum. <c>[Range]</c> is a drawer and never runs on deserialization, so an asset saved
+        /// before this field existed loads as zero; clamping that up would hand back the minimum, which is only
+        /// coincidentally the right answer for a Clone and is the wrong one for a Jump.
+        /// </remarks>
+        public int CloneDistance => ResolveAuthoredDistance(_cloneDistance, BoardMetrics.DefaultCloneDistance);
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// An unauthored value resolves to <see cref="BoardMetrics.DefaultJumpDistance" />. Clamping it up to
+        /// <see cref="BoardMetrics.MinMoveDistance" /> instead would silently turn every Jump on a pre-migration
+        /// asset into a one-hex move — wrong, plausible, and invisible.
+        /// </remarks>
+        public int JumpDistance => ResolveAuthoredDistance(_jumpDistance, BoardMetrics.DefaultJumpDistance);
 
         public bool HasArmor => _hasArmor;
 
@@ -108,6 +150,7 @@ namespace GooGalaxy.Runtime.Cards.Data
         internal void SetAuthoredData(
             string cardId,
             string displayName,
+            string description,
             CardType type,
             int energyCost,
             bool canClone,
@@ -115,15 +158,20 @@ namespace GooGalaxy.Runtime.Cards.Data
             bool hasArmor,
             bool ignoresHazards,
             int conversionRadius,
-            ImpactEffectDefinition[] landingEffects
+            ImpactEffectDefinition[] landingEffects,
+            int cloneDistance = BoardMetrics.DefaultCloneDistance,
+            int jumpDistance = BoardMetrics.DefaultJumpDistance
         )
         {
             _cardId = cardId;
             _displayName = displayName;
+            _description = description ?? string.Empty;
             _type = type;
             _energyCost = energyCost;
             _canClone = canClone;
             _canJump = canJump;
+            _cloneDistance = cloneDistance;
+            _jumpDistance = jumpDistance;
             _hasArmor = hasArmor;
             _ignoresHazards = ignoresHazards;
             _conversionRadius = conversionRadius;
@@ -146,10 +194,20 @@ namespace GooGalaxy.Runtime.Cards.Data
         internal void ValidateAuthoredData()
         {
             _conversionRadius = Mathf.Clamp(_conversionRadius, BoardMetrics.DefaultConversionRadius, BoardMetrics.MaxConversionRadius);
+            _cloneDistance = ResolveAuthoredDistance(_cloneDistance, BoardMetrics.DefaultCloneDistance);
+            _jumpDistance = ResolveAuthoredDistance(_jumpDistance, BoardMetrics.DefaultJumpDistance);
 
             if (string.IsNullOrWhiteSpace(_cardId))
             {
                 Debug.LogWarning(string.Format(CardLogMessages.CardIdEmptyFormat, name), this);
+            }
+
+            // A warning rather than a repair, exactly as the empty id above: an unauthored description is a
+            // legal state for the type — CardDefinition copies whatever it is given — but never one a shipped
+            // card should be in, and the Inspector is the only place a designer sees it in time.
+            if (string.IsNullOrWhiteSpace(_description))
+            {
+                Debug.LogWarning(string.Format(CardLogMessages.DescriptionEmptyFormat, name), this);
             }
 
             WarnOnUnplayableSpellClusters();
@@ -175,6 +233,11 @@ namespace GooGalaxy.Runtime.Cards.Data
 
                 Debug.LogWarning(string.Format(CardLogMessages.SpellClusterSizeMissingFormat, name, i), this);
             }
+        }
+
+        private static int ResolveAuthoredDistance(int authored, int fallback)
+        {
+            return authored <= 0 ? fallback : Mathf.Clamp(authored, BoardMetrics.MinMoveDistance, BoardMetrics.MaxMoveDistance);
         }
 
         private ImpactEffect[] BuildLandingEffects()

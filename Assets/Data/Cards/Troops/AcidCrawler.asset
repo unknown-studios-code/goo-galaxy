@@ -14,10 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: GooGalaxy.Runtime.Cards::GooGalaxy.Runtime.Cards.Data.CardDataSO
   _cardId: acid_crawler
   _displayName: Acid Crawler
+  _description: Leaves a toxic puddle on the sector it vacates when it Jumps. Nothing
+    can land there.
   _type: 0
   _energyCost: 2
   _canClone: 1
   _canJump: 1
+  _cloneDistance: 1
+  _jumpDistance: 2
   _ignoresHazards: 0
   _hasArmor: 0
   _conversionRadius: 1

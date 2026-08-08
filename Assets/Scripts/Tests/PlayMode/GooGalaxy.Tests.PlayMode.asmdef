@@ -13,6 +13,7 @@
     "GooGalaxy.Runtime.Shared",
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Cards",
     "GooGalaxy.Runtime.Core",
     "VContainer",
     "UnityEngine.TestRunner"

@@ -257,7 +257,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
 
             try
             {
-                resolution = MovementResolver.Resolve(grid, _activeUnits, _unitSpawner, command, _affectedCoordinates, out spawnedUnit);
+                resolution = MovementResolver.Resolve(grid, _activeUnits, _unitSpawner, command, capability, _affectedCoordinates, out spawnedUnit);
             }
             catch (Exception exception)
             {

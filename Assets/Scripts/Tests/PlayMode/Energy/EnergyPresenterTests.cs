@@ -177,7 +177,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
 
             // THEN
             Assert.That(_presenter.GetEnergy(1), Is.EqualTo(5f).Within(Tolerance));
-            Assert.That(_presenter.GetEnergy(2), Is.EqualTo(5.5f).Within(Tolerance), "Player two carries the Komi bonus.");
+            Assert.That(_presenter.GetEnergy(2), Is.EqualTo(5f).Within(Tolerance));
         }
 
         [Test]

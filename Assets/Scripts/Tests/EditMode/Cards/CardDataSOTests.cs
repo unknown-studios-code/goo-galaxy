@@ -35,6 +35,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 string.Empty,
                 "Unnamed",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 1,
                 canClone: false,
@@ -71,6 +72,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "bio_phalanx",
                 "Bio-Phalanx",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 3,
                 canClone: true,
@@ -108,7 +110,73 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(card.HasArmor, Is.False);
             Assert.That(card.IgnoresHazards, Is.False);
             Assert.That(card.ConversionRadius, Is.EqualTo(1));
+            Assert.That(card.CloneDistance, Is.EqualTo(1));
+            Assert.That(card.JumpDistance, Is.EqualTo(2));
             Assert.That(card.LandingEffects, Is.Empty);
+        }
+
+        [Test]
+        public void CreateInstance_DefaultValues_DescriptionIsEmptyNotNull()
+        {
+            // GIVEN
+            CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card = card;
+
+            // THEN
+            Assert.That(card.Description, Is.Not.Null.And.Empty);
+        }
+
+        [Test]
+        public void Description_AfterSetAuthoredData_RoundTrips()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+
+            // WHEN
+            _card.SetAuthoredData(
+                "subject_alpha",
+                "Subject Alpha",
+                "Duplicates onto an adjacent hex.",
+                CardType.Troop,
+                energyCost: 1,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null
+            );
+
+            // THEN
+            Assert.That(_card.Description, Is.EqualTo("Duplicates onto an adjacent hex."));
+        }
+
+        [Test]
+        public void ValidateAuthoredData_WithEmptyDescription_WarnsThatTheCardFaceRendersBlank()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card.name = "TestCard";
+            _card.SetAuthoredData(
+                "subject_alpha",
+                "Subject Alpha",
+                string.Empty,
+                CardType.Troop,
+                energyCost: 1,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null
+            );
+            LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DescriptionEmptyFormat, "TestCard"));
+
+            // WHEN
+            _card.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
         }
 
         [Test]
@@ -121,6 +189,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "volatile_mass",
                 "Volatile Mass",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 4,
                 canClone: false,
@@ -136,6 +205,87 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
+        public void MoveDistances_AfterSetAuthoredData_RoundTrip()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+
+            // WHEN
+            _card.SetAuthoredData(
+                "long_ranged",
+                "Long Ranged",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 4,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null,
+                cloneDistance: 2,
+                jumpDistance: 4
+            );
+
+            // THEN
+            Assert.That((_card.CloneDistance, _card.JumpDistance), Is.EqualTo((2, 4)));
+        }
+
+        [TestCase(0)]
+        [TestCase(-3)]
+        public void JumpDistance_Unauthored_ResolvesToTheStandardTwoRatherThanTheSharedMinimum(int authored)
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+
+            // WHEN
+            _card.SetAuthoredData(
+                "long_ranged",
+                "Long Ranged",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 1,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null,
+                jumpDistance: authored
+            );
+
+            // THEN
+            Assert.That(_card.JumpDistance, Is.EqualTo(2));
+        }
+
+        [TestCase(0)]
+        [TestCase(-3)]
+        public void CloneDistance_AuthoredBelowTheMinimum_ClampsUpOnRead(int authored)
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+
+            // WHEN
+            _card.SetAuthoredData(
+                "long_ranged",
+                "Long Ranged",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 1,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null,
+                cloneDistance: authored
+            );
+
+            // THEN
+            Assert.That(_card.CloneDistance, Is.EqualTo(1));
+        }
+
+        [Test]
         public void IgnoresHazards_AfterSetAuthoredData_RoundTrips()
         {
             // GIVEN
@@ -145,6 +295,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "plasmic_leaper",
                 "Plasmic Leaper",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 3,
                 canClone: false,
@@ -167,6 +318,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "subject_alpha",
                 "Subject Alpha",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 1,
                 canClone: true,
@@ -192,6 +344,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "volatile_mass",
                 "Volatile Mass",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 4,
                 canClone: false,
@@ -219,6 +372,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "volatile_mass",
                 "Volatile Mass",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 4,
                 canClone: false,
@@ -247,6 +401,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "cryo_stasis",
                 "Cryo-Stasis",
+                "Test description.",
                 CardType.Spell,
                 energyCost: 2,
                 canClone: false,
@@ -278,6 +433,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "volatile_mass",
                 "Volatile Mass",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 4,
                 canClone: false,
@@ -304,6 +460,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "subject_alpha",
                 "Subject Alpha",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 1,
                 canClone: true,
@@ -329,6 +486,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "subject_alpha",
                 "Subject Alpha",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 1,
                 canClone: true,
@@ -356,6 +514,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "test_spell",
                 "Test Spell",
+                "Test description.",
                 CardType.Spell,
                 energyCost: 1,
                 canClone: false,
@@ -388,6 +547,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "test_spell",
                 "Test Spell",
+                "Test description.",
                 CardType.Spell,
                 energyCost: 1,
                 canClone: false,
@@ -418,6 +578,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             _card.SetAuthoredData(
                 "test_troop",
                 "Test Troop",
+                "Test description.",
                 CardType.Troop,
                 energyCost: 1,
                 canClone: false,

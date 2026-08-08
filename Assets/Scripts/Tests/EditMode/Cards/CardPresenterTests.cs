@@ -97,6 +97,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             card.SetAuthoredData(
                 cardId,
                 displayName,
+                "Test description.",
                 type,
                 energyCost,
                 canClone,

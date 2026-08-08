@@ -1,16 +1,30 @@
 using System;
 using System.Collections.Generic;
+using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
+using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace GooGalaxy.Tests.EditMode.Cards
 {
     [TestFixture]
     public class CardDefinitionTests
     {
+        private CardDataSO _sourceCardData;
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (_sourceCardData != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_sourceCardData);
+            }
+        }
+
         [Test]
         public void Constructor_FromCardData_CopiesEveryAuthoredValue()
         {
@@ -24,7 +38,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canJump: true,
                 hasArmor: true,
                 ignoresHazards: true,
-                conversionRadius: 2
+                conversionRadius: 2,
+                description: "Absorbs the first conversion attempt."
             );
 
             // WHEN
@@ -33,13 +48,42 @@ namespace GooGalaxy.Tests.EditMode.Cards
             // THEN
             Assert.That(definition.CardId, Is.EqualTo(source.CardId));
             Assert.That(definition.DisplayName, Is.EqualTo(source.DisplayName));
+            Assert.That(definition.Description, Is.EqualTo(source.Description));
             Assert.That(definition.Type, Is.EqualTo(source.Type));
             Assert.That(definition.EnergyCost, Is.EqualTo(source.EnergyCost));
             Assert.That(definition.CanClone, Is.EqualTo(source.CanClone));
             Assert.That(definition.CanJump, Is.EqualTo(source.CanJump));
+            Assert.That(definition.CloneDistance, Is.EqualTo(source.CloneDistance));
+            Assert.That(definition.JumpDistance, Is.EqualTo(source.JumpDistance));
             Assert.That(definition.HasArmor, Is.EqualTo(source.HasArmor));
             Assert.That(definition.IgnoresHazards, Is.EqualTo(source.IgnoresHazards));
             Assert.That(definition.ConversionRadius, Is.EqualTo(source.ConversionRadius));
+        }
+
+        [Test]
+        public void Constructor_FromCardDataSOWithNullDescription_CopiesAnEmptyDescription()
+        {
+            // GIVEN
+            _sourceCardData = ScriptableObject.CreateInstance<CardDataSO>();
+            _sourceCardData.SetAuthoredData(
+                "bio_phalanx",
+                "Bio-Phalanx",
+                null,
+                CardType.Troop,
+                energyCost: 3,
+                canClone: true,
+                canJump: true,
+                hasArmor: true,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: null
+            );
+
+            // WHEN
+            var definition = new CardDefinition(_sourceCardData);
+
+            // THEN
+            Assert.That(definition.Description, Is.EqualTo(string.Empty));
         }
 
         [Test]
@@ -166,15 +210,21 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 bool hasArmor,
                 bool ignoresHazards = false,
                 int conversionRadius = 1,
-                IReadOnlyList<ImpactEffect> landingEffects = null
+                IReadOnlyList<ImpactEffect> landingEffects = null,
+                string description = "",
+                int cloneDistance = BoardMetrics.DefaultCloneDistance,
+                int jumpDistance = BoardMetrics.DefaultJumpDistance
             )
             {
                 CardId = new CardId(cardId);
                 DisplayName = displayName;
+                Description = description;
                 Type = type;
                 EnergyCost = energyCost;
                 CanClone = canClone;
                 CanJump = canJump;
+                CloneDistance = cloneDistance;
+                JumpDistance = jumpDistance;
                 HasArmor = hasArmor;
                 IgnoresHazards = ignoresHazards;
                 ConversionRadius = conversionRadius;
@@ -185,11 +235,17 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             public string DisplayName { get; }
 
+            public string Description { get; }
+
             public CardType Type { get; }
 
             public int EnergyCost { get; }
 
             public bool CanClone { get; }
+
+            public int CloneDistance { get; }
+
+            public int JumpDistance { get; }
 
             public bool CanJump { get; }
 

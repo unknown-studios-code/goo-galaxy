@@ -4,6 +4,7 @@ using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Services;
 using GooGalaxy.Runtime.Shared.Commands;
+using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
@@ -73,6 +74,51 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(result, Is.EqualTo(MovementResult.OutOfRange));
+        }
+
+        [Test]
+        public void ValidateClone_TargetAtTheCardsAuthoredCloneDistance_ReturnsSuccess()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            var capability = new FakeMoveCapability(canClone: true, canJump: true, cloneDistance: 2);
+            var command = new MoveCommand(MoveType.Clone, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateClone(_grid, _units, command, capability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
+        public void ValidateClone_TargetShorterThanTheCardsAuthoredCloneDistance_ReturnsOutOfRange()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            var capability = new FakeMoveCapability(canClone: true, canJump: true, cloneDistance: 2);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateClone(_grid, _units, command, capability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.OutOfRange));
+        }
+
+        [Test]
+        public void ValidateJump_TargetAtTheCardsAuthoredJumpDistance_ReturnsSuccess()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            var capability = new FakeMoveCapability(canClone: true, canJump: true, jumpDistance: 1);
+            var command = new MoveCommand(MoveType.Jump, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateJump(_grid, _units, command, capability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
         }
 
         [Test]
@@ -658,13 +704,14 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void ValidateBoardState_HazardousTarget_ReturnsSuccessBecauseTheHazardRuleIsCapabilityRelative()
         {
             // GIVEN — pinned per the documented invariant: ValidateBoardState skips the hazard rule so a legal
-            // Hover landing does not throw when MovementResolver re-checks board state without a capability.
+            // Hover landing does not throw when MovementResolver re-checks board state.
             PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
             SetHazard(_adjacentCoords);
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+            var capability = new FakeMoveCapability(canClone: true, canJump: true);
 
             // WHEN
-            MovementResult result = MovementValidator.ValidateBoardState(_grid, _units, command, MoveType.Clone, out _, out _, out _);
+            MovementResult result = MovementValidator.ValidateBoardState(_grid, _units, command, MoveType.Clone, capability, out _, out _, out _);
 
             // THEN
             Assert.That(result, Is.EqualTo(MovementResult.Success));
@@ -729,11 +776,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
         private sealed class FakeMoveCapability : IMoveCapable
         {
-            public FakeMoveCapability(bool canClone, bool canJump, bool ignoresHazards = false)
+            public FakeMoveCapability(
+                bool canClone,
+                bool canJump,
+                bool ignoresHazards = false,
+                int cloneDistance = BoardMetrics.DefaultCloneDistance,
+                int jumpDistance = BoardMetrics.DefaultJumpDistance
+            )
             {
                 CanClone = canClone;
                 CanJump = canJump;
                 IgnoresHazards = ignoresHazards;
+                CloneDistance = cloneDistance;
+                JumpDistance = jumpDistance;
             }
 
             public bool CanClone { get; }
@@ -741,6 +796,10 @@ namespace GooGalaxy.Tests.EditMode.Board
             public bool CanJump { get; }
 
             public bool IgnoresHazards { get; }
+
+            public int CloneDistance { get; }
+
+            public int JumpDistance { get; }
         }
     }
 }
