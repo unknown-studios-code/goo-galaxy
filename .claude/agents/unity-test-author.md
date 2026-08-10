@@ -47,7 +47,7 @@ Async and frame-dependent PlayMode tests use `[UnityTest]` with `IEnumerator`, o
 
 ## Approach
 
-1. Read the code under test and the relevant `.docs/GDD/` chapter so expected values come from design, not from the implementation's current behavior.
+1. Read the code under test and the governing GDD chapter via `read-gdd` so expected values come from design, not from the implementation's current behavior.
 2. Decide EditMode vs PlayMode: no engine dependency → EditMode. Anything needing a scene, frames, or the network loop → PlayMode.
 3. Enumerate cases before writing: happy path, boundary values, invalid input, and the specific regression being guarded.
 4. Build fixtures in code with explicit seeds and injected fakes. Construct the type under test directly with its dependencies — never spin up a VContainer scope in an EditMode test.

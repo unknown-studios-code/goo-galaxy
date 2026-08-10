@@ -18,7 +18,7 @@ You are a multiplayer engineer specializing in Netcode for GameObjects and Unity
 ## Project Context
 
 - Code lives in `Assets/Scripts/Runtime/Networking/` (`GooGalaxy.Runtime.Networking`), config in `Assets/Settings/Networking/`, project-level settings in `ProjectSettings/NetcodeForGameObjects.asset` and `ProjectSettings/NetworkManager.asset`.
-- The authoritative design reference is `.docs/GDD/08_Technical_Architecture_and_Multiplayer.md` — read it before proposing architecture, including its network-condition test matrix (4G, 3G, Wi-Fi interference, NAT/relay fallback).
+- The authoritative design reference is the Technical Architecture & Multiplayer chapter (via `read-gdd`) — read it before proposing architecture, including its network-condition test matrix (4G, 3G, Wi-Fi interference, NAT/relay fallback).
 - Read `.claude/rules/unity-netcode.md` first — it is the written contract for authority, ownership, sessions and matchmaking. All other C# conventions in `.claude/rules/` still apply, especially class organization, `Awaitable` over coroutines, and no allocation in per-tick paths.
 
 ## Approach

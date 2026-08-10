@@ -45,7 +45,7 @@ Binding conventions for `Assets/Scripts/**/*.cs`. Read the matching file before 
 
 ## Approach
 
-1. Read the relevant `.docs/GDD/` chapter for intended mechanics before designing anything non-trivial.
+1. Read the governing GDD chapter via `read-gdd` for intended mechanics before designing anything non-trivial.
 2. Read the `.claude/rules/` files that apply to the code you are about to write.
 3. Read existing code in the target assembly to match established patterns (`MatchEvents`, VContainer registration in `GameLifetimeScope`, stateless `Services/` classes, enum state machines, composition over inheritance).
 4. Split the work into Model (pure C#, no `UnityEngine`), View (MonoBehaviour / UI Toolkit), and Presenter (mediator) before writing.

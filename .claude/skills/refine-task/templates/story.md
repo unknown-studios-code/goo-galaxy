@@ -82,11 +82,12 @@ _Choose the emoji color based on the risk: 🔴 critical (blocks story completio
 - **🎨 Design Files:**
   - [Architecture Diagram](URL)
   - [UI Mockup](URL)
-- **📚 Documentation:**
-  - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
-  - [Unity 6, NGO, or MPS reference](URL)
+- **📚 GDD:** _(always `<mention-page>` — take the URL from the `read-gdd` skill)_
+  - <mention-page url="https://app.notion.com/3b856d55129b8150b24ee9eaa76020bf">Technical Architecture & Multiplayer</mention-page> — [why this chapter matters to the story]
+- **📐 Rules & Code:**
+  - `.claude/rules/[rule-file].md` — [what it governs here]
 - **🌐 External Resources:**
-  - [Reference Implementation](URL)
+  - [Unity 6, NGO, or MPS reference](URL)
 ````
 
 ---

@@ -16,7 +16,7 @@ You act as the **delivery lead**: you own intake, grounding, agent selection, de
 | Input the user gave                          | What to do                                                                             |
 | :------------------------------------------- | :------------------------------------------------------------------------------------- |
 | A `GOOE`/`GOOS`/`GOOT`/`GOOM` ID             | Use the `track-task` skill to search Notion, fetch the page, and read its full content |
-| A path under `.docs/refinement/`             | Read that file                                                                         |
+| A Notion page URL                            | Fetch that page directly                                                               |
 | A branch name like `feat/GOOM-5`             | Extract the ID, then follow the ID row                                                 |
 | Pasted task text, a spec, or a plain request | Use it directly                                                                        |
 | Nothing usable                               | Ask for the ID or the content. Do not invent a task.                                   |

@@ -80,7 +80,7 @@ Group changes by the folders the diff actually touched — take them from `git d
 | `Assets/Editor/{Domain}/`                          | Editor tooling                                                 |
 | `Assets/{Art,Audio,Data,Prefabs,Scenes,Settings}/` | Content and configuration                                      |
 | `.github/`, `package.json`, `.husky/`              | CI and tooling                                                 |
-| `.docs/`, `.claude/`                               | Documentation and agent configuration                          |
+| `.claude/`                                         | Agent configuration, rules, and skills                         |
 
 Do not fabricate folder structures or architecture buckets that do not exist in this repository.
 
@@ -94,9 +94,11 @@ Always include:
 
 - The Notion task link (when available)
 - The Notion story link (when available)
-- Relevant documentation under `.docs/GDD/` when it helps reviewers
+- The relevant **GDD chapter as a Notion link** when it helps reviewers
 
-If the PR touches networking, sessions, or multiplayer, reference `.docs/GDD/08_Technical_Architecture_and_Multiplayer.md`.
+**Link GDD chapters to Notion.** The GDD is not in the repository, so a repository path in a PR body resolves to nothing for a reviewer on GitHub. `read-gdd` carries the chapter-to-URL table — take the URL from there. If the PR touches networking, sessions, or multiplayer, link [Technical Architecture & Multiplayer](https://app.notion.com/3b856d55129b8150b24ee9eaa76020bf).
+
+**Use ordinary Markdown links, not `<mention-page>`.** A mention is Notion-flavored Markdown and renders as literal tag text on GitHub. `<mention-page>` belongs in Notion pages — a PR body is GitHub Markdown.
 
 ## Task and Story IDs
 

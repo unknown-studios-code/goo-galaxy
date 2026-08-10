@@ -65,4 +65,8 @@ The project skills own each step (`/create-commit`, `/open-pull-request`, `/refi
 
 ## GDD
 
-The game design doc in `.docs/GDD/` (12 chapters, `00`–`11`) is the design source of truth — pitch, mechanics, math/balance, troops, economy, meta-game, art, audio, tech architecture, MVP roadmap, ops/legal. Read the governing chapter before designing a feature, and keep it in sync when project structure changes.
+The game design doc is the design source of truth — pitch, mechanics, math/balance, troops, economy, meta-game, art, audio, tech architecture, MVP roadmap, ops/legal. Read the governing chapter before designing a feature, and keep it in sync when project structure changes.
+
+**It lives in Notion**, as 12 pages in the [Documentation wiki](https://app.notion.com/p/31b56d55129b801aa007d27114249b81) — one per chapter, tagged and cross-linked. There is no copy in the repository, so it is never grepped: every read is a fetch and every citation is a link.
+
+The `read-gdd` skill is the index. It carries the chapter-to-URL table and says which chapter governs what, so a lookup costs one fetch instead of a search — invoke it rather than hunting for a page. Cite a chapter with `<mention-page>` inside Notion and with its URL everywhere else; **`gdd-steward` owns edits**, and they are made to the page, never to a local copy. Refinement documents follow the same rule — `/refine-task` creates them in the Notion task database, not on disk.

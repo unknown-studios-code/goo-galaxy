@@ -1,7 +1,7 @@
 ---
 name: refine-task
 description: >-
-  Write and refine Goo Galaxy tasks, stories, and epics as markdown documents using the project's structured templates. Use whenever the user asks to create a task, refine a task, draft a story, write up a bug report, design a feature spec, create an epic, or improve a task description. Automatically reads GDDs and architectural rules, and saves the result to `.docs/refinement/`.
+  Write and refine Goo Galaxy tasks, stories, and epics as Notion pages using the project's structured templates. Use whenever the user asks to create a task, refine a task, draft a story, write up a bug report, design a feature spec, create an epic, or improve a task description. Automatically reads GDDs and architectural rules, and creates the page in the Notion task database.
 ---
 
 # Persona & Architecture Constraints
@@ -10,20 +10,22 @@ You are acting as a **Senior Software Architect and Technical Lead** specializin
 
 Your objective is to ensure that all tasks, especially technical ones, strictly adhere to our project's architecture: **Standard Unity GameObjects/MonoBehaviours, applied SOLID principles, and the MVP (Model-View-Presenter) pattern**. You must ensure a clean separation of concerns between data (Model), logic and state management (Presenter), and Unity-specific visual components (View).
 
-This skill **writes the refinement document to disk**. Producing the markdown in chat is not the deliverable — always save the file (see Output Destination & Naming) and report its path. Only skip the write when the user explicitly asks for chat output only.
+This skill **creates the refinement document as a Notion page**. Producing the markdown in chat is not the deliverable, and neither is a local file — always create or update the Notion page (see Output Destination) and report its URL and task ID. Only skip the write when the user explicitly asks for chat output only.
+
+**Precondition:** this needs a connected Notion MCP server — both to read the GDD and to create the page. If no Notion MCP tool is available, say so, name what the user has to connect, and stop. Do not fall back to writing a local file: refinement documents are not version-controlled and a file on disk is not the deliverable.
 
 # Process
 
 When asked to create or refine a task, story, or epic, you must execute the following steps in order:
 
-1. **Architectural & Design Context** — Scan and read relevant Game Design Documents in the `.docs/GDD/` directory to understand the intended mechanics. Then, read the project's architectural guidelines and constraints in the `.claude/rules/` directory.
+1. **Architectural & Design Context** — Invoke `read-gdd` to resolve and fetch the GDD chapters that govern the feature. Then read the project's architectural guidelines and constraints in the `.claude/rules/` directory.
 2. **Template Selection** — Determine the right template from what the user describes (see table below).
 3. **Read the template** — Always read the chosen template file from `${CLAUDE_SKILL_DIR}/templates/` first. Do not work from memory.
 4. **Gather context** — Ask the user for details that fill each required section. Break the task down into actionable, granular technical sub-tasks or implementation steps.
 5. **Testing Strategy:** Define clear acceptance criteria and outline required Unit Tests (EditMode) for Models/Presenters and PlayMode tests for Views/Integration.
 6. **Fill the template** — Produce a complete markdown document following the template structure exactly. Adapt optional sections when they add value.
-7. **Apply quality checks** — Run through the template's Quality Checks checklist before writing the file.
-8. **Write the file** — Create or overwrite the document under `.docs/refinement/`, creating the folder if needed, and report the saved path. When refining an existing document, edit that file in place instead of creating a duplicate.
+7. **Apply quality checks** — Run through the template's Quality Checks checklist before creating the page.
+8. **Create the Notion page** — Create the page in the task database (see Output Destination), set its properties, and report the URL and the assigned task ID. When refining an existing task, update that page in place instead of creating a duplicate.
 
 ## Template Selection
 
@@ -43,7 +45,7 @@ If the type is unclear, ask the user before picking a template.
 
 When refining an existing task (not creating from scratch):
 
-- Read the current task content first.
+- Read the current task content first — fetch the Notion page, do not work from a local copy.
 - Evaluate the technical approach against our SOLID and MVP architecture rules.
 - Identify gaps against the template structure: missing sections, vague descriptions, missing edge cases, or dependencies with other systems.
 - Preserve existing content — fill gaps, sharpen vague language, and expand on technical requirements.
@@ -99,24 +101,50 @@ Use real Goo Galaxy paths as your foundation (`Assets/**/*`). You are allowed to
 
 Every task should include, when applicable:
 
-- Relevant `.docs/GDD/` files.
-- External resources or design files (Figma links, diagrams).
+- **GDD chapters, as `<mention-page>`.** `read-gdd` carries the chapter-to-URL table; take the URL from there rather than searching for the page.
 
-## Output Destination & Naming
+  ```
+  <mention-page url="https://app.notion.com/3b856d55129b8150b24ee9eaa76020bf">Technical Architecture & Multiplayer</mention-page>
+  ```
 
-- **Directory:** All generated or refined tasks must be saved in the `.docs/refinement/` folder. If this folder does not exist, you are required to create it before saving the file.
-- **Filename:** The markdown file must be named using the task's title converted strictly to `Snake_Case` with the `.md` extension (e.g., if the title is "Main Menu UI", the file must be named `Main_Menu_UI.md`).
+- `.claude/rules/` files and repository paths (`Assets/**`, `.github/**`) as inline code. These are version-controlled and correct as paths.
+- External resources or design files (Figma links, diagrams) as ordinary Markdown links.
+
+## Output Destination
+
+The document is created as a page in the **MVP Tasks** database — data source `collection://32156d55-129b-817a-9232-000b450386af`. Use `track-task` to confirm the destination when the work is a story or epic rather than an MVP task.
+
+**Properties to set on create.** This database accepts them in the create call (unlike the Documentation wiki, where they are silently dropped and need a follow-up update):
+
+| Property                 | Value                                                                 |
+| :----------------------- | :-------------------------------------------------------------------- |
+| `Name`                   | The task title. No numeric prefix, no emoji.                          |
+| `Type`                   | `Feature`, `Tech`, or `Bug` — matching the template that was used.    |
+| `Priority`               | `Low`, `Medium`, `High`, or `Critical`.                               |
+| `Status`                 | `Not started`.                                                        |
+| `Branch`, `Pull Request` | Leave empty. `start-task` and `open-pull-request` fill them in.       |
+| `ID`                     | **Not settable** — auto-increment. Read it back to report `GOOM-<n>`. |
+
+**Body formatting.** The page body is Notion-flavored Markdown, which is not standard Markdown:
+
+- Tables are `<table header-row="true">` with `<tr>`/`<td>`, not pipes. Cells hold rich text only.
+- Math is `$`inline`$` and `$$` blocks. Mermaid is a ```mermaid fence.
+- Escape `\ * ~ \` $ [ ] < > { } | ^`outside code blocks —`\<`, `\>`, and `\~`bite most often, in threshold values like`\>85%`.
+- Do not repeat the title as a heading; it lives in `Name`.
+
+**Filename:** not applicable — nothing is written to disk.
 
 ## Quality Gate
 
-Before writing the final document, verify:
+Before creating the page, verify:
 
-- `.docs/GDD/` and `.claude/rules/` were consulted.
+- The GDD and `.claude/rules/` were consulted, and any load-bearing GDD detail was checked against Notion rather than the local mirror.
 - The technical design correctly applies GameObjects/MonoBehaviours, SOLID principles, and the MVP pattern.
 - Template structure is followed (not copy-pasted placeholders).
 - File paths respect the existing `Assets` project structure (sub-folders are allowed if nested correctly).
 - Assembly dependencies are documented when crossing boundaries.
 - PR workflow items close the Definition of Done.
+- Every GDD reference is a `<mention-page>`, never a repository path.
 - The document is self-contained — no external reading required to understand.
 
-After writing, confirm the file exists at the expected `.docs/refinement/` path and report it to the user.
+After creating it, read the page back to confirm the title and properties landed, then report the URL and the `GOOM-<n>` ID.

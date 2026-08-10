@@ -90,11 +90,13 @@ _Choose the emoji color based on the risk: 🔴 critical (could cause new crash/
 - **🐛 Bug Tracking:**
   - [Console Log Screenshot](URL)
   - [Profiler Snapshot](URL)
-- **📚 Documentation:**
-  - [Relevant Unity Documentation](URL)
-  - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
+- **📚 GDD:** _(always `<mention-page>` — take the URL from the `read-gdd` skill)_
+  - <mention-page url="https://app.notion.com/3b856d55129b8150b24ee9eaa76020bf">Technical Architecture & Multiplayer</mention-page> — [the rule the defect violates]
+- **📐 Rules & Code:**
+  - `.claude/rules/[rule-file].md` — [what it governs here]
+  - `Assets/Scripts/Runtime/[Feature]/[File].cs` — [where the defect lives]
 - **🌐 External Resources:**
-  - [Reference Implementation or Related Fix](URL)
+  - [Relevant Unity documentation, or a related fix](URL)
 ```
 
 ---
