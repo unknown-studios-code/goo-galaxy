@@ -82,7 +82,8 @@ Copy this template structure when creating a Pull Request.
 
 - **Notion Task:** [GOOT-X or GOOM-X](notion_url)
 - **Story:** [GOOS-X - Story Name](notion_url)
-- **Documentation:** [Relevant doc or file path](doc_or_file)
+- **GDD:** [Chapter Title](notion_url) — the chapter this change is governed by. Always a Notion link; the GDD is not in the repository.
+- **Code:** `Assets/Scripts/Runtime/[Feature]/[File].cs`, `.claude/rules/[rule].md` — repository paths, as inline code.
 ```
 
 ---
@@ -97,6 +98,7 @@ Copy this template structure when creating a Pull Request.
 - [ ] Definition of Done comes from Notion MCP and is only marked complete when true
 - [ ] Key Technical Decisions explains rationale, not just what changed
 - [ ] References include task, story, and supporting docs when relevant
+- [ ] GDD references are Notion links — not repository paths, and not `<mention-page>` tags
 - [ ] Final PR body is written in English only
 
 ## Important Notes

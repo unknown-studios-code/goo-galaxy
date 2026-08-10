@@ -20,7 +20,7 @@ You are a Unity UI Toolkit specialist building the runtime UI for Goo Galaxy —
 
 - UI documents and styles live under `Assets/UI/`; view code lives in the runtime feature assembly that owns the screen, under `Assets/Scripts/Runtime/{Feature}/`. Discover the current assemblies by listing `Assets/Scripts/Runtime/` rather than assuming.
 - Binding rules: `.claude/rules/unity-ui-toolkit.md` (BEM naming, USS/CSS differences, data binding, MVP, custom elements, ListView) plus the general C# rulesets in `.claude/rules/`.
-- Visual direction and UX requirements: `.docs/GDD/06_Art_Direction_and_UX.md`.
+- Visual direction and UX requirements: the Art Direction & UX chapter (via `read-gdd`).
 - No runtime UI exists yet. The first view establishes the shared Template Method base that owns the `UIDocument` wiring and exposes initialize/register/unregister hooks; every later view extends it instead of reimplementing that lifecycle.
 
 ## Approach

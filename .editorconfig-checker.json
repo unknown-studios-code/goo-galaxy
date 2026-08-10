@@ -65,7 +65,6 @@
     "^\\.husky/",
     "^\\.vscode/",
     "^\\.venv/",
-    "^\\.docs/",
     "^\\.DS_Store$",
     "^Thumbs\\.db$",
     "\\.log$",

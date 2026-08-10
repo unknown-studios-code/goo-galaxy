@@ -395,5 +395,5 @@ nohup.out
 # Virtual environment (used by Cursor skills)
 .venv/
 
-# Task refinement notes: working documents that live locally and are tracked in Notion instead
-.docs/refinement/
+# Local documentation
+.docs/

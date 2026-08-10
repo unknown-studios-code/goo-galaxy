@@ -90,11 +90,13 @@ _Choose the emoji color based on the risk: 🔴 critical (breaks builds/crashes)
 
 - **🎨 Design Files:**
   - [Behavior Flow Diagram](URL)
-- **📚 Documentation:**
-  - [Goo Galaxy Technical Architecture](.docs/GDD/08_Technical_Architecture_and_Multiplayer.md)
-  - [Unity 6 or package documentation](URL)
+- **📚 GDD:** _(always `<mention-page>` — take the URL from the `read-gdd` skill)_
+  - <mention-page url="https://app.notion.com/3b856d55129b8150b24ee9eaa76020bf">Technical Architecture & Multiplayer</mention-page> — [why this chapter matters to the task]
+- **📐 Rules & Code:**
+  - `.claude/rules/[rule-file].md` — [what it governs here]
+  - `Assets/Scripts/Runtime/[Feature]/[File].cs` — [what a reader should look at]
 - **🌐 External Resources:**
-  - [Reference Implementation](URL)
+  - [Unity 6 or package documentation](URL)
 ````
 
 ---
