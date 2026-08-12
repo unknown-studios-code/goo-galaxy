@@ -25,6 +25,7 @@ permissions:
 
 env:
   NODE_VERSION: ${{ vars.NODE_VERSION }}
+  CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
 
 defaults:
   run:
@@ -40,17 +41,26 @@ jobs:
       - name: Validate required CI variables
         env:
           NODE_VERSION: ${{ env.NODE_VERSION }}
+          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
         shell: bash
         run: |
-          if [[ -z "$NODE_VERSION" ]]; then
-            echo "Missing required GitHub Actions variable: NODE_VERSION" >&2
+          missing=0
+
+          for variable_name in NODE_VERSION CI_FETCH_DEPTH; do
+            if [[ -z "${!variable_name}" ]]; then
+              echo "Missing required GitHub Actions variable: $variable_name" >&2
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
             exit 1
           fi
 
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7

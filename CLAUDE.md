@@ -8,6 +8,8 @@ Goo Galaxy — real-time PvP mobile strategy game (Unity 6000.3.18f1, URP 17.3).
 
 ## Commands
 
+Prerequisites: Unity 6000.3.18f1, Node.js (`npm` scripts and Husky), the .NET SDK (`dotnet tool restore` pulls CSharpier), and **Docker Desktop** — the pre-commit hook shells out to a container to scan staged changes for secrets and fails the commit outright if the daemon is not reachable.
+
 ```powershell
 npm install            # runs husky + dotnet tool restore via the prepare script
 npm run format         # csharpier + prettier, rewriting in place — run before every commit
@@ -18,9 +20,17 @@ Run `format` first, then `check`: `format` fixes what a formatter can, and `chec
 
 **There is deliberately no `dotnet format`.** It needs the Unity-generated `.csproj`/`.slnx`, which are untracked, so it cannot run in CI or on a fresh clone; and in write mode a csproj that is stale relative to the `.asmdef` files makes it delete `using` directives it wrongly reads as unused.
 
-The Husky `pre-commit` hook runs `format`, then `check`, then `git add -u`. The `check` after the `format` is the point: whatever the formatters could not fix — a long line, above all — fails the hook instead of reaching CI, and nothing is staged. Commits created with `HUSKY=0` (see the `create-commit` skill) skip all of it, so run both explicitly in that path.
+The Husky `pre-commit` hook checks that Docker is reachable, then runs `lint-staged`, then the two secret gates (see below). **`lint-staged` works on the staged files only** — CSharpier then editorconfig-checker on staged C#, Prettier on staged JSON/Markdown/YAML — and re-stages what it rewrote, so the formatter's output lands in the commit. It hides unstaged hunks while it runs, so a partially staged file keeps the hunks you deliberately left out. Its config lives under `lint-staged` in `package.json`.
+
+The order is deliberate at both ends. Docker is checked first because it is the one gate answerable without the index, so a stopped daemon fails in milliseconds instead of after the formatters run. The secret gates run last because `lint-staged` is what finally settles the index, and scanning any earlier would examine pre-formatter content — or miss a file the formatter restaged.
+
+The trade is that the hook no longer verifies the **whole repository**: a violation in a file you did not stage now reaches CI instead of failing locally. That is what CI's Format Check is for, and `npm run check` covers it locally on demand.
+
+**Do not disable the hooks with `HUSKY=0`.** It used to be the routine path for agent-authored commits, because the Commitizen `prepare-commit-msg` hook opened an interactive prompt that hung any non-interactive caller. That hook now exits immediately whenever git already has a message — which `git commit -m` always does — so the prompt only appears for a bare `git commit`. `HUSKY=0` today buys nothing and costs the formatting and secret gates.
 
 **Run tests and builds through the open editor, never through batch mode.** `run_tests` and `build` drive the running editor and report back; `Unity.exe -batchmode` needs the project lock, forces the editor closed, and rewrites render pipeline and project settings as a side effect. See `.claude/rules/unity-editor-automation.md`. CI runs both suites on PRs.
+
+**Secret scanning runs on every commit and in CI.** The `pre-commit` hook and `.github/workflows/secret-scan.yml` both run [Betterleaks](https://github.com/betterleaks/betterleaks) as a container, digest-pinned — `ghcr.io/betterleaks/betterleaks@sha256:16f903f0100ce7358ef1f870858777e55bec94cf04c6b65c45d013274ea3311c`, never a tag, never `:latest` — plus a filename-extension gate for secret-shaped files (`.key`, `.pem`, `.p12`, `.pfx`, `.keystore`, `.jks`, `.mobileprovision`, `.cer`, `.p8`, sourced from `.github/rulesets/push-rulesets/01-sensitive-files-protection.json`). If the hook fails on the Docker check, start Docker Desktop and retry — it fails the commit rather than skipping the scan, on purpose, so never work around it by uninstalling or ignoring the hook. If it fails on an actual finding, treat it as a real leak until proven otherwise: fix the content or rotate the credential. Never add `--redact` removal, `|| true`, `continue-on-error`, or a `.betterleaksignore`/`.betterleaks.toml` to force it green — ask first if you believe a finding is a false positive.
 
 ## Architecture
 

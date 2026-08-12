@@ -38,6 +38,7 @@ Because of that, the ruleset set is intentionally small. The copied `master`, `d
   - `Build iOS Player`
   - `Unity Edit Mode Tests`
   - `Unity Play Mode Tests`
+  - `Secret Scan`
 - Additional protections:
   - block force-push
   - require linear history
@@ -50,6 +51,7 @@ Because of that, the ruleset set is intentionally small. The copied `master`, `d
 - Scope: entire repository
 - Blocks generic secret files plus mobile-signing assets such as `.keystore`, `.jks`, `.mobileprovision`, `.p8`, `.p12`, and `.pfx`.
 - Enforces `100 MB` max file size and `255` max path length.
+- **Not currently in force.** Push rulesets are gated behind a paid GitHub plan for org-owned repositories, and this repository is not on one, so GitHub is not evaluating this file today — importing it does nothing until the plan changes. Do not assume filename-shaped secrets are being blocked at push time. The extension list it defines is reused (not enforced through GitHub) by `secret-scan.yml`'s "Block secret-shaped file extensions" step and by the `.husky/pre-commit` hook, both of which fail a commit or a CI run directly rather than depending on this ruleset.
 
 ### Release Tag Protection
 

@@ -1,1 +1,13 @@
-exec < /dev/tty && node_modules/.bin/cz --hook || true
+# Commitizen composes a message interactively, so it is only useful when git was
+# not given one. $2 is the message source: "message" for -m/-F, "commit" for
+# --amend/-c/-C, "merge", "squash", or empty for a bare `git commit`.
+[ -z "$2" ] || exit 0
+
+# Probe the terminal inside a subshell. `exec < /dev/tty` is a special builtin,
+# so a failed redirection kills the shell outright and fails the commit — and
+# testing with -e is not enough, because /dev/tty can exist without being
+# openable. A subshell can die without taking this one with it.
+( : < /dev/tty ) 2>/dev/null || exit 0
+
+exec < /dev/tty
+node_modules/.bin/cz --hook || true
