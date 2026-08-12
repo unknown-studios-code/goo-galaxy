@@ -9,6 +9,7 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
 ├── pr-check.yml               # PR title validation
 ├── format-check.yml           # Repository format validation
 ├── codeql.yml                 # CodeQL SAST security analysis
+├── secret-scan.yml            # Betterleaks full-history secret scanning
 ├── unity-build-android.yml    # Android build validation
 ├── unity-build-ios.yml        # iOS build validation
 ├── unity-tests-editmode.yml   # Edit Mode tests
@@ -44,6 +45,15 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
 - Trigger: `push` to `main`, `pull_request` to `main`, weekly schedule, plus `workflow_dispatch`
 - Status check: `CodeQL Analysis (csharp)`, `CodeQL Analysis (actions)`
 - Purpose: perform static application security testing (SAST) on C# codebase and GitHub Actions workflows (`security-and-quality` suite with `build-mode: none`).
+
+### Secret Scan
+
+- File: `secret-scan.yml`
+- Trigger: `push` to any branch, plus a weekly schedule
+- Status check: `Secret Scan`
+- Purpose: run [Betterleaks](https://github.com/betterleaks/betterleaks) against the full repository history (digest-pinned container, `--redact --verbose`) and block staged/changed files whose extension is secret-shaped (mirrors the `file_extension_restriction` rule in `.github/rulesets/push-rulesets/01-sensitive-files-protection.json`, which the push ruleset itself cannot enforce — see `.github/rulesets/README.md`).
+- **Deliberately does not read `CI_FETCH_DEPTH`.** It hardcodes `fetch-depth: 0` instead. `CI_FETCH_DEPTH` is `1`, and a depth-1 clone only scans the current tree — a credential that was committed and later deleted (the most common way a secret leaks) would never be seen. Every other workflow reads the shared variable; this is the one intentional exception, so do not "fix" it back during a consistency pass.
+- **No `pull_request` trigger, on purpose.** It would overlap with `push` on every branch that has a pull request open and scan each commit twice. The `push` run attaches its check to the head commit, which is what the required status check on `main` evaluates, so the pull request is still gated. The trade: a pull request **from a fork** produces no run here, because the push happens in the fork. The required check then never reports and the merge stays blocked — visible and fail-closed, but it needs a manual look rather than a re-run.
 
 ### Android Build
 

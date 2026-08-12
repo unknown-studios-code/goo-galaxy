@@ -1,3 +1,62 @@
-npm run format
-npm run check
-git add -u
+# Docker must be reachable — the secret scan below runs in a container.
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker is required for the secret-scan pre-commit gate but was not found on PATH." >&2
+  echo "Install Docker Desktop, ensure 'docker' is available in this shell, then retry the commit." >&2
+  exit 1
+fi
+
+if ! docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
+  echo "Docker is installed but the daemon is not reachable." >&2
+  echo "Start Docker Desktop and wait for it to finish starting, then retry the commit." >&2
+  exit 1
+fi
+
+# Format and verify only the staged files, then re-stage what changed.
+# lint-staged does the re-staging itself and hides unstaged hunks while it runs.
+npx lint-staged --relative
+
+# Block staged files whose extension is secret-shaped, using the push ruleset's list.
+# Newline-joined on purpose: IFS is newline below, so a space-joined list matches nothing.
+extensions=$(node -e "console.log(require('./.github/rulesets/push-rulesets/01-sensitive-files-protection.json').rules.find(function (r) { return r.type === 'file_extension_restriction'; }).parameters.restricted_file_extensions.join('\n'))")
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+blocked=0
+
+if [ -n "$staged_files" ]; then
+  old_ifs="$IFS"
+  IFS='
+'
+  for file in $staged_files; do
+    for ext in $extensions; do
+      case "$file" in
+        *"$ext")
+          echo "Blocked commit: '$file' has restricted extension '$ext' (secret-shaped filename; see .github/rulesets/push-rulesets/01-sensitive-files-protection.json)" >&2
+          blocked=1
+          ;;
+      esac
+    done
+  done
+  IFS="$old_ifs"
+fi
+
+if [ "$blocked" -ne 0 ]; then
+  exit 1
+fi
+
+# Scan the staged content for credentials. On Git Bash, cygpath keeps MSYS from
+# rewriting the container-side "/repo" path.
+repo_root="$(git rev-parse --show-toplevel)"
+
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*)
+    repo_root="$(cygpath -w "$repo_root")"
+    export MSYS_NO_PATHCONV=1
+    ;;
+esac
+
+docker run --rm \
+  -e GIT_CONFIG_COUNT=1 \
+  -e GIT_CONFIG_KEY_0=safe.directory \
+  -e GIT_CONFIG_VALUE_0=/repo \
+  -v "${repo_root}:/repo" -w /repo \
+  ghcr.io/betterleaks/betterleaks@sha256:16f903f0100ce7358ef1f870858777e55bec94cf04c6b65c45d013274ea3311c \
+  git --pre-commit --redact --staged --verbose
