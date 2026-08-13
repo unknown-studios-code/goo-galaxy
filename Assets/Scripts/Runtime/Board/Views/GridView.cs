@@ -33,17 +33,17 @@ namespace GooGalaxy.Runtime.Board.Views
 
         public IReadOnlyDictionary<HexCoordinates, CellView> CellViews => _cellViews;
 
-        private void Awake()
+        protected void Awake()
         {
             Debug.Assert(_cellPrefab != null, BoardLogMessages.CellViewPrefabNotAssigned, this);
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             MatchEvents.GridInitialized += HandleGridInitialized;
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.GridInitialized -= HandleGridInitialized;
         }

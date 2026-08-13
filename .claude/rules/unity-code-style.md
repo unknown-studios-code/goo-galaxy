@@ -8,7 +8,7 @@ paths:
 
 ## 1. Overview
 
-This document defines the C# style, formatting, naming, and architectural conventions for the codebase. These rules ensure maintainability, readability, and performance across all game systems. Layout is enforced by CSharpier (`printWidth 160`) and whitespace by `editorconfig-checker` — when in doubt, run `npm run format` and let the tooling settle it. The naming matrix below is **not** currently checked by any tool: `dotnet format` was removed because it depends on Unity-generated project files, so naming rests on review until Roslyn analyzers run inside Unity's own compilation.
+This document defines the C# style, formatting, naming, and architectural conventions for the codebase. These rules ensure maintainability, readability, and performance across all game systems. Layout is enforced by CSharpier (`printWidth 160`), and everything `.editorconfig` declares — the naming matrix below, the IDE style rules, and the 42 UNT analyzer rules — by `dotnet format` in CI. When in doubt, run `npm run format` and let the tooling settle it.
 
 ## 2. Cross-References
 

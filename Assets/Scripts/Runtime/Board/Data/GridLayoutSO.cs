@@ -38,7 +38,7 @@ namespace GooGalaxy.Runtime.Board.Data
 
         internal IReadOnlyList<Vector2Int> AuthoredBlockedCoordinates => _blockedCoordinates;
 
-        private void OnValidate()
+        protected void OnValidate()
         {
             ValidateAuthoredData();
         }

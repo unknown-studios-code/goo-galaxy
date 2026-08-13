@@ -425,3 +425,135 @@ dotnet_diagnostic.IDE0058.severity = silent
 
 # 5.11 Namespace incompatibility
 dotnet_diagnostic.IDE0130.severity = none
+
+##################################################################################################
+# SECTION 6: UNITY ANALYZER RULES
+##################################################################################################
+
+[*.cs]
+
+# 6.1 Empty Unity message
+dotnet_diagnostic.UNT0001.severity = error
+
+# 6.2 Inefficient tag comparison
+dotnet_diagnostic.UNT0002.severity = error
+
+# 6.3 Usage of non generic GetComponent
+dotnet_diagnostic.UNT0003.severity = error
+
+# 6.4 Time.fixedDeltaTime used with Update
+dotnet_diagnostic.UNT0004.severity = error
+
+# 6.5 Incorrect message signature
+dotnet_diagnostic.UNT0006.severity = error
+
+# 6.6 Null coalescing on Unity objects
+dotnet_diagnostic.UNT0007.severity = error
+
+# 6.7 Null propagation on Unity objects
+dotnet_diagnostic.UNT0008.severity = error
+
+# 6.8 Missing static constructor with InitializeOnLoad
+dotnet_diagnostic.UNT0009.severity = error
+
+# 6.9 Component instance creation
+dotnet_diagnostic.UNT0010.severity = error
+
+# 6.10 ScriptableObject instance creation
+dotnet_diagnostic.UNT0011.severity = error
+
+# 6.11 Unused coroutine return value
+dotnet_diagnostic.UNT0012.severity = error
+
+# 6.12 Invalid or redundant SerializeField attribute
+dotnet_diagnostic.UNT0013.severity = error
+
+# 6.13 GetComponent called with non-Component or non-Interface type
+dotnet_diagnostic.UNT0014.severity = error
+
+# 6.14 Incorrect method signature with initialization attributes
+dotnet_diagnostic.UNT0015.severity = error
+
+# 6.15 Unsafe way to get the method name
+dotnet_diagnostic.UNT0016.severity = error
+
+# 6.16 SetPixels invocation is slow
+dotnet_diagnostic.UNT0017.severity = error
+
+# 6.17 System.Reflection features in performance critical messages
+dotnet_diagnostic.UNT0018.severity = error
+
+# 6.18 Unnecessary indirection call for GameObject.gameObject
+dotnet_diagnostic.UNT0019.severity = error
+
+# 6.19 MenuItem attribute used on non-static method
+dotnet_diagnostic.UNT0020.severity = error
+
+# 6.20 Unity message should be protected
+dotnet_diagnostic.UNT0021.severity = error
+
+# 6.21 Inefficient method to set position and rotation
+dotnet_diagnostic.UNT0022.severity = error
+
+# 6.22 Coalescing assignment on Unity objects
+dotnet_diagnostic.UNT0023.severity = error
+
+# 6.23 Give priority to scalar calculations over vector calculations
+dotnet_diagnostic.UNT0024.severity = error
+
+# 6.24 Input.GetKey overloads with KeyCode argument
+dotnet_diagnostic.UNT0025.severity = error
+
+# 6.25 GetComponent always allocates
+dotnet_diagnostic.UNT0026.severity = error
+
+# 6.26 Do not call PropertyDrawer.OnGUI()
+dotnet_diagnostic.UNT0027.severity = error
+
+# 6.27 Use non-allocating physics APIs
+dotnet_diagnostic.UNT0028.severity = error
+
+# 6.28 Pattern matching with null on Unity objects
+dotnet_diagnostic.UNT0029.severity = error
+
+# 6.29 Calling Destroy or DestroyImmediate on a Transform
+dotnet_diagnostic.UNT0030.severity = error
+
+# 6.30 Asset operations in LoadAttribute method
+dotnet_diagnostic.UNT0031.severity = error
+
+# 6.31 Inefficient method to set localPosition and localRotation
+dotnet_diagnostic.UNT0032.severity = error
+
+# 6.32 Incorrect message case
+dotnet_diagnostic.UNT0033.severity = error
+
+# 6.33 Vector3 conversion to Vector2
+dotnet_diagnostic.UNT0034.severity = error
+
+# 6.34 Vector2 conversion to Vector3
+dotnet_diagnostic.UNT0035.severity = error
+
+# 6.35 Inefficient method to get position and rotation
+dotnet_diagnostic.UNT0036.severity = error
+
+# 6.36 Inefficient method to get localPosition and localRotation
+dotnet_diagnostic.UNT0037.severity = error
+
+# 6.37 Cache WaitForSeconds invocations
+dotnet_diagnostic.UNT0038.severity = error
+
+# 6.38 Use RequireComponent with a self-invoking GetComponent
+dotnet_diagnostic.UNT0039.severity = error
+
+# 6.39 GameObject.isStatic is editor-only
+dotnet_diagnostic.UNT0040.severity = error
+
+# 6.40 Use Animator.StringToHash for repeated calls
+dotnet_diagnostic.UNT0041.severity = error
+
+# 6.41 Usage of Mesh array property in a loop
+dotnet_diagnostic.UNT0042.severity = error
+
+# 6.42 Possible typo in conditional compilation symbol
+dotnet_diagnostic.UNT0043.severity = error

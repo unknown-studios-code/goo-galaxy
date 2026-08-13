@@ -45,7 +45,7 @@ namespace GooGalaxy.Playtest
 
         public GridUnit SpawnUnit(int playerId, CardId cardId, HexCoordinates at)
         {
-            if (!PendingCardId.Equals(default(CardId)))
+            if (!PendingCardId.Equals(default))
             {
                 cardId = PendingCardId;
             }

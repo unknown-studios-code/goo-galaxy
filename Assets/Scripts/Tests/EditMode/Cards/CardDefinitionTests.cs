@@ -90,7 +90,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
         public void Constructor_FromCardDataWithLandingEffects_CopiesThemFieldForField()
         {
             // GIVEN
-            var landingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 3) };
+            ImpactEffect[] landingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 3) };
             var source = new FakeCardData(
                 "cryo_stasis",
                 "Cryo-Stasis",

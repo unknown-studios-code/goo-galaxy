@@ -62,7 +62,7 @@ namespace GooGalaxy.Runtime.Board.Services
 
             // Ahead of the board-state guard so an unsupported type reports what it actually is, rather than
             // the OutOfRange it would collect from authoring no distance.
-            if (command.Type != MoveType.Clone && command.Type != MoveType.Jump)
+            if (command.Type is not MoveType.Clone and not MoveType.Jump)
             {
                 throw new ArgumentException(FormatUnvalidatedMessage(command), nameof(command));
             }

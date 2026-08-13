@@ -21,7 +21,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         /// <summary>The grid built from the authored layout, or null while the layout is missing.</summary>
         public HexGrid HexGrid { get; private set; }
 
-        private void Awake()
+        protected void Awake()
         {
             Debug.Assert(_gridLayout != null, BoardLogMessages.GridLayoutConfigurationMissing, this);
 
@@ -29,7 +29,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         }
 
 #if UNITY_EDITOR
-        private void OnValidate()
+        protected void OnValidate()
         {
             if (Application.isPlaying && HexGrid != null && _gridLayout != null)
             {

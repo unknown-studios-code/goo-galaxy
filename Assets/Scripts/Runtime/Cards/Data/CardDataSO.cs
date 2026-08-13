@@ -139,7 +139,7 @@ namespace GooGalaxy.Runtime.Cards.Data
         public IReadOnlyList<ImpactEffect> LandingEffects => _cachedLandingEffects ??= BuildLandingEffects();
 
 #if UNITY_EDITOR
-        private void OnValidate()
+        protected void OnValidate()
         {
             _cachedLandingEffects = null;
             ValidateAuthoredData();

@@ -249,7 +249,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             // no value collection to bind
 
             // WHEN
-            void constructCall() => new StatusEffectResolver(null);
+            static void constructCall() => new StatusEffectResolver(null);
 
             // THEN
             Assert.Throws<ArgumentNullException>(constructCall);

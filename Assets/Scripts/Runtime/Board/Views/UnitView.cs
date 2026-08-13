@@ -191,7 +191,7 @@ namespace GooGalaxy.Runtime.Board.Views
         /// </remarks>
         internal int FrozenOverlayPoolInactiveCount => _frozenOverlayPool?.CountInactive ?? 0;
 
-        private void Awake()
+        protected void Awake()
         {
             if (_gridPresenter == null)
             {
@@ -243,7 +243,7 @@ namespace GooGalaxy.Runtime.Board.Views
             PrewarmPool(_frozenOverlayPool, FrozenOverlayPoolDefaultCapacity);
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             MatchEvents.MoveExecuted += HandleMoveExecuted;
             MatchEvents.ConversionResolved += HandleConversionResolved;
@@ -270,7 +270,7 @@ namespace GooGalaxy.Runtime.Board.Views
         // whole synchronous deployment chain has unwound is what makes an expiry visible on the deployment that
         // caused it rather than one deployment later. The flag keeps this a per-deployment registry pass, not a
         // per-frame one — an idle frame costs a single boolean test.
-        private void LateUpdate()
+        protected void LateUpdate()
         {
             if (!_areStatusOverlaysDirty)
             {
@@ -281,14 +281,14 @@ namespace GooGalaxy.Runtime.Board.Views
             RefreshStatusOverlays();
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
         }
 
-        private void OnDestroy()
+        protected void OnDestroy()
         {
             _unitVisuals.Clear();
             _unitRenderers.Clear();
