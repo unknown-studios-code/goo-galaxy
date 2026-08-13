@@ -226,8 +226,12 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true, ConversionRadius = 1 };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                ConversionRadius = 1,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _orderSource, capability);
             RegisterUnitAt(EnemyUnitId, RivalPlayerId, _orderEnemyCoords, new FakeCapability());
             var command = new MoveCommand(MoveType.Jump, _orderSource, _orderTarget, ActingPlayerId, ActingUnitId);
@@ -246,8 +250,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _emptySource, capability);
             var command = new MoveCommand(MoveType.Jump, _emptySource, _emptyTarget, ActingPlayerId, ActingUnitId);
 
@@ -266,8 +273,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _emptySource, capability);
             var command = new MoveCommand(MoveType.Jump, _emptySource, _emptyTarget, ActingPlayerId, ActingUnitId);
 
@@ -341,8 +351,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
             GridUnit actingUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _selfFreezeSource, capability);
             var command = new MoveCommand(MoveType.Jump, _selfFreezeSource, _selfFreezeTarget, ActingPlayerId, ActingUnitId);
 
@@ -413,10 +426,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var attackerCapability = new FakeCapability { CanJump = true };
-            attackerCapability.LandingEffects = new[]
+            var attackerCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.Enemy, 0),
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.Enemy, 0) },
             };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _thawAttackerSource, attackerCapability);
             // Armored so the radius-1 standard conversion (step 3) only strips its armor rather than flipping its
@@ -467,10 +480,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // re-hazarded by the very landing that already tracks it must not be ticked by that same landing.
             yield return ActivateBoardAsync();
 
-            var hazardCapability = new FakeCapability { CanJump = true };
-            hazardCapability.LandingEffects = new[]
+            var hazardCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0),
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) },
             };
 
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _hazardOverwriteHex, hazardCapability);
@@ -497,10 +510,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var hazardCapability = new FakeCapability { CanJump = true };
-            hazardCapability.LandingEffects = new[]
+            var hazardCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, RivalHazardDuration, TargetFilter.Self, 0),
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, RivalHazardDuration, TargetFilter.Self, 0) },
             };
 
             RegisterUnitAt(EnemyUnitId, RivalPlayerId, _hazardOverwriteHex, hazardCapability);
@@ -509,10 +522,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             RegisterUnitAt(ThirdUnitId, RivalPlayerId, _hazardOverwriteTickStart, new FakeCapability { CanJump = true });
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _hazardOverwriteTickStart, _hazardOverwriteTickAlt, RivalPlayerId, ThirdUnitId));
 
-            var actingHazardCapability = new FakeCapability { CanJump = true };
-            actingHazardCapability.LandingEffects = new[]
+            var actingHazardCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0),
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) },
             };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _hazardOverwriteHex, actingHazardCapability);
             LogAssert.Expect(LogType.Warning, BoardLogMessages.HazardOverwritten);
@@ -533,8 +546,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — the exemption is scoped to this landing's own affected hexes, not every tracked hazard.
             yield return ActivateBoardAsync();
 
-            var hazardCapability = new FakeCapability { CanJump = true };
-            hazardCapability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, 1, TargetFilter.Self, 0) };
+            var hazardCapability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, 1, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _untouchedHazardHex, hazardCapability);
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _untouchedHazardHex, _untouchedHazardFirstLanding, ActingPlayerId, ActingUnitId));
 
@@ -555,10 +571,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var hazardCapability = new FakeCapability { CanJump = true };
-            hazardCapability.LandingEffects = new[]
+            var hazardCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0),
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) },
             };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _gridResetHazardHex, hazardCapability);
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _gridResetHazardHex, _gridResetFirstLanding, ActingPlayerId, ActingUnitId));
@@ -587,8 +603,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // never find one to mark; this is an authoring mistake the controller must diagnose, not drop silently.
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanClone = true };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanClone = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _cloneHazardSource, capability);
             LogAssert.Expect(LogType.Warning, BoardLogMessages.HazardWithoutVacatedHex);
 
@@ -606,8 +625,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true };
-            capability.LandingEffects = new[] { new ImpactEffect((ImpactEffectType)99, StatusType.None, 0, 0, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect((ImpactEffectType)99, StatusType.None, 0, 0, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _unknownEffectStart, capability);
             LogAssert.Expect(LogType.Error, BoardLogMessages.UnknownImpactEffectType);
 
@@ -681,8 +703,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoardAsync();
             GridUnit alliedUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellAdjacentTwo, new FakeCapability());
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
 
             // WHEN
@@ -700,8 +724,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoardAsync();
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             GridUnit enemyUnit = RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellAdjacentTwo, new FakeCapability());
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
 
             // WHEN
@@ -718,8 +744,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
 
             // WHEN
@@ -736,8 +764,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
 
             // WHEN
@@ -804,8 +834,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
             Object.DestroyImmediate(_gridPresenter);
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Error, BoardLogMessages.AbilityBoardUnavailable);
 
@@ -825,8 +857,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoardAsync();
             GridUnit targetUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
             Object.DestroyImmediate(_gridPresenter);
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Error, BoardLogMessages.AbilityBoardUnavailable);
 
@@ -843,8 +877,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter, _spellAdjacentOne });
 
             // WHEN
@@ -861,8 +897,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
             GridUnit targetUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter, _spellAdjacentOne });
 
             // WHEN
@@ -878,8 +916,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
             SpellResult reentrantResult = SpellResult.Success;
 
@@ -908,8 +948,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
 
             void handleReentrant(int actingPlayerId, AbilityResult result) => _abilityController.ResolveSpell(command, capability);
@@ -939,8 +981,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // unavailable in between the outer and the nested call: both conditions are genuinely true for the
             // nested one.
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
             SpellResult reentrantResult = SpellResult.Success;
 
@@ -974,8 +1018,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — a Protocol has no acting unit and vacates no hex, so a SpawnHazard impact authored on
             // one is always this same authoring mistake.
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("miscast_protocol"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Warning, BoardLogMessages.HazardWithoutVacatedHex);
 
@@ -993,8 +1039,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — a Protocol puts no unit on the board, so a SelfDestruct impact authored on one can never
             // find an acting unit to remove.
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("miscast_protocol"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Warning, BoardLogMessages.SelfDestructWithoutActingUnit);
 
@@ -1011,8 +1059,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — latching: a second deployment of the same misauthored card must not add a second entry.
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("miscast_protocol"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Warning, BoardLogMessages.HazardWithoutVacatedHex);
 
@@ -1030,8 +1080,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — proves HandleGridInitialized resets the diagnostic latch, not just the hazard tracking list.
             yield return ActivateBoardAsync();
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("miscast_protocol"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Warning, BoardLogMessages.HazardWithoutVacatedHex);
             _abilityController.ResolveSpell(command, capability);
@@ -1054,15 +1106,17 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // expires anything.
             yield return ActivateBoardAsync();
 
-            var hazardCapability = new FakeCapability { CanJump = true };
-            hazardCapability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, 1, TargetFilter.Self, 0) };
+            var hazardCapability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, 1, TargetFilter.Self, 0) },
+            };
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _acidSource, hazardCapability);
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _acidSource, _acidTarget, ActingPlayerId, ActingUnitId));
 
-            var spellCapability = new FakeCapability();
-            spellCapability.LandingEffects = new[]
+            var spellCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1),
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
             };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
 
@@ -1082,8 +1136,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // the very deployment that cast it.
             yield return ActivateBoardAsync();
             GridUnit ownUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
-            var capability = new FakeCapability();
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
 
             // WHEN
@@ -1100,10 +1156,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardAsync();
 
-            var enemyCapability = new FakeCapability { CanJump = true };
-            enemyCapability.LandingEffects = new[]
+            var enemyCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.Enemy, 0),
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.Enemy, 0) },
             };
             RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellFarSource, enemyCapability);
             // Armored so the radius-1 standard conversion (step 3) only strips its armor rather than flipping its
@@ -1115,10 +1171,9 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _spellFarSource, _spellCenter, RivalPlayerId, EnemyUnitId));
             Assert.That(ownUnit.HasStatus(StatusType.Frozen), Is.True, "Test setup expects the earlier landing to have frozen the unit.");
 
-            var spellCapability = new FakeCapability();
-            spellCapability.LandingEffects = new[]
+            var spellCapability = new FakeCapability
             {
-                new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, FreezeDuration, TargetFilter.Self, 1),
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, FreezeDuration, TargetFilter.Self, 1) },
             };
             var command = new SpellCommand(ActingPlayerId, new CardId("subject_alpha"), new List<HexCoordinates> { _spellFarTarget });
 
@@ -1179,8 +1234,12 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true, ConversionRadius = 2 };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                ConversionRadius = 2,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0) },
+            };
             _lastActingUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _volatileSource, capability);
             _lastEnemyUnit = RegisterUnitAt(EnemyUnitId, RivalPlayerId, _volatileEnemyCoords, new FakeCapability());
             var command = new MoveCommand(MoveType.Jump, _volatileSource, _volatileTarget, ActingPlayerId, ActingUnitId);
@@ -1192,8 +1251,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
             _lastActingUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _cryoSource, capability);
             _lastFriendlyUnit = RegisterUnitAt(FriendlyUnitId, ActingPlayerId, _cryoFriendlyCoords, new FakeCapability { CanJump = true });
             var command = new MoveCommand(MoveType.Jump, _cryoSource, _cryoTarget, ActingPlayerId, ActingUnitId);
@@ -1205,8 +1267,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             yield return ActivateBoardAsync();
 
-            var capability = new FakeCapability { CanJump = true };
-            capability.LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) };
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) },
+            };
             _lastActingUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _acidSource, capability);
             var command = new MoveCommand(MoveType.Jump, _acidSource, _acidTarget, ActingPlayerId, ActingUnitId);
 

@@ -94,7 +94,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private bool _hasLoggedAbilityReentry;
         private bool _hasLoggedSpellReentry;
 
-        private void Awake()
+        protected void Awake()
         {
             _affectedUnitIdsView = new ReadOnlyCollection<int>(_affectedUnitIds);
             _affectedHexesView = new ReadOnlyCollection<HexCoordinates>(_affectedHexes);
@@ -118,13 +118,13 @@ namespace GooGalaxy.Runtime.Board.Controllers
             }
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             MatchEvents.GridInitialized += HandleGridInitialized;
             MatchEvents.LandingResolved += HandleLandingResolved;
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.GridInitialized -= HandleGridInitialized;
             MatchEvents.LandingResolved -= HandleLandingResolved;
@@ -193,7 +193,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
                 return SpellResult.BoardUnavailable;
             }
 
-            IReadOnlyList<ImpactEffect> landingEffects = capability == null ? null : capability.LandingEffects;
+            IReadOnlyList<ImpactEffect> landingEffects = capability?.LandingEffects;
 
             if (landingEffects == null || landingEffects.Count == 0)
             {
@@ -308,7 +308,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
 
             try
             {
-                AbilityContext context = AbilityContext.ForLanding(
+                var context = AbilityContext.ForLanding(
                     command.PlayerId,
                     hasLanded ? landingCell.OccupantUnitId : AbilityContext.NoActingUnit,
                     command.Target,

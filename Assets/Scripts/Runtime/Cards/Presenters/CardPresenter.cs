@@ -15,7 +15,7 @@ namespace GooGalaxy.Runtime.Cards.Presenters
 
         private readonly Dictionary<CardId, ICardData> _cardsById = new();
 
-        private void Awake()
+        protected void Awake()
         {
             BuildRegistry();
         }

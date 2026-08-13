@@ -30,7 +30,7 @@ namespace GooGalaxy.Runtime.Energy.Presenters
 
         private readonly Dictionary<int, EnergyState> _playerStates = new();
 
-        private void Update()
+        protected void Update()
         {
             foreach (KeyValuePair<int, EnergyState> kvp in _playerStates)
             {

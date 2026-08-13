@@ -19,7 +19,7 @@ namespace GooGalaxy.Runtime.Board.Views
 
         public bool IsHighlighted => _isHighlighted;
 
-        private void Awake()
+        protected void Awake()
         {
             _spriteRenderer = GetComponent<SpriteRenderer>();
         }

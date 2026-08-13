@@ -462,7 +462,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void Resolve_SelfDestructWithNoActingUnit_SetsSelfDestructWithoutActingUnitDiagnostic()
         {
             // GIVEN — distinct from SelfDestructOnDeadUnit: there is no acting unit id at all to look up.
-            AbilityContext context = AbilityContext.ForLanding(ActingPlayerId, AbilityContext.NoActingUnit, _origin, false, default, default);
+            var context = AbilityContext.ForLanding(ActingPlayerId, AbilityContext.NoActingUnit, _origin, false, default, default);
             _landingEffects.Add(new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0));
 
             // WHEN

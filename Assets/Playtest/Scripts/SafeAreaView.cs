@@ -20,12 +20,12 @@ namespace GooGalaxy.Playtest
         private UIDocument _document;
         private VisualElement _root;
 
-        private void Awake()
+        protected void Awake()
         {
             _document = GetComponent<UIDocument>();
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             // Awake does not run on a domain reload in edit mode, so the reference is re-resolved here.
             if (_document == null)
@@ -37,14 +37,14 @@ namespace GooGalaxy.Playtest
             ApplySafeArea();
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             UnregisterFromRoot();
         }
 
 #if UNITY_EDITOR
         // Re-applies after the Inspector swaps the source asset or the panel settings, which rebuilds the root.
-        private void OnValidate()
+        protected void OnValidate()
         {
             if (_document == null)
             {
@@ -62,7 +62,7 @@ namespace GooGalaxy.Playtest
         /// </summary>
         public void ApplySafeArea()
         {
-            VisualElement root = _document == null ? null : _document.rootVisualElement;
+            VisualElement root = _document != null ? _document.rootVisualElement : null;
 
             if (root == null)
             {
@@ -97,7 +97,7 @@ namespace GooGalaxy.Playtest
 
         private void RegisterOnRoot()
         {
-            VisualElement root = _document == null ? null : _document.rootVisualElement;
+            VisualElement root = _document != null ? _document.rootVisualElement : null;
 
             if (root == _root)
             {
@@ -107,10 +107,7 @@ namespace GooGalaxy.Playtest
             UnregisterFromRoot();
             _root = root;
 
-            if (_root != null)
-            {
-                _root.RegisterCallback<GeometryChangedEvent>(HandleRootGeometryChanged);
-            }
+            _root?.RegisterCallback<GeometryChangedEvent>(HandleRootGeometryChanged);
         }
 
         private void UnregisterFromRoot()

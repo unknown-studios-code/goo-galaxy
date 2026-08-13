@@ -40,7 +40,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             CardDataSO card = LoadCard(path);
 
             // WHEN
-            var actual = (card.CardId.Value, card.DisplayName, card.Type, card.EnergyCost);
+            (string Value, string DisplayName, CardType Type, int EnergyCost) actual = (card.CardId.Value, card.DisplayName, card.Type, card.EnergyCost);
 
             // THEN
             Assert.That(actual, Is.EqualTo((cardId, displayName, type, energyCost)));
@@ -57,7 +57,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             CardDataSO card = LoadCard(path);
 
             // WHEN
-            var actual = (card.CanClone, card.CanJump, card.HasArmor, card.IgnoresHazards);
+            (bool CanClone, bool CanJump, bool HasArmor, bool IgnoresHazards) actual = (card.CanClone, card.CanJump, card.HasArmor, card.IgnoresHazards);
 
             // THEN
             Assert.That(actual, Is.EqualTo((canClone, canJump, hasArmor, ignoresHazards)));
@@ -100,7 +100,14 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             // WHEN
             ImpactEffect effect = card.LandingEffects[0];
-            var actual = (effect.Type, effect.Status, effect.Radius, effect.Duration, effect.Target, effect.ClusterSize);
+            (ImpactEffectType Type, StatusType Status, int Radius, int Duration, TargetFilter Target, int ClusterSize) actual = (
+                effect.Type,
+                effect.Status,
+                effect.Radius,
+                effect.Duration,
+                effect.Target,
+                effect.ClusterSize
+            );
 
             // THEN
             Assert.That(actual, Is.EqualTo((type, status, radius, duration, target, clusterSize)));
@@ -128,7 +135,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             CardDataSO card = LoadCard(path);
 
             // WHEN
-            var actual = (card.CloneDistance, card.JumpDistance);
+            (int CloneDistance, int JumpDistance) actual = (card.CloneDistance, card.JumpDistance);
 
             // THEN
             Assert.That(actual, Is.EqualTo((1, 2)));

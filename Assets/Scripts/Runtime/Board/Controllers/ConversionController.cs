@@ -53,7 +53,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private bool _isResolvingConversions;
         private bool _hasLoggedBoardUnavailable;
 
-        private void Awake()
+        protected void Awake()
         {
             _convertedUnitIdsView = new ReadOnlyCollection<int>(_convertedUnitIds);
             _armorStrippedUnitIdsView = new ReadOnlyCollection<int>(_armorStrippedUnitIds);
@@ -69,12 +69,12 @@ namespace GooGalaxy.Runtime.Board.Controllers
             }
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             MatchEvents.MoveExecuted += HandleMoveExecuted;
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
         }

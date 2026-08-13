@@ -66,7 +66,7 @@ namespace GooGalaxy.Runtime.Cards.Models
 
         /// <summary>Produces the immutable runtime impact this authored value describes.</summary>
         /// <returns>The runtime impact, carrying exactly the authored values.</returns>
-        public ImpactEffect ToImpactEffect()
+        public readonly ImpactEffect ToImpactEffect()
         {
             return new ImpactEffect(_type, _status, _radius, _duration, _target, _clusterSize);
         }

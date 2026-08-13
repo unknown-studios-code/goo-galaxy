@@ -10,19 +10,29 @@ Goo Galaxy — real-time PvP mobile strategy game (Unity 6000.3.18f1, URP 17.3).
 
 Prerequisites: Unity 6000.3.18f1, Node.js (`npm` scripts and Husky), the .NET SDK (`dotnet tool restore` pulls CSharpier), and **Docker Desktop** — the pre-commit hook shells out to a container to scan staged changes for secrets and fails the commit outright if the daemon is not reachable.
 
+**Compile through the running editor before any format or check script, and before committing.** `recompile` followed by `recompile_status` until it reports `completed` — never batch mode, and never a bare `npm run format` on a project the editor has not settled. Unity generates `goo-galaxy.slnx` and the per-assembly `.csproj`, both untracked, and `dotnet format` reads them rather than the `.asmdef` files. They refresh as a side effect of a compile actually running, so a change that touches no code — restoring a plugin, editing an `.asmdef` — leaves them stale and needs a forced sync. See Rule 3a in `.claude/rules/unity-editor-automation.md`.
+
+Existing is not the same as current. A csproj stale relative to the `.asmdef` files makes `dotnet format` delete `using` directives it wrongly reads as unused — and inside `lint-staged` that deletion is re-staged straight into the commit. A settled compile is what prevents it, which is why the moment of highest risk is the commit that adds a script or an assembly.
+
+`recompile` regularly drops the MCP bridge during the domain reload and the call returns a timeout. That reports the bridge, not the compile: poll `recompile_status`, and use `unity status` in the shell to confirm the editor is alive before concluding anything. The pre-commit hook fails with an instruction to open the editor when `goo-galaxy.slnx` is absent, rather than skipping the check.
+
 ```powershell
 npm install            # runs husky + dotnet tool restore via the prepare script
-npm run format         # csharpier + prettier, rewriting in place — run before every commit
-npm run check          # csharpier + editorconfig + prettier, verify only — what the CI Format Check runs
+npm run format         # csharpier + dotnet + prettier, rewriting in place — run before every commit
+npm run check          # the same three, verify only — what the CI Format Check runs
 ```
 
-Run `format` first, then `check`: `format` fixes what a formatter can, and `check` reports what is left. Per-formatter variants exist as `format:csharpier`, `format:prettier` and the matching `check:*`. `check:editorconfig` has no `format:` counterpart — the tool only verifies, so anything it flags (indentation, line endings, the 160-character limit) has to be fixed by hand.
+Run `format` first, then `check`: `format` fixes what a formatter can, and `check` reports what is left. Per-formatter variants exist as `format:csharpier`, `format:dotnet`, `format:prettier` and the matching `check:*`.
 
-**There is deliberately no `dotnet format`.** It needs the Unity-generated `.csproj`/`.slnx`, which are untracked, so it cannot run in CI or on a fresh clone; and in write mode a csproj that is stale relative to the `.asmdef` files makes it delete `using` directives it wrongly reads as unused.
+**`dotnet format` is what enforces `.editorconfig`.** It is the only tool in the chain that reads the file's `dotnet_diagnostic` and naming entries — Unity's own compiler never does, and CSharpier only owns layout. That includes the 42 UNT rules in Section 6, because the Unity-generated `.csproj` reference `Microsoft.Unity.Analyzers.dll` and Roslyn discovers `.editorconfig` by walking the directory tree.
 
-The Husky `pre-commit` hook checks that Docker is reachable, then runs `lint-staged`, then the two secret gates (see below). **`lint-staged` works on the staged files only** — CSharpier then editorconfig-checker on staged C#, Prettier on staged JSON/Markdown/YAML — and re-stages what it rewrote, so the formatter's output lands in the commit. It hides unstaged hunks while it runs, so a partially staged file keeps the hunks you deliberately left out. Its config lives under `lint-staged` in `package.json`.
+Both `format:dotnet` and `check:dotnet` pass `--severity info`, and the flag is load-bearing on the write side too. `dotnet format` defaults to `warn`, which fixes none of the `:suggestion` rules that Sections 3 and 5 declare — leaving `format` unable to fix what `check` then rejects. Keep the two symmetric.
 
-The order is deliberate at both ends. Docker is checked first because it is the one gate answerable without the index, so a stopped daemon fails in milliseconds instead of after the formatters run. The secret gates run last because `lint-staged` is what finally settles the index, and scanning any earlier would examine pre-formatter content — or miss a file the formatter restaged.
+The Husky `pre-commit` hook checks that Docker is reachable, then that the Unity solution exists, then runs `lint-staged`, then the two secret gates (see below). **`lint-staged` works on the staged files only** — CSharpier then `dotnet format` on staged C#, Prettier on staged JSON/Markdown/YAML — and re-stages what it rewrote, so the formatter's output lands in the commit. It hides unstaged hunks while it runs, so a partially staged file keeps the hunks you deliberately left out. Its config lives under `lint-staged` in `package.json`.
+
+CSharpier runs before `dotnet format` there and in `npm run format`, and the two do not fight: `dotnet format whitespace` reports zero divergences against CSharpier's output, so neither undoes the other. `dotnet format` adds roughly five seconds regardless of how many files are staged — the cost is loading the MSBuild workspace, not the file count.
+
+The order is deliberate at both ends. Docker and the solution check come first because they are the gates answerable without the index, so a stopped daemon or a closed editor fails in milliseconds instead of after the formatters run. The secret gates run last because `lint-staged` is what finally settles the index, and scanning any earlier would examine pre-formatter content — or miss a file the formatter restaged.
 
 The trade is that the hook no longer verifies the **whole repository**: a violation in a file you did not stage now reaches CI instead of failing locally. That is what CI's Format Check is for, and `npm run check` covers it locally on demand.
 

@@ -155,7 +155,7 @@ namespace GooGalaxy.Playtest
         private Vector2 _lastPreviewPointerPosition;
         private bool _hasPreviewPointerPosition;
 
-        private void Awake()
+        protected void Awake()
         {
             _camera = Camera.main;
 
@@ -170,7 +170,7 @@ namespace GooGalaxy.Playtest
             }
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
@@ -185,7 +185,7 @@ namespace GooGalaxy.Playtest
             MatchEvents.EnergyChanged += HandleEnergyChanged;
         }
 
-        private void Start()
+        protected void Start()
         {
             if (_unitPresenter == null || _cardPresenter == null || _gridPresenter == null)
             {
@@ -197,7 +197,7 @@ namespace GooGalaxy.Playtest
             StartMatch();
         }
 
-        private void Update()
+        protected void Update()
         {
             if (_isMatchOver)
             {
@@ -246,7 +246,7 @@ namespace GooGalaxy.Playtest
             HandleCellClicked(coordinates);
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
@@ -1016,7 +1016,7 @@ namespace GooGalaxy.Playtest
 
             int distance = _selectedCoordinates.CalculateDistance(target);
 
-            if (distance != CloneRange && distance != JumpRange)
+            if (distance is not CloneRange and not JumpRange)
             {
                 Debug.Log($"PlaytestBootstrap: {target} is {distance} hexes away — only Clone (1) and Jump (2) exist.", this);
                 return;

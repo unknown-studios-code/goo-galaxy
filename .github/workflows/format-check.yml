@@ -1,6 +1,8 @@
 # This workflow validates repository formatting through dedicated tools.
-# It checks EditorConfig compliance, C# formatting through CSharpier, and
-# JSON/Markdown/YAML formatting through Prettier.
+# Format Check runs CSharpier and Prettier directly on the runner.
+# EditorConfig Check boots Unity first, because the rules in .editorconfig reach
+# a compiler only through dotnet format, and dotnet format needs the C# project
+# files that Unity generates. Both jobs run in parallel.
 
 name: Format Check
 
@@ -26,6 +28,8 @@ permissions:
 env:
   NODE_VERSION: ${{ vars.NODE_VERSION }}
   CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
+  UNITY_VERSION: ${{ vars.UNITY_VERSION }}
+  UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
 
 defaults:
   run:
@@ -72,19 +76,14 @@ jobs:
         run: |
           npm ci --ignore-scripts
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
       - name: Restore .NET tools
         run: |
           dotnet tool restore
-
-      - name: Run EditorConfig checks
-        uses: editorconfig-checker/action-editorconfig-checker@d2ed4fd072ae6f887e9407c909af0f585d2ad9f4 # v2
-        with:
-          version: latest
-
-      - name: Execute EditorConfig checks
-        working-directory: Assets/Scripts
-        run: |
-          editorconfig-checker -config ../../.editorconfig-checker.json
 
       - name: Run CSharpier checks
         run: |
@@ -100,10 +99,6 @@ jobs:
           echo "✅ All repository formatting checks passed!"
           echo ""
           echo "Validated:"
-          echo "  - EditorConfig indentation rules"
-          echo "  - EditorConfig line ending rules"
-          echo "  - EditorConfig final newline rules"
-          echo "  - EditorConfig trailing whitespace rules"
           echo "  - CSharpier rules for runtime scripts"
           echo "  - Prettier checks for JSON, Markdown, and YAML"
 
@@ -117,5 +112,165 @@ jobs:
           echo "To fix locally:"
           echo "  1. Install project dependencies: npm ci"
           echo "  2. Restore .NET tools: dotnet tool restore"
-          echo "  3. Run EditorConfig, CSharpier, and Prettier locally"
+          echo "  3. Run npm run format, then npm run check"
+          echo "  4. Commit and push again"
+
+  editorconfig-check:
+    name: EditorConfig Check
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Validate required CI variables
+        env:
+          UNITY_VERSION: ${{ env.UNITY_VERSION }}
+          UNITY_CACHE_VERSION: ${{ env.UNITY_CACHE_VERSION }}
+          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
+        shell: bash
+        run: |
+          missing=0
+
+          for variable_name in UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH; do
+            if [[ -z "${!variable_name}" ]]; then
+              echo "Missing required GitHub Actions variable: $variable_name" >&2
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
+          lfs: true
+
+      - name: Create LFS file list
+        shell: bash
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        uses: actions/cache@v6
+        with:
+          path: .git/lfs
+          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
+          restore-keys: |
+            ${{ runner.os }}-lfs-
+
+      - name: Pull LFS assets
+        shell: bash
+        run: git lfs pull
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
+
+      - name: Restore Library cache
+        uses: actions/cache@v6
+        with:
+          path: Library
+          key: Library-Format-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Format-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-
+            Library-Format-${{ runner.os }}-${{ env.UNITY_VERSION }}-
+            Library-Tests-EditMode-${{ runner.os }}-${{ env.UNITY_VERSION }}-
+            Library-
+
+      - name: Generate C# project files
+        uses: game-ci/unity-builder@1d4ee0697f193f54668e98961d79907911f4b4f2 # v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: StandaloneLinux64
+          buildMethod: GooGalaxy.Editor.Automation.SolutionSync.Sync
+          versioning: None
+          allowDirtyBuild: true
+
+      - name: Resolve the Unity editor image
+        id: unity-image
+        run: |
+          image="$(docker images --filter=reference='unityci/editor:*' --format '{{.Repository}}:{{.Tag}}' | head -n 1)"
+
+          if [[ -z "$image" ]]; then
+            echo "No unityci/editor image is present, so the project files were not generated by one." >&2
+            exit 1
+          fi
+
+          echo "Using $image"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the generated projects
+        id: solution
+        run: |
+          solution=""
+
+          for candidate in ./*.slnx ./*.sln; do
+            if [[ -f "$candidate" ]]; then
+              solution="${candidate#./}"
+              break
+            fi
+          done
+
+          if [[ -z "$solution" ]]; then
+            echo "No solution was generated, so there is nothing for dotnet format to read." >&2
+            exit 1
+          fi
+
+          if ! grep -q "Microsoft.Unity.Analyzers.dll" ./*.csproj; then
+            echo "No project references Microsoft.Unity.Analyzers, so the UNT rules would not run and its" >&2
+            echo "suppressors would not fire. A green check here would mean nothing." >&2
+            exit 1
+          fi
+
+          projects=(./*.csproj)
+          echo "$solution covers ${#projects[@]} projects, with the Unity analyzer wired into them"
+          echo "solution=$solution" >> "$GITHUB_OUTPUT"
+
+      - name: Validate .editorconfig rules
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/github/workspace" \
+            -w /github/workspace \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            -e DOTNET_NOLOGO=1 \
+            "${{ steps.unity-image.outputs.image }}" \
+            bash -c '
+              set -euo pipefail
+
+              curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+              bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir /usr/share/dotnet --no-path
+
+              /usr/share/dotnet/dotnet format "${{ steps.solution.outputs.solution }}" \
+                --include "Assets/Scripts/**/*.cs" "Assets/Playtest/**/*.cs" "Assets/Editor/**/*.cs" \
+                --severity info \
+                --verify-no-changes \
+                --verbosity quiet
+            '
+
+      - name: Show Validation Summary
+        if: success()
+        run: |
+          echo "✅ Every rule declared in .editorconfig holds!"
+          echo ""
+          echo "Validated across the generated Unity assemblies:"
+          echo "  - Naming conventions (section 4)"
+          echo "  - IDE analyzer severities (sections 3 and 5)"
+          echo "  - Unity analyzer rules, UNT0001 to UNT0043 (section 6)"
+
+      - name: Show Validation Errors
+        if: failure()
+        run: |
+          echo "❌ .editorconfig validation failed!"
+          echo ""
+          echo "Each line above names the file, the rule, and the severity."
+          echo ""
+          echo "To fix locally:"
+          echo "  1. Open the project in Unity and let it finish compiling"
+          echo "  2. Run npm run format:dotnet to apply what is auto-fixable"
+          echo "  3. Fix the rest by hand, then run npm run check:dotnet"
           echo "  4. Commit and push again"

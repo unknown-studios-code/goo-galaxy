@@ -396,7 +396,10 @@ namespace GooGalaxy.Tests.EditMode.Cards
         public void LandingEffects_AuthoredDefinitions_MapFieldForFieldToRuntimeImpactEffects()
         {
             // GIVEN
-            var definitions = new[] { new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 3) };
+            ImpactEffectDefinition[] definitions = new[]
+            {
+                new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 3),
+            };
             _card = ScriptableObject.CreateInstance<CardDataSO>();
             _card.SetAuthoredData(
                 "cryo_stasis",
@@ -428,7 +431,10 @@ namespace GooGalaxy.Tests.EditMode.Cards
         public void LandingEffects_ReadTwice_ReturnsTheSameCachedInstance()
         {
             // GIVEN
-            var definitions = new[] { new ImpactEffectDefinition(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0) };
+            ImpactEffectDefinition[] definitions = new[]
+            {
+                new ImpactEffectDefinition(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0),
+            };
             _card = ScriptableObject.CreateInstance<CardDataSO>();
             _card.SetAuthoredData(
                 "volatile_mass",
@@ -508,7 +514,10 @@ namespace GooGalaxy.Tests.EditMode.Cards
         public void ValidateAuthoredData_SpellWithOneZeroClusterSizeImpact_WarnsOnce()
         {
             // GIVEN
-            var definitions = new[] { new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.All, 0) };
+            ImpactEffectDefinition[] definitions = new[]
+            {
+                new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.All, 0),
+            };
             _card = ScriptableObject.CreateInstance<CardDataSO>();
             _card.name = "TestSpellCard";
             _card.SetAuthoredData(
@@ -537,7 +546,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
         public void ValidateAuthoredData_SpellWithTwoZeroClusterSizeImpacts_WarnsOncePerImpact()
         {
             // GIVEN
-            var definitions = new[]
+            ImpactEffectDefinition[] definitions = new[]
             {
                 new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.All, 0),
                 new ImpactEffectDefinition(ImpactEffectType.SpawnHazard, StatusType.None, 0, 1, TargetFilter.Self, 0),
@@ -572,7 +581,10 @@ namespace GooGalaxy.Tests.EditMode.Cards
         {
             // GIVEN — a Cluster Size of 0 on a Troop means "no ceiling", not "unplayable"; it is only a
             // Protocol's cluster count.
-            var definitions = new[] { new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 0) };
+            ImpactEffectDefinition[] definitions = new[]
+            {
+                new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 0),
+            };
             _card = ScriptableObject.CreateInstance<CardDataSO>();
             _card.name = "TestTroopCard";
             _card.SetAuthoredData(

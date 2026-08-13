@@ -27,6 +27,9 @@
             "context": "Format Check"
           },
           {
+            "context": "EditorConfig Check"
+          },
+          {
             "context": "Secret Scan"
           },
           {
@@ -42,6 +45,7 @@
             "context": "Unity Play Mode Tests"
           }
         ],
+        "do_not_enforce_on_create": false,
         "strict_required_status_checks_policy": true
       }
     },

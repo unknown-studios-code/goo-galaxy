@@ -11,6 +11,14 @@ if ! docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
   exit 1
 fi
 
+# dotnet format runs inside lint-staged and reads the Unity-generated solution,
+# which only a compile in the open editor produces.
+if [ ! -f goo-galaxy.slnx ]; then
+  echo "goo-galaxy.slnx is missing, so 'dotnet format' cannot check the staged C#." >&2
+  echo "Open the project in Unity and let it finish compiling, then retry the commit." >&2
+  exit 1
+fi
+
 # Format and verify only the staged files, then re-stage what changed.
 # lint-staged does the re-staging itself and hides unstaged hunks while it runs.
 npx lint-staged --relative

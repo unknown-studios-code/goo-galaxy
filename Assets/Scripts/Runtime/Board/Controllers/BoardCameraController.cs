@@ -48,18 +48,18 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private int _gridRadius = -1;
         private bool _hasLoggedProjectionError;
 
-        private void Awake()
+        protected void Awake()
         {
             _camera = GetComponent<Camera>();
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             MatchEvents.GridInitialized += HandleGridInitialized;
         }
 
         // Aspect changes on device rotation and on every Game view resize, and neither raises an event.
-        private void LateUpdate()
+        protected void LateUpdate()
         {
             if (_gridRadius < 0 || Mathf.Approximately(_camera.aspect, _lastAspect))
             {
@@ -69,7 +69,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
             FitToBoard();
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.GridInitialized -= HandleGridInitialized;
         }

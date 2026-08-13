@@ -78,12 +78,12 @@ namespace GooGalaxy.Playtest
         /// <summary>Raised when the active-player button is pressed. The harness decides who is active next.</summary>
         public event Action ActivePlayerToggleRequested;
 
-        private void Awake()
+        protected void Awake()
         {
             _document = GetComponent<UIDocument>();
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             VisualElement root = _document.rootVisualElement;
 
@@ -112,10 +112,7 @@ namespace GooGalaxy.Playtest
 
             _resetButton.RegisterCallback<ClickEvent>(HandleResetClicked);
 
-            if (_playerButton != null)
-            {
-                _playerButton.RegisterCallback<ClickEvent>(HandlePlayerButtonClicked);
-            }
+            _playerButton?.RegisterCallback<ClickEvent>(HandlePlayerButtonClicked);
 
             MatchEvents.EnergyChanged += HandleEnergyChanged;
 
@@ -127,19 +124,13 @@ namespace GooGalaxy.Playtest
             ClearResult();
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             MatchEvents.EnergyChanged -= HandleEnergyChanged;
 
-            if (_resetButton != null)
-            {
-                _resetButton.UnregisterCallback<ClickEvent>(HandleResetClicked);
-            }
+            _resetButton?.UnregisterCallback<ClickEvent>(HandleResetClicked);
 
-            if (_playerButton != null)
-            {
-                _playerButton.UnregisterCallback<ClickEvent>(HandlePlayerButtonClicked);
-            }
+            _playerButton?.UnregisterCallback<ClickEvent>(HandlePlayerButtonClicked);
 
             ClearHand();
         }
@@ -320,10 +311,10 @@ namespace GooGalaxy.Playtest
         // drops a per-frame string allocation and UI Toolkit layout pass that produced identical pixels.
         private void HandleEnergyChanged(int playerId, float newEnergy)
         {
-            VisualElement fill = null;
-            Label value = null;
             float lastShown;
 
+            VisualElement fill;
+            Label value;
             if (playerId == PlayerOneId)
             {
                 fill = _fillOne;
@@ -411,10 +402,7 @@ namespace GooGalaxy.Playtest
         {
             _cardButtons.Clear();
 
-            if (_hand != null)
-            {
-                _hand.Clear();
-            }
+            _hand?.Clear();
         }
 
         /// <summary>One card as the hand renders it. The harness owns which cards are in play.</summary>

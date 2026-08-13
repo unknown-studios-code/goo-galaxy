@@ -1,3 +1,7 @@
+# This workflow builds the iOS player on pull requests to main.
+# It exports the Xcode project through IL2CPP and uploads it as a build artifact.
+# It runs on a macOS runner because Unity's iOS export depends on Apple tooling.
+
 name: Unity Build (iOS)
 
 on:

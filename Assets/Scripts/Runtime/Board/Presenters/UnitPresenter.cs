@@ -63,7 +63,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         /// </remarks>
         public Dictionary<int, GridUnit>.ValueCollection ActiveUnitValues => _activeUnits.Values;
 
-        private void Awake()
+        protected void Awake()
         {
             _affectedCoordinatesView = new ReadOnlyCollection<HexCoordinates>(_affectedCoordinates);
 
