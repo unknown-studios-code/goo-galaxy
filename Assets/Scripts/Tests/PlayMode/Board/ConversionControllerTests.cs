@@ -59,8 +59,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
-            _unitPresenter.Construct(new FakeEnergyLedger());
-            _boardGO.AddComponent<ConversionController>();
+            _unitPresenter.Construct(_gridPresenter, new FakeEnergyLedger());
+            _boardGO.AddComponent<ConversionController>().Construct(_gridPresenter, _unitPresenter);
 
             _gridPresenter.SetGridLayout(_gridLayout);
 
@@ -280,6 +280,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private void CreateDetachedConversionController()
         {
             _detachedGO = new GameObject("DetachedConversionController_Test");
+
+            // Left unconstructed on purpose: this fixture is the missing-board case.
             _detachedGO.AddComponent<ConversionController>();
         }
 
@@ -330,10 +332,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public int JumpDistance => BoardMetrics.DefaultJumpDistance;
         }
 
-        /// <summary>
-        /// Permissive stand-in for the board's <see cref="IEnergyLedger"/>. This fixture exercises conversion and
-        /// ability resolution, never Energy pricing, so every move is simply affordable.
-        /// </summary>
+        // Permissive on purpose: this fixture exercises conversion and ability resolution, never Energy pricing,
+        // so every move is affordable and no test has to seed a balance.
         private sealed class FakeEnergyLedger : IEnergyLedger
         {
             public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)

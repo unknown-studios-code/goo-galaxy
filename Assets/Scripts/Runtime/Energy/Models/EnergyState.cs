@@ -68,9 +68,8 @@ namespace GooGalaxy.Runtime.Energy.Models
         }
 
         /// <remarks>
-        /// Withdraws one unannounced spend, for a charge refunded before it could be flushed. Clamped at zero
-        /// rather than asserted: the refund contract already forbids reversing a charge that was never taken,
-        /// and a presenter mid-teardown is not worth failing a build over.
+        /// Clamped at zero rather than asserted: the refund contract already forbids reversing a charge that was
+        /// never taken, and a presenter mid-teardown is not worth failing a build over.
         /// </remarks>
         internal void CancelPendingSpend()
         {

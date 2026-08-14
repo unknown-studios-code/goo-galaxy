@@ -11,6 +11,7 @@ using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using Unity.Profiling;
 using UnityEngine;
+using VContainer;
 
 namespace GooGalaxy.Runtime.Board.Controllers
 {
@@ -37,12 +38,6 @@ namespace GooGalaxy.Runtime.Board.Controllers
 
         private static readonly ProfilerMarker _resolveConversionsMarker = new("ConversionController.ResolveConversions");
 
-        [SerializeField]
-        private GridPresenter _gridPresenter;
-
-        [SerializeField]
-        private UnitPresenter _unitPresenter;
-
         private readonly List<HexCell> _areaBuffer = new(BoardMetrics.MaxImpactAreaCells);
         private readonly HashSet<int> _attemptedUnitIds = new(MaxAttemptsPerLanding);
         private readonly List<int> _convertedUnitIds = new(MaxAttemptsPerLanding);
@@ -50,23 +45,25 @@ namespace GooGalaxy.Runtime.Board.Controllers
 
         private ReadOnlyCollection<int> _convertedUnitIdsView;
         private ReadOnlyCollection<int> _armorStrippedUnitIdsView;
+        private GridPresenter _gridPresenter;
+        private UnitPresenter _unitPresenter;
         private bool _isResolvingConversions;
         private bool _hasLoggedBoardUnavailable;
+
+        [Inject]
+        public void Construct(GridPresenter gridPresenter, UnitPresenter unitPresenter)
+        {
+            Debug.Assert(gridPresenter != null, BoardLogMessages.GridPresenterMissing, this);
+            Debug.Assert(unitPresenter != null, BoardLogMessages.UnitPresenterMissing, this);
+
+            _gridPresenter = gridPresenter;
+            _unitPresenter = unitPresenter;
+        }
 
         protected void Awake()
         {
             _convertedUnitIdsView = new ReadOnlyCollection<int>(_convertedUnitIds);
             _armorStrippedUnitIdsView = new ReadOnlyCollection<int>(_armorStrippedUnitIds);
-
-            if (_gridPresenter == null)
-            {
-                TryGetComponent(out _gridPresenter);
-            }
-
-            if (_unitPresenter == null)
-            {
-                TryGetComponent(out _unitPresenter);
-            }
         }
 
         protected void OnEnable()

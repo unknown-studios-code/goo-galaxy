@@ -10,7 +10,8 @@
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Cards",
-    "Unity.InputSystem"
+    "Unity.InputSystem",
+    "VContainer"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,

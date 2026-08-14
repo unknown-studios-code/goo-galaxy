@@ -140,11 +140,10 @@ namespace GooGalaxy.Tests.EditMode.Energy
         [Test]
         public void RefundMove_ZeroCostCharge_WithdrawsThePendingSpend()
         {
-            // GIVEN — regression test: TrySpend treats a cost of 0f as a success, so TryPayForMove marks a
-            // spend pending even for a free move (CloneCostMultiplier is a deliberately legal playtest lever
-            // authored down to 0). RefundMove used to withdraw the pending spend only after checking cost > 0f,
-            // so a free charge's refund never reached CancelPendingSpend and the next flush announced a spend
-            // for a move the board had rolled back.
+            // GIVEN — TrySpend treats a cost of 0f as a successful charge, so TryPayForMove marks a spend pending
+            // even for a free move, which CloneCostMultiplier authored at 0 makes reachable. The withdrawal must
+            // therefore be unconditional: gating it on cost > 0f leaves a spend queued for a move the board
+            // rolled back, and the next flush announces it.
             _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 10f, 0f, 0.5f, 0.5f));
             const int unitEnergyCost = 4;
             _ledger.TryPayForMove(PlayerId, MoveType.Clone, unitEnergyCost);

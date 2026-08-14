@@ -11,6 +11,7 @@ using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using Unity.Profiling;
 using UnityEngine;
+using VContainer;
 
 namespace GooGalaxy.Runtime.Board.Controllers
 {
@@ -72,12 +73,6 @@ namespace GooGalaxy.Runtime.Board.Controllers
         // dispatch is charged to it.
         private static readonly ProfilerMarker _validateSpellTargetsMarker = new("AbilityController.ValidateSpellTargets");
 
-        [SerializeField]
-        private GridPresenter _gridPresenter;
-
-        [SerializeField]
-        private UnitPresenter _unitPresenter;
-
         private readonly List<HexCell> _areaBuffer = new(BoardMetrics.MaxImpactAreaCells);
         private readonly List<int> _affectedUnitIds = new(BoardMetrics.MaxImpactAreaCells);
         private readonly List<HexCoordinates> _affectedHexes = new(BoardMetrics.MaxImpactAreaCells);
@@ -87,6 +82,8 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private ReadOnlyCollection<int> _affectedUnitIdsView;
         private ReadOnlyCollection<HexCoordinates> _affectedHexesView;
         private ReadOnlyCollection<int> _destroyedUnitIdsView;
+        private GridPresenter _gridPresenter;
+        private UnitPresenter _unitPresenter;
         private StatusEffectResolver _statusEffects;
         private AbilityDiagnostic _loggedDiagnostics;
         private bool _isResolvingAbilities;
@@ -94,28 +91,36 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private bool _hasLoggedAbilityReentry;
         private bool _hasLoggedSpellReentry;
 
+        /// <summary>Supplies the board and the unit registry every impact is resolved against.</summary>
+        /// <remarks>
+        /// The status resolver is built here rather than in <c>Awake</c> because it binds to the registry's value
+        /// collection, and injection is the first point at which that registry is known. The collection stays
+        /// bound to a <c>readonly</c> field on <see cref="UnitPresenter"/>, so the binding survives every later
+        /// mutation of the registry.
+        /// </remarks>
+        /// <param name="gridPresenter">The board whose cells impacts are placed on.</param>
+        /// <param name="unitPresenter">The registry the affected units are looked up in.</param>
+        [Inject]
+        public void Construct(GridPresenter gridPresenter, UnitPresenter unitPresenter)
+        {
+            Debug.Assert(gridPresenter != null, BoardLogMessages.GridPresenterMissing, this);
+            Debug.Assert(unitPresenter != null, BoardLogMessages.UnitPresenterMissing, this);
+
+            _gridPresenter = gridPresenter;
+            _unitPresenter = unitPresenter;
+
+            // Guarded rather than dereferenced outright: the container never injects null, but this method is
+            // public and the PlayMode fixtures call it directly, where a null would surface as a
+            // NullReferenceException thrown out of LifetimeScope.Build — which Unity swallows and only logs.
+            // A null resolver instead reaches the latched AbilityBoardUnavailable path at the use site.
+            _statusEffects = unitPresenter != null ? new StatusEffectResolver(unitPresenter.ActiveUnitValues) : null;
+        }
+
         protected void Awake()
         {
             _affectedUnitIdsView = new ReadOnlyCollection<int>(_affectedUnitIds);
             _affectedHexesView = new ReadOnlyCollection<HexCoordinates>(_affectedHexes);
             _destroyedUnitIdsView = new ReadOnlyCollection<int>(_destroyedUnitIds);
-
-            if (_gridPresenter == null)
-            {
-                TryGetComponent(out _gridPresenter);
-            }
-
-            if (_unitPresenter == null)
-            {
-                TryGetComponent(out _unitPresenter);
-            }
-
-            if (_unitPresenter != null)
-            {
-                // The registry's value collection stays bound to the backing dictionary, which is a readonly
-                // field on UnitPresenter, so binding here is safe regardless of which Awake ran first.
-                _statusEffects = new StatusEffectResolver(_unitPresenter.ActiveUnitValues);
-            }
         }
 
         protected void OnEnable()

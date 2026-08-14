@@ -83,15 +83,19 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// The flat energy cost of a Jump, regardless of which unit performs it.
         /// </summary>
         [field: Tooltip(
-            "Flat Energy charged for a Jump, regardless of the unit. A Jump adds no board presence, so it is priced as tempo, " + "not as material."
+            "Flat Energy charged for a Jump, regardless of the unit. A Jump adds no board presence, so it is priced as tempo, not as material. "
+                + "0.5 keeps it the cheapest action on the board; at or above the cheapest card's Clone price a Jump stops being worth the tempo."
         )]
         [field: SerializeField]
         public float JumpEnergyCost { get; private set; }
 
         /// <summary>
-        /// The energy cost for the Sample Purge discard mechanic.
+        /// The energy charged per card discarded, independent of that card's own authored cost.
         /// </summary>
-        [field: Tooltip("Energy charged to discard a card from the hand. Migrated from a const so every action price is authored in one place.")]
+        [field: Tooltip(
+            "Energy charged to discard one card from the hand, whatever that card costs. 0.5 keeps a purge cheaper than any Clone; "
+                + "above roughly 1 a purge costs more than playing the card and the hand stops cycling."
+        )]
         [field: SerializeField]
         public float SamplePurgeEnergyCost { get; private set; }
     }

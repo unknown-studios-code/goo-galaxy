@@ -34,15 +34,13 @@ namespace GooGalaxy.Runtime.Board.Presenters
 
         private static readonly ProfilerMarker _resolveMoveMarker = new("UnitPresenter.ResolveMove");
 
-        [SerializeField]
-        private GridPresenter _gridPresenter;
-
         private readonly Dictionary<int, GridUnit> _activeUnits = new(LiveUnitCapacity);
         private readonly Dictionary<int, IMoveCapable> _unitCapabilities = new(LiveUnitCapacity);
         private readonly Dictionary<int, HexCoordinates> _registeredPositions = new(LiveUnitCapacity);
         private readonly List<HexCoordinates> _affectedCoordinates = new(AffectedCoordinatesCapacity);
 
         private ReadOnlyCollection<HexCoordinates> _affectedCoordinatesView;
+        private GridPresenter _gridPresenter;
         private IUnitSpawner _unitSpawner;
         private IEnergyLedger _energyLedger;
         private bool _isResolvingMove;
@@ -66,16 +64,19 @@ namespace GooGalaxy.Runtime.Board.Presenters
         public Dictionary<int, GridUnit>.ValueCollection ActiveUnitValues => _activeUnits.Values;
 
         /// <summary>
-        /// Supplies the ledger every move is priced and paid through.
+        /// Supplies the board this presenter moves units on, and the ledger every move is priced and paid through.
         /// </summary>
         /// <remarks>
-        /// The board holds it as an interface from <c>Runtime.Shared</c> and never learns what a move costs, so
-        /// no dependency on the Energy assembly is created by charging for one.
+        /// The ledger is held as an interface from <c>Runtime.Shared</c>, so the board never learns what a move
+        /// costs and no dependency on the Energy assembly is created by charging for one. Both arrive before
+        /// <c>Awake</c>, because the container force-resolves a registered component while the scope wakes.
         /// </remarks>
+        /// <param name="gridPresenter">The board the moves are resolved against.</param>
         /// <param name="energyLedger">The resource system's ledger, resolved from the container.</param>
         [Inject]
-        public void Construct(IEnergyLedger energyLedger)
+        public void Construct(GridPresenter gridPresenter, IEnergyLedger energyLedger)
         {
+            _gridPresenter = gridPresenter;
             _energyLedger = energyLedger;
         }
 
@@ -83,11 +84,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         {
             _affectedCoordinatesView = new ReadOnlyCollection<HexCoordinates>(_affectedCoordinates);
 
-            if (_gridPresenter == null)
-            {
-                TryGetComponent(out _gridPresenter);
-            }
-
+            Debug.Assert(_gridPresenter != null, BoardLogMessages.GridPresenterMissing, this);
             Debug.Assert(_energyLedger != null, BoardLogMessages.EnergyLedgerMissing, this);
         }
 

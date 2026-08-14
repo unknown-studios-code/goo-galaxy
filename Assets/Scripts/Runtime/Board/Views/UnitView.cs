@@ -10,6 +10,7 @@ using GooGalaxy.Runtime.Shared.Types;
 using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Pool;
+using VContainer;
 
 namespace GooGalaxy.Runtime.Board.Views
 {
@@ -143,13 +144,6 @@ namespace GooGalaxy.Runtime.Board.Views
         [SerializeField]
         private float _effectLifetimeInSeconds = 1f;
 
-        [Header("References")]
-        [SerializeField]
-        private GridPresenter _gridPresenter;
-
-        [SerializeField]
-        private UnitPresenter _unitPresenter;
-
         private readonly Dictionary<int, GameObject> _unitVisuals = new(BoardMetrics.DefaultBoardCellCount);
         private readonly Dictionary<int, SpriteRenderer> _unitRenderers = new(BoardMetrics.DefaultBoardCellCount);
         private readonly Dictionary<int, SpriteRenderer> _unitBodyRenderers = new(BoardMetrics.DefaultBoardCellCount);
@@ -158,6 +152,8 @@ namespace GooGalaxy.Runtime.Board.Views
         private readonly List<int> _staleUnitIds = new(BoardMetrics.DefaultBoardCellCount);
         private readonly List<SpriteRenderer> _rendererBuffer = new(2);
 
+        private GridPresenter _gridPresenter;
+        private UnitPresenter _unitPresenter;
         private ObjectPool<GameObject> _unitPool;
         private ObjectPool<GameObject> _deployEffectPool;
         private ObjectPool<GameObject> _conversionEffectPool;
@@ -191,18 +187,25 @@ namespace GooGalaxy.Runtime.Board.Views
         /// </remarks>
         internal int FrozenOverlayPoolInactiveCount => _frozenOverlayPool?.CountInactive ?? 0;
 
+        /// <summary>Supplies the board this view reads hex positions from, and the registry it mirrors.</summary>
+        /// <remarks>
+        /// Both are injected rather than wired in the Inspector because this view lives on a child of the board
+        /// object, so a sibling lookup finds neither.
+        /// </remarks>
+        /// <param name="gridPresenter">The board whose cells units are placed on.</param>
+        /// <param name="unitPresenter">The registry whose live units this view renders.</param>
+        [Inject]
+        public void Construct(GridPresenter gridPresenter, UnitPresenter unitPresenter)
+        {
+            Debug.Assert(gridPresenter != null, BoardLogMessages.GridPresenterMissing, this);
+            Debug.Assert(unitPresenter != null, BoardLogMessages.UnitPresenterMissing, this);
+
+            _gridPresenter = gridPresenter;
+            _unitPresenter = unitPresenter;
+        }
+
         protected void Awake()
         {
-            if (_gridPresenter == null)
-            {
-                TryGetComponent(out _gridPresenter);
-            }
-
-            if (_unitPresenter == null)
-            {
-                TryGetComponent(out _unitPresenter);
-            }
-
             Debug.Assert(_unitPrefab != null, BoardLogMessages.UnitViewPrefabNotAssigned, this);
 
             if (_unitPrefab != null)

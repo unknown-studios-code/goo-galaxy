@@ -15,6 +15,9 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string GridPresenterMissing = "GridPresenter reference is missing or its hex grid is not initialized! Movement cannot be resolved.";
 
+        public const string UnitPresenterMissing =
+            "UnitPresenter was not injected. Register this component in GameLifetimeScope, or pass a presenter to Construct when building it by hand.";
+
         public const string MoveNotValidatedFormat =
             "MovementResolver received an unvalidated {0} command from {1} to {2}. Run MovementValidator and only resolve a Success result.";
 

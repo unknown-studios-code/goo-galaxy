@@ -78,7 +78,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
 
             _ledger = new FakeEnergyLedger();
-            _unitPresenter.Construct(_ledger);
+            _unitPresenter.Construct(_gridPresenter, _ledger);
 
             _gridPresenter.SetGridLayout(_gridLayout);
 
@@ -878,7 +878,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
@@ -898,7 +898,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
             var command = new MoveCommand(MoveType.Jump, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
@@ -918,7 +918,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
@@ -938,7 +938,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
@@ -959,7 +959,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
@@ -998,7 +998,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             _spawner.ThrowsOnSpawn = true;
             var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
@@ -1086,7 +1086,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             yield return ActivateBoard();
 
             EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
-            _unitPresenter.Construct(realLedger);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
             int energyEventCount = 0;
@@ -1129,7 +1129,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _detachedPresenterGO = new GameObject("DetachedUnitPresenter_Test");
             _detachedPresenterGO.SetActive(false);
             UnitPresenter presenter = _detachedPresenterGO.AddComponent<UnitPresenter>();
-            presenter.Construct(_ledger);
+
+            // Deliberately boardless, which is the whole point of the fixture — so Awake's own guard fires and
+            // has to be declared here rather than at each call site.
+            presenter.Construct(null, _ledger);
+            LogAssert.Expect(LogType.Assert, BoardLogMessages.GridPresenterMissing);
             _detachedPresenterGO.SetActive(true);
 
             return presenter;
@@ -1142,6 +1146,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             UnitPresenter presenter = _noLedgerGO.AddComponent<UnitPresenter>();
             GridPresenter gridPresenter = _noLedgerGO.AddComponent<GridPresenter>();
             gridPresenter.SetGridLayout(_gridLayout);
+
+            // The board is supplied and only the ledger is withheld, so the fixture isolates the missing ledger
+            // instead of also tripping the board guard.
+            presenter.Construct(gridPresenter, null);
             _noLedgerGO.SetActive(true);
 
             return (presenter, gridPresenter);

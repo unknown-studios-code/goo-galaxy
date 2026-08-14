@@ -231,8 +231,6 @@ namespace GooGalaxy.Runtime.Energy.Presenters
                 return;
             }
 
-            // Marked published before anything is raised, so a subscriber that re-enters this presenter sees the
-            // work as already done rather than flushing the same spend a second time.
             state.MarkPublished();
 
             MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);

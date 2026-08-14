@@ -16,6 +16,7 @@ using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using VContainer;
 
 namespace GooGalaxy.Playtest
 {
@@ -59,31 +60,6 @@ namespace GooGalaxy.Playtest
         // metadata, and the readout below runs inside the AbilityResolved dispatch, which is budgeted at zero
         // bytes. Keep this in step with StatusType or a new value prints as UnknownStatusName.
         private static readonly string[] _statusNames = { "None", "Frozen", "Rooted" };
-
-        [Header("Scene References")]
-        [SerializeField]
-        private GridPresenter _gridPresenter;
-
-        [SerializeField]
-        private UnitPresenter _unitPresenter;
-
-        [SerializeField]
-        private CardPresenter _cardPresenter;
-
-        [SerializeField]
-        private GridView _gridView;
-
-        [SerializeField]
-        private UnitView _unitView;
-
-        [SerializeField]
-        private EnergyPresenter _energyPresenter;
-
-        [SerializeField]
-        private AbilityController _abilityController;
-
-        [SerializeField]
-        private PlaytestHudView _hudView;
 
         [Header("Starting Units")]
         [Tooltip("Units placed on the board at startup. Each card id must exist on the CardPresenter roster.")]
@@ -132,6 +108,14 @@ namespace GooGalaxy.Playtest
 
         private ContactFilter2D _contactFilter;
 
+        private GridPresenter _gridPresenter;
+        private UnitPresenter _unitPresenter;
+        private CardPresenter _cardPresenter;
+        private GridView _gridView;
+        private UnitView _unitView;
+        private EnergyPresenter _energyPresenter;
+        private AbilityController _abilityController;
+        private PlaytestHudView _hudView;
         private Camera _camera;
         private PlaytestUnitSpawner _spawner;
         private bool _isMatchOver;
@@ -154,6 +138,32 @@ namespace GooGalaxy.Playtest
         private int _selectedSpellClusterSize;
         private Vector2 _lastPreviewPointerPosition;
         private bool _hasPreviewPointerPosition;
+
+        /// <remarks>
+        /// The runtime systems come from <c>GameLifetimeScope</c> and the HUD from
+        /// <see cref="PlaytestLifetimeScope" />, the child scope that registers what this assembly owns.
+        /// </remarks>
+        [Inject]
+        public void Construct(
+            GridPresenter gridPresenter,
+            UnitPresenter unitPresenter,
+            CardPresenter cardPresenter,
+            GridView gridView,
+            UnitView unitView,
+            EnergyPresenter energyPresenter,
+            AbilityController abilityController,
+            PlaytestHudView hudView
+        )
+        {
+            _gridPresenter = gridPresenter;
+            _unitPresenter = unitPresenter;
+            _cardPresenter = cardPresenter;
+            _gridView = gridView;
+            _unitView = unitView;
+            _energyPresenter = energyPresenter;
+            _abilityController = abilityController;
+            _hudView = hudView;
+        }
 
         protected void Awake()
         {

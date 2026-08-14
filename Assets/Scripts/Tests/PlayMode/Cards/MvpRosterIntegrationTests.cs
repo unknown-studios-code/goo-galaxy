@@ -136,9 +136,10 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             _energyPresenter = _boardGO.AddComponent<EnergyPresenter>();
             _energyPresenter.InitializePlayer(PlayerOneId, new EnergyConfig(SeededPlayerEnergy, NoEnergyRegen, SeededPlayerEnergy));
             _energyPresenter.InitializePlayer(PlayerTwoId, new EnergyConfig(SeededPlayerEnergy, NoEnergyRegen, SeededPlayerEnergy));
-            _unitPresenter.Construct(_energyPresenter);
-            _boardGO.AddComponent<ConversionController>();
+            _unitPresenter.Construct(_gridPresenter, _energyPresenter);
+            _boardGO.AddComponent<ConversionController>().Construct(_gridPresenter, _unitPresenter);
             _abilityController = _boardGO.AddComponent<AbilityController>();
+            _abilityController.Construct(_gridPresenter, _unitPresenter);
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _spawner = new FakeUnitSpawner();
