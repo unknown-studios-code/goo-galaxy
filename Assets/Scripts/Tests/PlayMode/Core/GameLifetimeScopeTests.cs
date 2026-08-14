@@ -1,7 +1,16 @@
 using System.Collections.Generic;
+using GooGalaxy.Runtime.Board.Controllers;
 using GooGalaxy.Runtime.Board.Data;
+using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Presenters;
+using GooGalaxy.Runtime.Board.Views;
 using GooGalaxy.Runtime.Core.DI;
+using GooGalaxy.Runtime.Energy.Models;
+using GooGalaxy.Runtime.Energy.Presenters;
+using GooGalaxy.Runtime.Shared.Commands;
+using GooGalaxy.Runtime.Shared.Constants;
+using GooGalaxy.Runtime.Shared.Interfaces;
+using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEngine;
 using VContainer;
@@ -12,10 +21,21 @@ namespace GooGalaxy.Tests.PlayMode
     public class GameLifetimeScopeTests
     {
         private const int MaxAutoScaffoldAttempts = 10;
+        private const int ActingPlayerId = 1;
+        private const int ActingUnitId = 1;
+        private const float Tolerance = 0.0001f;
+        private const float CellVisualSize = 1f;
+
+        private static readonly HexCoordinates _origin = new(0, 0);
+        private static readonly HexCoordinates _jumpTarget = new(2, 0);
 
         private GameObject _scopeGO;
         private GameObject _presenterGO;
+        private GameObject _energyPresenterGO;
+        private GameObject _cellPrefabGO;
+        private GameObject _unitPrefabGO;
         private GameLifetimeScope _scope;
+        private EnergyPresenter _energyPresenter;
         private readonly List<GameObject> _autoScaffoldedGOs = new();
 
         [TearDown]
@@ -24,6 +44,21 @@ namespace GooGalaxy.Tests.PlayMode
             if (_presenterGO != null)
             {
                 Object.DestroyImmediate(_presenterGO);
+            }
+
+            if (_energyPresenterGO != null)
+            {
+                Object.DestroyImmediate(_energyPresenterGO);
+            }
+
+            if (_cellPrefabGO != null)
+            {
+                Object.DestroyImmediate(_cellPrefabGO);
+            }
+
+            if (_unitPrefabGO != null)
+            {
+                Object.DestroyImmediate(_unitPrefabGO);
             }
 
             foreach (GameObject go in _autoScaffoldedGOs)
@@ -47,7 +82,7 @@ namespace GooGalaxy.Tests.PlayMode
         public void Configure_WithPresentersInScene_BuildsContainer()
         {
             // GIVEN
-            _presenterGO = CreateGridPresenter();
+            _presenterGO = CreateBoard();
 
             // WHEN
             CreateScope();
@@ -55,6 +90,73 @@ namespace GooGalaxy.Tests.PlayMode
 
             // THEN
             Assert.That(_scope.Container, Is.Not.Null, "VContainer container was not initialized");
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesTheSceneEnergyPresenterAsIEnergyLedger()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            _energyPresenterGO = CreateEnergyPresenter();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<IEnergyLedger>(), Is.SameAs(_energyPresenter));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_InjectsTheResolvedLedgerIntoTheSceneUnitPresenter()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            _energyPresenterGO = CreateEnergyPresenter();
+            CreateScope();
+            BuildContainer();
+
+            UnitPresenter unitPresenter = _presenterGO.GetComponent<UnitPresenter>();
+            _energyPresenter.InitializePlayer(ActingPlayerId, new EnergyConfig(10f, 0f, 10f));
+            var unit = new GridUnit(ActingUnitId, ActingPlayerId, new CardId("subject_alpha"), _origin);
+            Assert.That(unitPresenter.RegisterUnit(unit, new FakeMoveCapability()), Is.True, "Test setup expects the unit to register.");
+            var command = new MoveCommand(MoveType.Jump, _origin, _jumpTarget, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(
+                _energyPresenter.GetEnergy(ActingPlayerId),
+                Is.EqualTo(9.5f).Within(Tolerance),
+                "The balance only moves on the scene's own EnergyPresenter, so this proves Build() replaced the "
+                    + "manually-injected fake with the container-resolved ledger rather than leaving it in place."
+            );
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_InjectsTheBoardIntoTheSceneAbilityController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new[] { _origin });
+
+            // WHEN
+            SpellResult result = _scope.Container.Resolve<AbilityController>().ResolveSpell(command, null);
+
+            // THEN
+            Assert.That(
+                result,
+                Is.Not.EqualTo(SpellResult.BoardUnavailable),
+                "BoardUnavailable is returned only while the board reference is null, so any other result proves "
+                    + "the container injected the scene's presenters into the auto-scaffolded controller."
+            );
         }
 
         private void CreateScope()
@@ -65,23 +167,46 @@ namespace GooGalaxy.Tests.PlayMode
         }
 
         /// <summary>
-        /// Creates a <c>GridPresenter</c> scene GameObject wired with a valid grid layout, mirroring the
-        /// bespoke setup <see cref="GameLifetimeScope"/> expects to find in the hierarchy at build time.
+        /// Creates the board GameObject carrying every registration that needs authored data before it wakes:
+        /// <c>GridPresenter</c> needs a grid layout, and the two views assert on a prefab. The generic
+        /// auto-scaffolding in <see cref="BuildContainer"/> cannot supply any of that, so they are built here.
         /// </summary>
-        private GameObject CreateGridPresenter()
+        private GameObject CreateBoard()
         {
             GridLayoutSO gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
 
             var presenterGO = new GameObject("GridPresenter_DI_Test");
             presenterGO.SetActive(false);
-            presenterGO.AddComponent<UnitPresenter>();
+            UnitPresenter unitPresenter = presenterGO.AddComponent<UnitPresenter>();
             GridPresenter presenter = presenterGO.AddComponent<GridPresenter>();
+            unitPresenter.Construct(presenter, new FakeEnergyLedger());
 
             presenter.SetGridLayout(gridLayout);
+
+            _cellPrefabGO = new GameObject("CellPrefab_DI_Test");
+            _cellPrefabGO.SetActive(false);
+            presenterGO.AddComponent<GridView>().SetViewConfiguration(_cellPrefabGO.AddComponent<CellView>(), CellVisualSize);
+
+            _unitPrefabGO = new GameObject("UnitPrefab_DI_Test");
+            _unitPrefabGO.SetActive(false);
+            presenterGO.AddComponent<UnitView>().SetViewConfiguration(_unitPrefabGO, null, null, null, CellVisualSize);
 
             presenterGO.SetActive(true);
 
             return presenterGO;
+        }
+
+        /// <summary>
+        /// Creates an <c>EnergyPresenter</c> scene GameObject so <see cref="GameLifetimeScope"/>'s
+        /// <c>RegisterComponentInHierarchy&lt;EnergyPresenter&gt;()</c> registration resolves to a known instance
+        /// instead of one auto-scaffolded anonymously by <see cref="BuildContainer"/>.
+        /// </summary>
+        private GameObject CreateEnergyPresenter()
+        {
+            var energyPresenterGO = new GameObject("EnergyPresenter_DI_Test");
+            _energyPresenter = energyPresenterGO.AddComponent<EnergyPresenter>();
+
+            return energyPresenterGO;
         }
 
         /// <summary>
@@ -114,6 +239,38 @@ namespace GooGalaxy.Tests.PlayMode
             }
 
             Assert.Fail($"Container did not build after {MaxAutoScaffoldAttempts} auto-scaffold attempts.");
+        }
+
+        // Permissive on purpose: this fixture exercises container wiring, never Energy pricing, so every move is
+        // affordable and no test has to seed a balance.
+        private sealed class FakeEnergyLedger : IEnergyLedger
+        {
+            public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost) { }
+        }
+
+        // Jump-only on purpose: the injection test needs one legal move to reach the container-resolved ledger,
+        // and a Jump needs no spawner.
+        private sealed class FakeMoveCapability : IMoveCapable
+        {
+            public bool CanClone => false;
+
+            public bool CanJump => true;
+
+            public bool IgnoresHazards => false;
+
+            public int CloneDistance => BoardMetrics.DefaultCloneDistance;
+
+            public int JumpDistance => BoardMetrics.DefaultJumpDistance;
         }
     }
 }

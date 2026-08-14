@@ -43,6 +43,12 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const int DefaultConversionRadius = 1;
 
         /// <summary>
+        /// The Energy cost a unit registered with no capability object is priced at. Charging too little is the
+        /// worse failure of the two, so an unpriced unit falls back to the cheapest launch card rather than to free.
+        /// </summary>
+        public const int DefaultUnitEnergyCost = 1;
+
+        /// <summary>
         /// The widest conversion any card is authored at, counted in rings around the landing hex. Volatile
         /// Mass is the only card at this reach; raising it widens every buffer sized from
         /// <see cref="MaxConversionTargetsPerLanding" />.

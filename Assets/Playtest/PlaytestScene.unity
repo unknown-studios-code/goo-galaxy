@@ -135,6 +135,8 @@ GameObject:
   - component: {fileID: 652506888}
   - component: {fileID: 652506894}
   - component: {fileID: 652506895}
+  - component: {fileID: 652506896}
+  - component: {fileID: 652506897}
   m_Layer: 0
   m_Name: Board
   m_TagString: Untagged
@@ -154,14 +156,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b6866b3505776c49b8f4ccf5f5f1ef6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GooGalaxy.Playtest::GooGalaxy.Playtest.PlaytestBootstrap
-  _gridPresenter: {fileID: 652506892}
-  _unitPresenter: {fileID: 652506891}
-  _cardPresenter: {fileID: 652506889}
-  _gridView: {fileID: 1244279058}
-  _unitView: {fileID: 1630103204}
-  _energyPresenter: {fileID: 652506894}
-  _abilityController: {fileID: 652506895}
-  _hudView: {fileID: 2135654227}
   _startingUnits:
   - CardId: subject_alpha
     UnitId: 1
@@ -224,8 +218,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ed90ab9219a853448946e6444bd0f9a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GooGalaxy.Runtime.Board::GooGalaxy.Runtime.Board.Presenters.ConversionPresenter
-  _gridPresenter: {fileID: 652506892}
-  _unitPresenter: {fileID: 652506891}
 --- !u!114 &652506891
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -238,7 +230,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa9abb9b10fc60d4e8ebba7af7e1db54, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GooGalaxy.Runtime.Board::GooGalaxy.Runtime.Board.Presenters.UnitPresenter
-  _gridPresenter: {fileID: 652506892}
 --- !u!114 &652506892
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -285,10 +276,16 @@ MonoBehaviour:
     <MaxEnergy>k__BackingField: 10
     <RegenRate>k__BackingField: 0.35714287
     <StartingEnergy>k__BackingField: 5
+    <CloneCostMultiplier>k__BackingField: 0.5
+    <JumpEnergyCost>k__BackingField: 0.5
+    <SamplePurgeEnergyCost>k__BackingField: 0.5
   _playerTwoConfig:
     <MaxEnergy>k__BackingField: 10
     <RegenRate>k__BackingField: 0.35714287
-    <StartingEnergy>k__BackingField: 5.5
+    <StartingEnergy>k__BackingField: 5
+    <CloneCostMultiplier>k__BackingField: 0.5
+    <JumpEnergyCost>k__BackingField: 0.5
+    <SamplePurgeEnergyCost>k__BackingField: 0.5
 --- !u!114 &652506895
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -301,8 +298,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1130dbf5730e4de4b9f2fe867191d74d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GooGalaxy.Runtime.Board::GooGalaxy.Runtime.Board.Presenters.AbilityPresenter
-  _gridPresenter: {fileID: 652506892}
-  _unitPresenter: {fileID: 652506891}
+--- !u!114 &652506896
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 652506887}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 373d91bb9b2b7614694129df11d7bbba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Core::GooGalaxy.Runtime.Core.DI.GameLifetimeScope
+  parentReference:
+    TypeName: 
+  autoRun: 1
+  autoInjectGameObjects: []
+--- !u!114 &652506897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 652506887}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffd71f09ca425b745b9f8ed8f6a3908c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Playtest::GooGalaxy.Playtest.PlaytestLifetimeScope
+  parentReference:
+    TypeName: GooGalaxy.Runtime.Core.DI.GameLifetimeScope
+  autoRun: 1
+  autoInjectGameObjects: []
 --- !u!1 &1244279057
 GameObject:
   m_ObjectHideFlags: 0
@@ -556,8 +583,6 @@ MonoBehaviour:
   - CardId: cryo_stasis
     Color: {r: 0.55, g: 0.8, b: 0.95, a: 1}
   _effectLifetimeInSeconds: 1
-  _gridPresenter: {fileID: 652506892}
-  _unitPresenter: {fileID: 652506891}
 --- !u!4 &1630103205
 Transform:
   m_ObjectHideFlags: 0

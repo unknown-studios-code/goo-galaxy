@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using GooGalaxy.Runtime.Energy.Models;
 using GooGalaxy.Runtime.Energy.Services;
 using GooGalaxy.Runtime.Shared.Events;
+using GooGalaxy.Runtime.Shared.Interfaces;
+using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Energy.Presenters
@@ -10,8 +12,18 @@ namespace GooGalaxy.Runtime.Energy.Presenters
     /// <summary>
     /// Presenter that orchestrates the real-time energy systems of active players in a match.
     /// </summary>
-    public class EnergyPresenter : MonoBehaviour
+    /// <remarks>
+    /// It is also the board's <see cref="IEnergyLedger"/>: the board reports the action and what the acting unit
+    /// is worth, and the price is resolved here against that player's own configuration, since the two players
+    /// are configured independently.
+    /// </remarks>
+    public class EnergyPresenter : MonoBehaviour, IEnergyLedger
     {
+        // PERF: the smallest balance change worth broadcasting. Regeneration moves roughly 0.006 per frame at the
+        // authored rate, so a per-frame epsilon suppresses nothing and every frame reaches every subscriber. This
+        // is compared against the last published value instead, so a slow drift still crosses it.
+        private const float EnergyPublishQuantum = 0.05f;
+
         [Header("Match Setup")]
         [Tooltip(
             "The starting energy configuration for Player 1.\n"
@@ -32,23 +44,20 @@ namespace GooGalaxy.Runtime.Energy.Presenters
 
         protected void Update()
         {
+            float deltaTime = Time.deltaTime;
+
             foreach (KeyValuePair<int, EnergyState> kvp in _playerStates)
             {
-                int playerId = kvp.Key;
                 EnergyState state = kvp.Value;
 
-                float oldEnergy = state.CurrentEnergy;
-                float newEnergy = EnergyRegenerator.Tick(oldEnergy, Time.deltaTime, state.EffectiveRegenRate, state.Config.MaxEnergy);
+                float newEnergy = EnergyRegenerator.Tick(state.CurrentEnergy, deltaTime, state.EffectiveRegenRate, state.Config.MaxEnergy);
 
-                if (newEnergy != oldEnergy)
+                if (newEnergy != state.CurrentEnergy)
                 {
                     state.SetEnergy(newEnergy);
-
-                    if (MathF.Abs(newEnergy - oldEnergy) > 0.0001f)
-                    {
-                        MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);
-                    }
                 }
+
+                FlushPendingPublications(kvp.Key, state);
             }
         }
 
@@ -71,6 +80,11 @@ namespace GooGalaxy.Runtime.Energy.Presenters
         {
             var state = new EnergyState(config);
             _playerStates[playerId] = state;
+
+            // Published immediately rather than deferred to the next flush: a HUD binding to a match that is
+            // starting needs its opening value on the same frame, and there is no re-entrancy hazard here
+            // because no move is being resolved.
+            state.MarkPublished();
             MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);
         }
 
@@ -103,6 +117,69 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             }
 
             return result;
+        }
+
+        /// <inheritdoc />
+        public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return false;
+            }
+
+            return EnergyValidator.CanAfford(state.CurrentEnergy, MoveCostResolver.GetCost(moveType, unitEnergyCost, state.Config));
+        }
+
+        /// <inheritdoc />
+        public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return false;
+            }
+
+            float cost = MoveCostResolver.GetCost(moveType, unitEnergyCost, state.Config);
+            float energy = state.CurrentEnergy;
+
+            // Deliberately silent, and not routed through TrySpendEnergy, which announces both its successes and
+            // its rejections. The board has not raised its re-entrancy latch when this runs, so a subscriber that
+            // resolved another move from inside the dispatch would be charged twice for one action; a rejection
+            // announced here would also make an unaffordable move distinguishable from one never attempted.
+            // Both the balance change and the spend are flushed from Update instead.
+            if (EnergyValidator.TrySpend(ref energy, cost) != SpendResult.Success)
+            {
+                return false;
+            }
+
+            state.SetEnergy(energy);
+            state.MarkSpendPending();
+
+            return true;
+        }
+
+        /// <inheritdoc />
+        public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return;
+            }
+
+            // Withdrawn before the amount is even known, and on no condition: TryPayForMove records a pending
+            // spend for every charge it accepts, a free one included, so the two must cancel on the same
+            // predicate or a zero-priced move leaves a spend queued for a move that was rolled back. The charge
+            // cannot have been flushed yet — move resolution is synchronous within one frame — so a refunded
+            // move publishes nothing at all, which is what a move that never took effect should look like.
+            state.CancelPendingSpend();
+
+            float cost = MoveCostResolver.GetCost(moveType, unitEnergyCost, state.Config);
+
+            if (cost <= 0f)
+            {
+                return;
+            }
+
+            state.SetEnergy(state.CurrentEnergy + cost);
         }
 
         /// <summary>
@@ -140,6 +217,27 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             foreach (EnergyState state in _playerStates.Values)
             {
                 state.IsOvertime = active;
+            }
+        }
+
+        private static void FlushPendingPublications(int playerId, EnergyState state)
+        {
+            int pendingSpends = state.PendingSpendCount;
+            bool hasReachedCap = (state.CurrentEnergy >= state.Config.MaxEnergy) && (state.LastPublishedEnergy < state.Config.MaxEnergy);
+            bool hasDriftedEnough = MathF.Abs(state.CurrentEnergy - state.LastPublishedEnergy) >= EnergyPublishQuantum;
+
+            if ((pendingSpends == 0) && !hasDriftedEnough && !hasReachedCap)
+            {
+                return;
+            }
+
+            state.MarkPublished();
+
+            MatchEvents.RaiseEnergyChanged(playerId, state.CurrentEnergy);
+
+            for (int i = 0; i < pendingSpends; i++)
+            {
+                MatchEvents.RaiseEnergySpent(playerId, state.CurrentEnergy, true);
             }
         }
     }

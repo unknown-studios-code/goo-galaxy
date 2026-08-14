@@ -10,6 +10,7 @@
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Networking",
     "GooGalaxy.Runtime.Cards",
+    "GooGalaxy.Runtime.Energy",
     "VContainer"
   ],
   "versionDefines": [],

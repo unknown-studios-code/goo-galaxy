@@ -15,6 +15,9 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string GridPresenterMissing = "GridPresenter reference is missing or its hex grid is not initialized! Movement cannot be resolved.";
 
+        public const string UnitPresenterMissing =
+            "UnitPresenter was not injected. Register this component in GameLifetimeScope, or pass a presenter to Construct when building it by hand.";
+
         public const string MoveNotValidatedFormat =
             "MovementResolver received an unvalidated {0} command from {1} to {2}. Run MovementValidator and only resolve a Success result.";
 
@@ -81,6 +84,10 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string CameraFitRequiresOrthographic =
             "BoardCameraController needs an orthographic camera to frame the board. Set Projection to Orthographic on the camera.";
+
+        public const string EnergyLedgerMissing =
+            "UnitPresenter was not injected with an IEnergyLedger, so no move can be paid for and every move is rejected. "
+            + "Register EnergyPresenter as IEnergyLedger in GameLifetimeScope and keep an EnergyPresenter in the scene.";
 
         public const string UnitViewBoardUnavailable =
             "UnitView is missing its GridPresenter, its UnitPresenter, or its unit prefab, or the hex grid is not initialized! Unit visuals cannot be placed.";

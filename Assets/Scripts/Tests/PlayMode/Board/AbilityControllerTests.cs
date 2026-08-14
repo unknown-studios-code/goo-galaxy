@@ -128,8 +128,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
-            _boardGO.AddComponent<ConversionController>();
+            _unitPresenter.Construct(_gridPresenter, new FakeEnergyLedger());
+            _boardGO.AddComponent<ConversionController>().Construct(_gridPresenter, _unitPresenter);
             _abilityController = _boardGO.AddComponent<AbilityController>();
+            _abilityController.Construct(_gridPresenter, _unitPresenter);
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _spawner = new FakeUnitSpawner();
@@ -1354,6 +1356,23 @@ namespace GooGalaxy.Tests.PlayMode.Board
             {
                 return new GridUnit(_nextUnitId++, playerId, cardId, at);
             }
+        }
+
+        // Permissive on purpose: this fixture exercises conversion, landing and ability resolution, never Energy
+        // pricing, so every move is affordable and no test has to seed a balance.
+        private sealed class FakeEnergyLedger : IEnergyLedger
+        {
+            public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost) { }
         }
     }
 }

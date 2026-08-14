@@ -8,6 +8,7 @@ namespace GooGalaxy.Runtime.Energy.Models
     public class EnergyState
     {
         private float _currentEnergy;
+        private int _pendingSpendCount;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EnergyState"/> class.
@@ -17,6 +18,7 @@ namespace GooGalaxy.Runtime.Energy.Models
         {
             Config = config;
             SetEnergy(config.StartingEnergy);
+            LastPublishedEnergy = _currentEnergy;
         }
 
         /// <summary>
@@ -30,12 +32,61 @@ namespace GooGalaxy.Runtime.Energy.Models
         public float CurrentEnergy => _currentEnergy;
 
         /// <summary>
+        /// Gets the energy value last broadcast on the match bus, which trails
+        /// <see cref="CurrentEnergy"/> between broadcasts.
+        /// </summary>
+        /// <remarks>
+        /// Publication is throttled against this value rather than against the previous frame's, so energy
+        /// that drifts by less than the threshold each frame still crosses it eventually instead of never
+        /// being announced at all.
+        /// </remarks>
+        public float LastPublishedEnergy { get; private set; }
+
+        /// <summary>
+        /// Gets the number of successful spends that have been applied to the balance but not yet announced.
+        /// </summary>
+        public int PendingSpendCount => _pendingSpendCount;
+
+        /// <summary>
         /// Sets the player's current energy, clamping the value between 0 and Config.MaxEnergy.
         /// </summary>
         /// <param name="value">The unclamped energy value to apply.</param>
         public void SetEnergy(float value)
         {
             _currentEnergy = MathF.Max(0f, MathF.Min(value, Config.MaxEnergy));
+        }
+
+        /// <remarks>
+        /// Internal because the publication cycle belongs to the presenter that owns the flush: a caller holding
+        /// this state through <c>GetEnergy</c>'s sibling accessor could otherwise queue a spend that never
+        /// happened. Counted rather than flagged so two spends resolved in the same frame are each announced,
+        /// both carrying the balance as it stands when they are flushed rather than as it stood at each spend.
+        /// </remarks>
+        internal void MarkSpendPending()
+        {
+            _pendingSpendCount++;
+        }
+
+        /// <remarks>
+        /// Clamped at zero rather than asserted: the refund contract already forbids reversing a charge that was
+        /// never taken, and a presenter mid-teardown is not worth failing a build over.
+        /// </remarks>
+        internal void CancelPendingSpend()
+        {
+            if (_pendingSpendCount > 0)
+            {
+                _pendingSpendCount--;
+            }
+        }
+
+        /// <remarks>
+        /// Called before the announcements are raised, never after, so a subscriber that re-enters the presenter
+        /// finds the work already recorded instead of flushing the same spend twice.
+        /// </remarks>
+        internal void MarkPublished()
+        {
+            _pendingSpendCount = 0;
+            LastPublishedEnergy = _currentEnergy;
         }
 
         /// <summary>

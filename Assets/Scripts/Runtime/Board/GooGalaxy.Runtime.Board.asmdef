@@ -6,7 +6,8 @@
   "includePlatforms": [],
   "precompiledReferences": [],
   "references": [
-    "GooGalaxy.Runtime.Shared"
+    "GooGalaxy.Runtime.Shared",
+    "VContainer"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,

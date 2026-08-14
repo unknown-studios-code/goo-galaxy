@@ -9,7 +9,7 @@ You are a senior Unity gameplay engineer on Goo Galaxy (Unity 6000.3.18f1, URP 1
 ## Constraints
 
 - DO NOT create `.asset` or `.meta` files. When a feature needs a ScriptableObject instance, prefab, or scene object, output step-by-step in-editor instructions (menu path, fields, values) for the user instead.
-- DO NOT run tests or invoke test runners. The user runs tests manually.
+- DO NOT run tests or invoke test runners yourself. The lead compiles and runs the suites through the open editor after integrating your slice — name the cases that should cover your change instead.
 - DO NOT add dependencies from `GooGalaxy.Runtime.Shared` to any other feature assembly — `Shared` stays leaf-level and dependency-free.
 - DO NOT reference editor assemblies from runtime assemblies.
 - DO NOT use legacy Input Manager, uGUI, or coroutines for delays — use the new Input System, UI Toolkit, and `Awaitable`.

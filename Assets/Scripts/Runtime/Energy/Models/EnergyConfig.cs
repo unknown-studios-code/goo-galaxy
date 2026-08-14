@@ -9,10 +9,20 @@ namespace GooGalaxy.Runtime.Energy.Models
     [Serializable]
     public struct EnergyConfig
     {
+        private const float DefaultCloneCostMultiplier = 0.5f;
+
+        private const float DefaultJumpEnergyCost = 0.5f;
+
+        private const float DefaultSamplePurgeEnergyCost = 0.5f;
+
         /// <summary>
-        /// The fixed energy cost for the Sample Purge discard mechanic.
+        /// Initializes a new instance of the <see cref="EnergyConfig"/> struct, priced at the default action costs.
         /// </summary>
-        public const float SamplePurgeEnergyCost = 0.5f;
+        /// <param name="maxEnergy">The maximum energy cap.</param>
+        /// <param name="regenRate">The base regeneration rate per second.</param>
+        /// <param name="startingEnergy">The initial starting energy.</param>
+        public EnergyConfig(float maxEnergy, float regenRate, float startingEnergy)
+            : this(maxEnergy, regenRate, startingEnergy, DefaultCloneCostMultiplier, DefaultJumpEnergyCost, DefaultSamplePurgeEnergyCost) { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EnergyConfig"/> struct.
@@ -20,11 +30,24 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// <param name="maxEnergy">The maximum energy cap.</param>
         /// <param name="regenRate">The base regeneration rate per second.</param>
         /// <param name="startingEnergy">The initial starting energy.</param>
-        public EnergyConfig(float maxEnergy, float regenRate, float startingEnergy)
+        /// <param name="cloneCostMultiplier">The fraction of a copied unit's authored energy cost a Clone charges.</param>
+        /// <param name="jumpEnergyCost">The flat energy cost of a Jump.</param>
+        /// <param name="samplePurgeEnergyCost">The energy cost of discarding a card from hand.</param>
+        public EnergyConfig(
+            float maxEnergy,
+            float regenRate,
+            float startingEnergy,
+            float cloneCostMultiplier,
+            float jumpEnergyCost,
+            float samplePurgeEnergyCost
+        )
         {
             MaxEnergy = maxEnergy;
             RegenRate = regenRate;
             StartingEnergy = startingEnergy;
+            CloneCostMultiplier = cloneCostMultiplier;
+            JumpEnergyCost = jumpEnergyCost;
+            SamplePurgeEnergyCost = samplePurgeEnergyCost;
         }
 
         /// <summary>
@@ -44,5 +67,36 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// </summary>
         [field: SerializeField]
         public float StartingEnergy { get; private set; }
+
+        /// <summary>
+        /// The fraction of the copied unit's authored energy cost that a Clone charges.
+        /// </summary>
+        [field: Tooltip(
+            "Fraction of the copied unit's authored Energy cost that a Clone charges. 0.5 keeps every launch card on a clean "
+                + "half-Energy step. Above 1.0 makes cloning worse than deploying and breaks the action's purpose. Zero makes "
+                + "cloning free again, which is the state this exists to remove."
+        )]
+        [field: SerializeField]
+        public float CloneCostMultiplier { get; private set; }
+
+        /// <summary>
+        /// The flat energy cost of a Jump, regardless of which unit performs it.
+        /// </summary>
+        [field: Tooltip(
+            "Flat Energy charged for a Jump, regardless of the unit. A Jump adds no board presence, so it is priced as tempo, not as material. "
+                + "0.5 keeps it the cheapest action on the board; at or above the cheapest card's Clone price a Jump stops being worth the tempo."
+        )]
+        [field: SerializeField]
+        public float JumpEnergyCost { get; private set; }
+
+        /// <summary>
+        /// The energy charged per card discarded, independent of that card's own authored cost.
+        /// </summary>
+        [field: Tooltip(
+            "Energy charged to discard one card from the hand, whatever that card costs. 0.5 keeps a purge cheaper than any Clone; "
+                + "above roughly 1 a purge costs more than playing the card and the hand stops cycling."
+        )]
+        [field: SerializeField]
+        public float SamplePurgeEnergyCost { get; private set; }
     }
 }

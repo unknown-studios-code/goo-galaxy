@@ -10,10 +10,11 @@ paths:
 
 A test exists to fail for exactly one reason, and to say which reason in its name. This document defines how tests are written, named, structured, and isolated in this project.
 
-**Tests are never executed by an agent.** Write them, name them, and hand the list to the user, who runs the suites from the Unity Test Runner. CI runs both suites on every PR.
+**Tests are executed only through the open Editor**, with `run_tests` and `test_status` from [unity-editor-automation.md](unity-editor-automation.md) — never with `Unity.exe -batchmode`, and never by handing the list to the user instead of running it. Write them, name them, run them, and report what failed with the reason. A suite that was written but never run is a guess about whether the change works. CI runs both suites on every PR.
 
 ## 2. Cross-References
 
+- **Editor Automation** → [unity-editor-automation.md](unity-editor-automation.md) (`run_tests` and `test_status` — how the suites this file defines are actually executed)
 - **Code Style** → [unity-code-style.md](unity-code-style.md) (Naming, braces, and formatting apply to test code unchanged)
 - **Class Organization** → [unity-class-organization.md](unity-class-organization.md) (Fixture layout follows the same member order)
 - **Code Documentation** → [unity-code-documentation.md](unity-code-documentation.md) (GIVEN-WHEN-THEN is the documentation of a test)

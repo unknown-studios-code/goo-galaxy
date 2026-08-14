@@ -83,5 +83,12 @@ namespace GooGalaxy.Runtime.Board.Models
         /// what an older peer reads for every code above the insertion point.
         /// </summary>
         TargetHazardous = 13,
+
+        /// <summary>
+        /// The acting player could not pay the move's Energy cost. The board is unchanged, nothing was
+        /// published, and their balance is untouched. Appended rather than grouped with the other rejections
+        /// for the reason stated above: the numbers travel to the client, so only the end of the list is safe.
+        /// </summary>
+        InsufficientEnergy = 14,
     }
 }

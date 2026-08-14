@@ -13,11 +13,13 @@ namespace GooGalaxy.Playtest
     /// <remarks>
     /// A class rather than a struct on purpose: <see cref="IMoveCapable" /> documents that the registry keeps
     /// capabilities behind the interface, and a value type stored that way boxes on every store.
-    /// All three capability contracts are implemented on the one object, because the board looks the registered
-    /// <see cref="IMoveCapable" /> up and tests it for the other two — a bridge that implemented only movement
-    /// would silently give every playtest card a one-ring conversion and no landing ability.
+    /// Every board-facing contract is implemented on the one object, because the board looks the registered
+    /// <see cref="IMoveCapable" /> up and tests it for the rest — a bridge that implemented only movement would
+    /// silently give every playtest card a one-ring conversion, no landing ability, and the fallback Energy
+    /// price, each of which reads as a balance bug rather than a missing interface. Add the contract here
+    /// whenever the board grows one.
     /// </remarks>
-    internal sealed class PlaytestMoveCapability : IMoveCapable, IConversionCapable, IAbilityCapable
+    internal sealed class PlaytestMoveCapability : IMoveCapable, IConversionCapable, IAbilityCapable, IEnergyPriced
     {
         private readonly ICardData _card;
 
@@ -39,5 +41,7 @@ namespace GooGalaxy.Playtest
         public int ConversionRadius => _card.ConversionRadius;
 
         public IReadOnlyList<ImpactEffect> LandingEffects => _card.LandingEffects;
+
+        public int EnergyCost => _card.EnergyCost;
     }
 }

@@ -73,7 +73,9 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
+            _unitPresenter.Construct(_gridPresenter, new FakeEnergyLedger());
             _unitView = _boardGO.AddComponent<UnitView>();
+            _unitView.Construct(_gridPresenter, _unitPresenter);
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _unitView.SetViewConfiguration(_unitPrefabGO, null, null, null, CellVisualSize);
@@ -570,6 +572,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _detachedGO = new GameObject("DetachedUnitView_Test");
             _detachedGO.SetActive(false);
             UnitView view = _detachedGO.AddComponent<UnitView>();
+
+            // Left unconstructed on purpose: this fixture is the missing-board case.
             view.SetViewConfiguration(_unitPrefabGO, null, null, null, CellVisualSize);
             _detachedGO.SetActive(true);
 
@@ -638,6 +642,23 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public int CloneDistance => BoardMetrics.DefaultCloneDistance;
 
             public int JumpDistance => BoardMetrics.DefaultJumpDistance;
+        }
+
+        // Permissive on purpose: this fixture exercises the view's rendering of moves and conversions, never
+        // Energy pricing, so every move is affordable and no test has to seed a balance.
+        private sealed class FakeEnergyLedger : IEnergyLedger
+        {
+            public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost) { }
         }
     }
 }
