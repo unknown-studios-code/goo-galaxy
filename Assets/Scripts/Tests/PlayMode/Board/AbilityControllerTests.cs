@@ -34,6 +34,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private const int HazardDuration = 2;
         private const int RivalHazardDuration = 5;
         private const int FirstSpawnedUnitId = 100;
+        private const int FuseDurationInSeconds = 3;
         private const string SourceCardIdValue = "acid_crawler";
 
         private static readonly HexCoordinates _volatileSource = new(-2, 0);
@@ -101,6 +102,12 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private static readonly HexCoordinates _cloneHazardSource = new(-2, 0);
         private static readonly HexCoordinates _cloneHazardTarget = new(-1, 0);
 
+        private static readonly HexCoordinates _fuseCloneSource = new(-2, 0);
+        private static readonly HexCoordinates _fuseCloneTarget = new(-1, 0);
+
+        private static readonly HexCoordinates _fuseJumpSource = new(-2, 0);
+        private static readonly HexCoordinates _fuseJumpTarget = new(0, 0);
+
         private readonly List<string> _eventOrder = new();
 
         private GameObject _boardGO;
@@ -108,6 +115,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
         private AbilityController _abilityController;
+        private FuseController _fuseController;
         private FakeUnitSpawner _spawner;
 
         private GridUnit _lastActingUnit;
@@ -130,8 +138,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
             _unitPresenter.Construct(_gridPresenter, new FakeEnergyLedger());
             _boardGO.AddComponent<ConversionController>().Construct(_gridPresenter, _unitPresenter);
+            _fuseController = _boardGO.AddComponent<FuseController>();
+            _fuseController.Construct(_unitPresenter);
             _abilityController = _boardGO.AddComponent<AbilityController>();
-            _abilityController.Construct(_gridPresenter, _unitPresenter);
+            _abilityController.Construct(_gridPresenter, _unitPresenter, _fuseController);
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _spawner = new FakeUnitSpawner();
@@ -226,7 +236,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_LandingConvertsAndResolvesAnAbility_RaisesEventsInTheDocumentedOrder()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -250,7 +260,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_JumpIntoEmptySpace_StillRaisesLandingResolvedAndAbilityResolved()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -273,7 +283,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_JumpIntoEmptySpace_NeverRaisesConversionResolved()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -351,7 +361,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator LandingResolved_SelfAppliedFreezeEffect_RemainsActiveImmediatelyAfterItsOwnLanding()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -426,7 +436,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_PlainDeploymentTicksAFrozenUnitOwnedByTheDeployingPlayer_ThawsItWithoutPublishingAbilityResolved()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var attackerCapability = new FakeCapability
             {
@@ -461,7 +471,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_UnitWithoutIAbilityCapable_DoesNotThrowAndPublishesNoAbilityResolved()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _uncapableSource, new FakeMoveOnlyCapability());
             var command = new MoveCommand(MoveType.Jump, _uncapableSource, _uncapableTarget, ActingPlayerId, ActingUnitId);
@@ -480,7 +490,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — regression test: SetHazard replaces the marker but leaves HasHazard true, so a hex
             // re-hazarded by the very landing that already tracks it must not be ticked by that same landing.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var hazardCapability = new FakeCapability
             {
@@ -510,7 +520,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_HazardOverwritesAnOpponentOwnedHazard_KeepsTheFullDurationAndFlipsTheOwnerToTheActingPlayer()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var hazardCapability = new FakeCapability
             {
@@ -546,7 +556,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_HazardOnAHexTheLandingDidNotTouch_StillTicksAndIsRemovedAtZero()
         {
             // GIVEN — the exemption is scoped to this landing's own affected hexes, not every tracked hazard.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var hazardCapability = new FakeCapability
             {
@@ -571,7 +581,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator HandleGridInitialized_ClearsTrackedHazards_SoAPreviouslyTrackedHazardNoLongerTicks()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var hazardCapability = new FakeCapability
             {
@@ -603,7 +613,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — Clone never vacates a hex, so a SpawnHazard impact authored on a Clone-only troop can
             // never find one to mark; this is an authoring mistake the controller must diagnose, not drop silently.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -625,7 +635,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveMove_TwoLandingsBothTriggerUnknownEffectType_LogsTheErrorOnce()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -702,7 +712,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_CryoStasisCluster_FreezesTheAlliedUnitInRange()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             GridUnit alliedUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellAdjacentTwo, new FakeCapability());
             var capability = new FakeCapability
@@ -723,7 +733,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_CryoStasisCluster_FreezesTheEnemyUnitInRange()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             GridUnit enemyUnit = RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellAdjacentTwo, new FakeCapability());
             var capability = new FakeCapability
@@ -744,7 +754,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_CryoStasisCluster_PublishesAbilityResolved()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             var capability = new FakeCapability
             {
@@ -764,7 +774,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_CryoStasisCluster_ReturnsSuccess()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             var capability = new FakeCapability
             {
@@ -784,7 +794,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_NullCapability_ReturnsCardHasNoImpacts()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
 
             // WHEN
@@ -801,7 +811,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — two rejections at once: no capability at all, and a target list that could not validate
             // against any real effect either. CardHasNoImpacts wins because the card is inspected before its
             // targets.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates>());
 
             // WHEN
@@ -817,7 +827,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — board availability is checked before the card, so it wins even when the capability is
             // also null.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             Object.DestroyImmediate(_gridPresenter);
             var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
             LogAssert.Expect(LogType.Error, BoardLogMessages.AbilityBoardUnavailable);
@@ -834,7 +844,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_BoardUnavailable_ReturnsBoardUnavailable()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             Object.DestroyImmediate(_gridPresenter);
             var capability = new FakeCapability
             {
@@ -856,7 +866,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — atomicity: a rejected spell must not touch a single unit, even one that is a perfectly
             // valid target, once the board itself has become unavailable.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             GridUnit targetUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
             Object.DestroyImmediate(_gridPresenter);
             var capability = new FakeCapability
@@ -878,7 +888,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_TargetHexCountMismatch_ReturnsInvalidTargets()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
@@ -897,7 +907,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_InvalidTargets_LeavesTheTargetUnitUnaffected()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             GridUnit targetUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
             var capability = new FakeCapability
             {
@@ -917,7 +927,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_ReentrantCall_ReturnsResolverBusy()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
@@ -949,7 +959,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_ReentrantCall_DoesNotPublishASecondAbilityResolved()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
@@ -982,7 +992,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — reentrancy is checked before board availability, so it wins even when the board becomes
             // unavailable in between the outer and the nested call: both conditions are genuinely true for the
             // nested one.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
@@ -1019,7 +1029,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — a Protocol has no acting unit and vacates no hex, so a SpawnHazard impact authored on
             // one is always this same authoring mistake.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) },
@@ -1040,7 +1050,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — a Protocol puts no unit on the board, so a SelfDestruct impact authored on one can never
             // find an acting unit to remove.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 1) },
@@ -1060,7 +1070,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_SpawnHazardAuthoredOnAProtocolDeployedTwice_LogsTheWarningOnlyOnce()
         {
             // GIVEN — latching: a second deployment of the same misauthored card must not add a second entry.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) },
@@ -1081,7 +1091,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_SpawnHazardAuthoredOnAProtocol_AfterGridInitialized_LogsTheWarningAgain()
         {
             // GIVEN — proves HandleGridInitialized resets the diagnostic latch, not just the hazard tracking list.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             var capability = new FakeCapability
             {
                 LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.All, 1) },
@@ -1106,7 +1116,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — proves step 6 self-cleanup runs on the spell path too, or a Protocol-only player never
             // expires anything.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var hazardCapability = new FakeCapability
             {
@@ -1136,7 +1146,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             // GIVEN — the canonical defensive Cryo-Stasis play: freezing your own units must not be undone by
             // the very deployment that cast it.
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
             GridUnit ownUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
             var capability = new FakeCapability
             {
@@ -1156,7 +1166,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         public IEnumerator ResolveSpell_ClosesTheActingPlayersActionWindow_ExpiringAStatusFromAnEarlierDeployment()
         {
             // GIVEN
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var enemyCapability = new FakeCapability
             {
@@ -1219,12 +1229,64 @@ namespace GooGalaxy.Tests.PlayMode.Board
             Assert.That(hazardCell.Hazard.RemainingDuration, Is.EqualTo(HazardDuration));
         }
 
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleLandingResolved_ArmFuseOnCloneLanding_LeavesTheClonedUnitOnTheBoard()
+        {
+            // GIVEN — a Clone landing vacates no hex, so the fuse arms instead of detonating.
+            yield return ActivateBoardCo();
+
+            var capability = new FakeCapability
+            {
+                CanClone = true,
+                LandingEffects = new[]
+                {
+                    new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds),
+                },
+            };
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseCloneSource, capability);
+            var command = new MoveCommand(MoveType.Clone, _fuseCloneSource, _fuseCloneTarget, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_unitPresenter.ActiveUnits.TryGetValue(FirstSpawnedUnitId, out GridUnit clonedUnit), Is.True);
+            Assert.That(clonedUnit.HasFuse, Is.True);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleLandingResolved_ArmFuseOnJump_RemovesActingUnit()
+        {
+            // GIVEN — the owner Jumping a fused unit detonates it immediately as a self-destruct,
+            // the same path as SelfDestruct.
+            yield return ActivateBoardCo();
+
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[]
+                {
+                    new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds),
+                },
+            };
+            GridUnit actingUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseJumpSource, capability);
+            var command = new MoveCommand(MoveType.Jump, _fuseJumpSource, _fuseJumpTarget, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_unitPresenter.ActiveUnits.ContainsKey(actingUnit.UnitId), Is.False);
+        }
+
         private static List<HexCoordinates> CryoStasisTargets()
         {
             return new List<HexCoordinates> { _spellCenter, _spellAdjacentOne, _spellAdjacentTwo };
         }
 
-        private IEnumerator ActivateBoardAsync()
+        private IEnumerator ActivateBoardCo()
         {
             _boardGO.SetActive(true);
             yield return null;
@@ -1234,7 +1296,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private IEnumerator ArrangeAndExecuteVolatileMassJumpAsync()
         {
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -1251,7 +1313,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private IEnumerator ArrangeCryoStasisLandingAsync()
         {
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {
@@ -1267,7 +1329,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private IEnumerator ArrangeAcidCrawlerLandingAsync()
         {
-            yield return ActivateBoardAsync();
+            yield return ActivateBoardCo();
 
             var capability = new FakeCapability
             {

@@ -607,5 +607,69 @@ namespace GooGalaxy.Tests.EditMode.Cards
             // THEN
             LogAssert.NoUnexpectedReceived();
         }
+
+        [Test]
+        public void ValidateAuthoredData_ArmFuseInActionWindows_LogsAuthoringWarning()
+        {
+            // GIVEN
+            ImpactEffectDefinition[] definitions = new[]
+            {
+                new ImpactEffectDefinition(ImpactEffectType.ArmFuse, StatusType.None, 0, 3, TargetFilter.Self, 0, ImpactDurationUnit.ActionWindows),
+            };
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card.name = "TestCard";
+            _card.SetAuthoredData(
+                "volatile_mass",
+                "Volatile Mass",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 4,
+                canClone: false,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 2,
+                landingEffects: definitions
+            );
+            LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DurationUnitMismatchFormat, "TestCard", 0));
+
+            // WHEN
+            _card.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void ValidateAuthoredData_ApplyStatusInSeconds_LogsAuthoringWarning()
+        {
+            // GIVEN
+            ImpactEffectDefinition[] definitions = new[]
+            {
+                new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.Enemy, 0, ImpactDurationUnit.Seconds),
+            };
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card.name = "TestCard";
+            _card.SetAuthoredData(
+                "test_troop",
+                "Test Troop",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 1,
+                canClone: false,
+                canJump: true,
+                hasArmor: false,
+                ignoresHazards: false,
+                conversionRadius: 1,
+                landingEffects: definitions
+            );
+            LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DurationUnitMismatchFormat, "TestCard", 0));
+
+            // WHEN
+            _card.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
     }
 }

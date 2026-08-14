@@ -26,9 +26,10 @@ MonoBehaviour:
   _hasArmor: 0
   _conversionRadius: 2
   _landingEffects:
-  - _type: 3
+  - _type: 4
     _status: 0
     _radius: 0
-    _duration: 0
+    _duration: 3
+    _durationUnit: 1
     _target: 0
     _clusterSize: 0

@@ -11,7 +11,15 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// </remarks>
     public readonly struct ImpactEffect
     {
-        public ImpactEffect(ImpactEffectType type, StatusType status, int radius, int duration, TargetFilter target, int clusterSize)
+        public ImpactEffect(
+            ImpactEffectType type,
+            StatusType status,
+            int radius,
+            int duration,
+            TargetFilter target,
+            int clusterSize,
+            ImpactDurationUnit durationUnit = ImpactDurationUnit.ActionWindows
+        )
         {
             Type = type;
             Status = status;
@@ -19,6 +27,7 @@ namespace GooGalaxy.Runtime.Shared.Types
             Duration = duration;
             Target = target;
             ClusterSize = clusterSize;
+            DurationUnit = durationUnit;
         }
 
         /// <summary>The kind of work this impact performs, and the value the resolver dispatches on.</summary>
@@ -37,10 +46,22 @@ namespace GooGalaxy.Runtime.Shared.Types
         public int Radius { get; }
 
         /// <summary>
-        /// How long the result lasts, counted in action windows — defender windows for a status, owner windows
-        /// for a hazard. A value below one leaves the impact with nothing to apply and it is skipped.
+        /// How long the result lasts, counted in whatever <see cref="ImpactDurationUnit"/> says. A value below one
+        /// leaves the impact with nothing to apply and it is skipped.
         /// </summary>
+        /// <remarks>
+        /// The unit is not implied by the number: a status counts defender action windows, a hazard counts owner
+        /// action windows, and a fuse counts seconds of scaled match time. An impact whose type and
+        /// <see cref="ImpactDurationUnit"/> disagree is an authoring error — the resolver skips that one impact and
+        /// reports it rather than guessing which of the two the designer meant.
+        /// </remarks>
         public int Duration { get; }
+
+        /// <summary>
+        /// What <see cref="Duration"/> counts. <see cref="ImpactDurationUnit.Seconds"/> only ever pairs with
+        /// <see cref="ImpactEffectType.ArmFuse"/>; every other impact type is measured in action windows.
+        /// </summary>
+        public ImpactDurationUnit DurationUnit { get; }
 
         /// <summary>Which units inside <see cref="Radius"/> the impact applies to.</summary>
         public TargetFilter Target { get; }

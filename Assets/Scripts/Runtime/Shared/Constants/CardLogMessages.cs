@@ -20,6 +20,11 @@ namespace GooGalaxy.Runtime.Shared.Constants
             + "On a Protocol that field is the number of hexes the player picks, so this card will be rejected as InvalidTargets. "
             + "Set it to the authored cluster size — 3 for Cryo-Stasis and Purge Pulse, 4 for Sterilization Beam.";
 
+        public const string DurationUnitMismatchFormat =
+            "{0}: landing effect {1} disagrees with its Duration Unit. "
+            + "Arm Fuse is the only impact measured in Seconds; Apply Status and Spawn Hazard are measured in Action Windows. "
+            + "That impact is skipped at runtime, so set the Duration Unit field to match the impact type.";
+
         public const string DuplicateCardIdFormat = "CardPresenter: duplicate CardId '{0}' on '{1}' was skipped.";
     }
 }

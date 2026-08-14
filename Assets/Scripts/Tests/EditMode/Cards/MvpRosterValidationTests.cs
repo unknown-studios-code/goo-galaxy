@@ -77,9 +77,9 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(card.ConversionRadius, Is.EqualTo(conversionRadius));
         }
 
-        [TestCase(AcidCrawlerPath, ImpactEffectType.SpawnHazard, StatusType.None, 0, 2, TargetFilter.Self, 0)]
-        [TestCase(VolatileMassPath, ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0)]
-        [TestCase(CryoStasisPath, ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.All, 3)]
+        [TestCase(AcidCrawlerPath, ImpactEffectType.SpawnHazard, StatusType.None, 0, 2, TargetFilter.Self, 0, ImpactDurationUnit.ActionWindows)]
+        [TestCase(VolatileMassPath, ImpactEffectType.ArmFuse, StatusType.None, 0, 3, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)]
+        [TestCase(CryoStasisPath, ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, 1, TargetFilter.All, 3, ImpactDurationUnit.ActionWindows)]
         public void LandingEffects_ForCardWithAnAuthoredEffect_MatchesTheAuthoredImpact(
             string path,
             ImpactEffectType type,
@@ -87,7 +87,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
             int radius,
             int duration,
             TargetFilter target,
-            int clusterSize
+            int clusterSize,
+            ImpactDurationUnit durationUnit
         )
         {
             // GIVEN
@@ -100,17 +101,11 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             // WHEN
             ImpactEffect effect = card.LandingEffects[0];
-            (ImpactEffectType Type, StatusType Status, int Radius, int Duration, TargetFilter Target, int ClusterSize) actual = (
-                effect.Type,
-                effect.Status,
-                effect.Radius,
-                effect.Duration,
-                effect.Target,
-                effect.ClusterSize
-            );
+            (ImpactEffectType Type, StatusType Status, int Radius, int Duration, TargetFilter Target, int ClusterSize, ImpactDurationUnit DurationUnit) actual =
+                (effect.Type, effect.Status, effect.Radius, effect.Duration, effect.Target, effect.ClusterSize, effect.DurationUnit);
 
             // THEN
-            Assert.That(actual, Is.EqualTo((type, status, radius, duration, target, clusterSize)));
+            Assert.That(actual, Is.EqualTo((type, status, radius, duration, target, clusterSize, durationUnit)));
         }
 
         [TestCase(SubjectAlphaPath)]

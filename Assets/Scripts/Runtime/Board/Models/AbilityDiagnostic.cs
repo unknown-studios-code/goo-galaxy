@@ -46,5 +46,18 @@ namespace GooGalaxy.Runtime.Board.Models
         /// Protocol. There was nothing to destroy, so the impact was skipped.
         /// </summary>
         SelfDestructWithoutActingUnit = 16,
+
+        /// <summary>
+        /// A card authored an impact whose duration unit its type cannot read — a status or hazard in seconds,
+        /// or a fuse in action windows. That impact was skipped rather than reinterpreted, and the rest of the
+        /// card's impacts still resolved.
+        /// </summary>
+        DurationUnitMismatch = 32,
+
+        /// <summary>
+        /// A fuse impact resolved on a deployment with no unit acting on the board, which is every Protocol.
+        /// There was nothing to arm, so the impact was skipped.
+        /// </summary>
+        FuseWithoutActingUnit = 64,
     }
 }

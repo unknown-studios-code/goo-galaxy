@@ -84,6 +84,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private ReadOnlyCollection<int> _destroyedUnitIdsView;
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
+        private FuseController _fuseController;
         private StatusEffectResolver _statusEffects;
         private AbilityDiagnostic _loggedDiagnostics;
         private bool _isResolvingAbilities;
@@ -91,23 +92,35 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private bool _hasLoggedAbilityReentry;
         private bool _hasLoggedSpellReentry;
 
+        // Read at the point of use, never cached during injection: see FuseController.Fuses for why the resolver
+        // may not exist yet. Caching what was visible at Construct would pin a null for the rest of the match.
+        private FuseResolver Fuses => _fuseController != null ? _fuseController.Fuses : null;
+
         /// <summary>Supplies the board and the unit registry every impact is resolved against.</summary>
         /// <remarks>
         /// The status resolver is built here rather than in <c>Awake</c> because it binds to the registry's value
         /// collection, and injection is the first point at which that registry is known. The collection stays
         /// bound to a <c>readonly</c> field on <see cref="UnitPresenter"/>, so the binding survives every later
         /// mutation of the registry.
+        /// <para>
+        /// The fuse system is the one dependency <i>not</i> built here: this component takes the owning component
+        /// and reads the resolver off it at the point of use. See <see cref="FuseController.Fuses"/> for why it
+        /// must be that one instance.
+        /// </para>
         /// </remarks>
         /// <param name="gridPresenter">The board whose cells impacts are placed on.</param>
         /// <param name="unitPresenter">The registry the affected units are looked up in.</param>
+        /// <param name="fuseController">The owner of the match's single fuse system, and its ticker.</param>
         [Inject]
-        public void Construct(GridPresenter gridPresenter, UnitPresenter unitPresenter)
+        public void Construct(GridPresenter gridPresenter, UnitPresenter unitPresenter, FuseController fuseController)
         {
             Debug.Assert(gridPresenter != null, BoardLogMessages.GridPresenterMissing, this);
             Debug.Assert(unitPresenter != null, BoardLogMessages.UnitPresenterMissing, this);
+            Debug.Assert(fuseController != null, BoardLogMessages.FuseControllerMissing, this);
 
             _gridPresenter = gridPresenter;
             _unitPresenter = unitPresenter;
+            _fuseController = fuseController;
 
             // Guarded rather than dereferenced outright: the container never injects null, but this method is
             // public and the PlayMode fixtures call it directly, where a null would surface as a
@@ -368,6 +381,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
                     context,
                     landingEffects,
                     _statusEffects,
+                    Fuses,
                     _areaBuffer,
                     _affectedUnitIds,
                     _affectedHexes,
@@ -418,6 +432,8 @@ namespace GooGalaxy.Runtime.Board.Controllers
 
         private void DestroyMarkedUnits()
         {
+            FuseResolver fuses = Fuses;
+
             for (int i = 0; i < _destroyedUnitIds.Count; i++)
             {
                 int unitId = _destroyedUnitIds[i];
@@ -426,6 +442,12 @@ namespace GooGalaxy.Runtime.Board.Controllers
                 {
                     unit.IsAlive = false;
                 }
+
+                // The deterministic removal wins over the clock. A Jump detonation removes a unit that was
+                // already burning a fuse, and leaving that id armed would have the ticker come back seconds later
+                // for a unit that no longer exists. Clearing an id that never carried a fuse does nothing, so
+                // every marked unit goes through it rather than only the ones known to be armed.
+                fuses?.ClearFuse(unitId);
 
                 // Unregistering is what releases the cell, so the registry and the grid stay in step.
                 _unitPresenter.UnregisterUnit(unitId);
@@ -515,6 +537,16 @@ namespace GooGalaxy.Runtime.Board.Controllers
             {
                 Debug.LogWarning(BoardLogMessages.SelfDestructWithoutActingUnit, this);
             }
+
+            if ((unlogged & AbilityDiagnostic.FuseWithoutActingUnit) != 0)
+            {
+                Debug.LogWarning(BoardLogMessages.FuseWithoutActingUnit, this);
+            }
+
+            if ((unlogged & AbilityDiagnostic.DurationUnitMismatch) != 0)
+            {
+                Debug.LogError(BoardLogMessages.DurationUnitMismatch, this);
+            }
         }
 
         private IReadOnlyList<ImpactEffect> GetLandingEffects(int unitId)
@@ -533,7 +565,10 @@ namespace GooGalaxy.Runtime.Board.Controllers
         {
             grid = null;
 
-            if (_unitPresenter == null || _statusEffects == null || !TryGetHexGrid(out grid))
+            // The fuse system is checked here rather than null-tolerated at the call site, because the resolver
+            // treats it as a required collaborator and throws on a null one. Gating the whole deployment instead
+            // keeps the failure a single latched line rather than an exception per landing.
+            if (_unitPresenter == null || _statusEffects == null || Fuses == null || !TryGetHexGrid(out grid))
             {
                 if (!_hasLoggedBoardUnavailable)
                 {

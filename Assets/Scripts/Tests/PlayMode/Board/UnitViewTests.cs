@@ -30,6 +30,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private const float PositionTolerance = 0.0001f;
         private const string SourceCardIdValue = "acid_crawler";
         private const int ShortStatusDurationInActionWindows = 1;
+        private const float FuseDurationInSeconds = 3f;
 
         private static readonly Color _playerOneColor = new(0f, 1f, 1f, 1f);
         private static readonly Color _playerTwoColor = new(1f, 0f, 1f, 1f);
@@ -45,6 +46,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private GameObject _unitPrefabGO;
         private GameObject _shieldOverlayPrefabGO;
         private GameObject _frozenOverlayPrefabGO;
+        private GameObject _fuseOverlayPrefabGO;
         private GridLayoutSO _gridLayout;
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
@@ -69,6 +71,10 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _frozenOverlayPrefabGO.AddComponent<SpriteRenderer>();
             _frozenOverlayPrefabGO.SetActive(false);
 
+            _fuseOverlayPrefabGO = new GameObject("FuseOverlayPrefab_Test");
+            _fuseOverlayPrefabGO.AddComponent<SpriteRenderer>();
+            _fuseOverlayPrefabGO.SetActive(false);
+
             _boardGO = new GameObject("UnitView_Test");
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
@@ -79,7 +85,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _unitView.SetViewConfiguration(_unitPrefabGO, null, null, null, CellVisualSize);
-            _unitView.SetOverlayConfiguration(_shieldOverlayPrefabGO, _frozenOverlayPrefabGO);
+            _unitView.SetOverlayConfiguration(_shieldOverlayPrefabGO, _frozenOverlayPrefabGO, _fuseOverlayPrefabGO);
             _unitView.SetFactionColors(_playerOneColor, _playerTwoColor);
 
             _convertedUnitIds.Clear();
@@ -116,6 +122,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
             if (_frozenOverlayPrefabGO != null)
             {
                 Object.Destroy(_frozenOverlayPrefabGO);
+            }
+
+            if (_fuseOverlayPrefabGO != null)
+            {
+                Object.Destroy(_fuseOverlayPrefabGO);
             }
 
             if (_gridLayout != null)
@@ -554,6 +565,49 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             // THEN
             Assert.That(_unitView.TryGetFrozenOverlay(UnitId, out GameObject _), Is.True);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator RefreshStatusOverlays_FusedUnit_ShowsFuseOverlay()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            unit.ArmFuse(FuseDurationInSeconds);
+
+            // WHEN
+            _unitView.SyncUnitVisuals();
+
+            // THEN
+            Assert.That(_unitView.TryGetFuseOverlay(UnitId, out GameObject _), Is.True);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleFuseExpired_ReleasesUnitVisualAndReturnsOverlayToPool()
+        {
+            // GIVEN — a stranded overlay permanently shrinks a board-sized pool, so this proves the fuse overlay
+            // comes back even though FuseController raises FuseExpired after the unit is already unregistered.
+            yield return ActivateBoard();
+
+            int baselineFuseOverlayInactiveCount = _unitView.FuseOverlayPoolInactiveCount;
+
+            GridUnit unit = RegisterUnitAt(UnitId, PlayerId, _firstCoords);
+            unit.ArmFuse(FuseDurationInSeconds);
+            _unitView.SyncUnitVisuals();
+            Assert.That(
+                _unitView.TryGetFuseOverlay(UnitId, out GameObject _),
+                Is.True,
+                "Test setup expects the fuse overlay to be attached before it expires."
+            );
+
+            // WHEN
+            MatchEvents.RaiseFuseExpired(UnitId, PlayerId);
+
+            // THEN
+            Assert.That(_unitView.FuseOverlayPoolInactiveCount, Is.EqualTo(baselineFuseOverlayInactiveCount));
         }
 
         private static Vector3 ExpectedWorldPosition(HexCoordinates coordinates)

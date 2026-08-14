@@ -14,6 +14,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private const int EnemyPlayerId = 2;
         private const int ThirdPlayerId = 3;
         private const int FreezeDuration = 1;
+        private const float FuseDurationInSeconds = 3f;
 
         private static readonly HexCoordinates _spawnCoords = new(2, -1);
 
@@ -448,6 +449,104 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(outcome, Is.EqualTo(ConversionOutcome.None));
+        }
+
+        [Test]
+        public void ArmFuse_PositiveDuration_SetsHasFuseAndRemaining()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+
+            // WHEN
+            unit.ArmFuse(FuseDurationInSeconds);
+
+            // THEN
+            Assert.That((unit.HasFuse, unit.RemainingFuseSeconds), Is.EqualTo((true, FuseDurationInSeconds)));
+        }
+
+        [TestCase(0f)]
+        [TestCase(-1f)]
+        public void ArmFuse_ZeroOrNegative_LeavesUnarmed(float duration)
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+
+            // WHEN
+            unit.ArmFuse(duration);
+
+            // THEN
+            Assert.That(unit.HasFuse, Is.False);
+        }
+
+        [Test]
+        public void TickFuse_Unarmed_ReturnsFalse()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+
+            // WHEN
+            bool hasExpired = unit.TickFuse(FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(hasExpired, Is.False);
+        }
+
+        [Test]
+        public void TickFuse_ExactlyReachesZero_ReturnsTrueAndClearsHasFuse()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+            unit.ArmFuse(FuseDurationInSeconds);
+
+            // WHEN
+            bool hasExpired = unit.TickFuse(FuseDurationInSeconds);
+
+            // THEN
+            Assert.That((hasExpired, unit.HasFuse), Is.EqualTo((true, false)));
+        }
+
+        [Test]
+        public void TickFuse_ReturnsTrueOnceOnly_SecondTickReturnsFalse()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+            unit.ArmFuse(FuseDurationInSeconds);
+            unit.TickFuse(FuseDurationInSeconds);
+
+            // WHEN
+            bool hasExpiredAgain = unit.TickFuse(FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(hasExpiredAgain, Is.False);
+        }
+
+        [Test]
+        public void ReceiveConversionAttempt_FusedUnit_KeepsRemainingFuseSeconds()
+        {
+            // GIVEN — a fuse survives conversion and burns for its new owner.
+            GridUnit unit = CreateUnit();
+            unit.ArmFuse(FuseDurationInSeconds);
+
+            // WHEN
+            unit.ReceiveConversionAttempt(EnemyPlayerId);
+
+            // THEN
+            Assert.That(unit.RemainingFuseSeconds, Is.EqualTo(FuseDurationInSeconds));
+        }
+
+        [Test]
+        public void TickFuse_FrozenUnit_StillCountsDown()
+        {
+            // GIVEN — Frozen suppresses conversion but not the fuse countdown.
+            GridUnit unit = CreateUnit();
+            unit.ArmFuse(FuseDurationInSeconds);
+            unit.AddStatus(StatusType.Frozen, FreezeDuration);
+
+            // WHEN
+            bool hasExpired = unit.TickFuse(FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(hasExpired, Is.True);
         }
 
         private static GridUnit CreateUnit()

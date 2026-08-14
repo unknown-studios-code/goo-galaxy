@@ -40,6 +40,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private const float SeededPlayerEnergy = 20f;
         private const float NoEnergyRegen = 0f;
         private const float VolatileMassJumpEnergyCost = 0.5f;
+        private const int VolatileMassFuseDurationInSeconds = 3;
         private const float EnergyTolerance = 0.0001f;
 
         private static readonly HexCoordinates _subjectAlphaSource = new(3, 0);
@@ -53,7 +54,11 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private static readonly HexCoordinates _bioPhalanxAttackerSource = new(0, 2);
         private static readonly HexCoordinates _bioPhalanxAttackerCloneTarget = new(0, 3);
 
-        private static readonly HexCoordinates _volatileMassSource = new(0, -3);
+        // Volatile Mass cannot Clone, so the hex it occupies is the one its Deploy landed on. The Jump target sits
+        // exactly the default two hexes away, and the victim a further two from that target — on the outer edge
+        // of the card's radius-2 reach, which is the whole point of putting it there. At distance one it would be
+        // converted by a radius-1 card too and the assertion would stop testing the expanded radius.
+        private static readonly HexCoordinates _volatileMassDeployHex = new(0, -3);
         private static readonly HexCoordinates _volatileMassJumpTarget = new(0, -5);
         private static readonly HexCoordinates _volatileMassVictimCoords = new(0, -7);
 
@@ -75,6 +80,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
         private AbilityController _abilityController;
+        private FuseController _fuseController;
         private EnergyPresenter _energyPresenter;
         private FakeUnitSpawner _spawner;
 
@@ -105,7 +111,18 @@ namespace GooGalaxy.Tests.PlayMode.Cards
                 false,
                 false,
                 2,
-                new[] { new ImpactEffectDefinition(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0) }
+                new[]
+                {
+                    new ImpactEffectDefinition(
+                        ImpactEffectType.ArmFuse,
+                        StatusType.None,
+                        0,
+                        VolatileMassFuseDurationInSeconds,
+                        TargetFilter.Self,
+                        0,
+                        ImpactDurationUnit.Seconds
+                    ),
+                }
             );
             _cryoStasisData = CreateCardData(
                 "cryo_stasis",
@@ -138,8 +155,10 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             _energyPresenter.InitializePlayer(PlayerTwoId, new EnergyConfig(SeededPlayerEnergy, NoEnergyRegen, SeededPlayerEnergy));
             _unitPresenter.Construct(_gridPresenter, _energyPresenter);
             _boardGO.AddComponent<ConversionController>().Construct(_gridPresenter, _unitPresenter);
+            _fuseController = _boardGO.AddComponent<FuseController>();
+            _fuseController.Construct(_unitPresenter);
             _abilityController = _boardGO.AddComponent<AbilityController>();
-            _abilityController.Construct(_gridPresenter, _unitPresenter);
+            _abilityController.Construct(_gridPresenter, _unitPresenter, _fuseController);
 
             _gridPresenter.SetGridLayout(_gridLayout);
             _spawner = new FakeUnitSpawner();
@@ -193,7 +212,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             RegisterUnit(AcidCrawlerUnitId, PlayerOneId, _acidCrawlerSource, acidCrawler);
             GridUnit bioPhalanxDefender = RegisterUnit(BioPhalanxUnitId, PlayerOneId, _bioPhalanxDefenderCoords, bioPhalanx);
             RegisterUnit(BioPhalanxAttackerUnitId, PlayerTwoId, _bioPhalanxAttackerSource, subjectAlpha);
-            RegisterUnit(VolatileMassUnitId, PlayerTwoId, _volatileMassSource, volatileMass);
+            RegisterUnit(VolatileMassUnitId, PlayerTwoId, _volatileMassDeployHex, volatileMass);
             GridUnit volatileMassVictim = RegisterUnit(VolatileMassVictimUnitId, PlayerOneId, _volatileMassVictimCoords, subjectAlpha);
             GridUnit cryoVictim = RegisterUnit(CryoVictimUnitId, PlayerOneId, _cryoAdjacentOne, subjectAlpha);
 
@@ -211,17 +230,39 @@ namespace GooGalaxy.Tests.PlayMode.Cards
                 new MoveCommand(MoveType.Clone, _bioPhalanxAttackerSource, _bioPhalanxAttackerCloneTarget, PlayerTwoId, BioPhalanxAttackerUnitId)
             );
 
-            // Step 4 (Volatile Mass): Jumps — radius-2 conversion resolves, then the acting unit self-destructs.
-            float playerTwoEnergyBeforeVolatileMassJump = _energyPresenter.GetEnergy(PlayerTwoId);
-            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassSource, _volatileMassJumpTarget, PlayerTwoId, VolatileMassUnitId));
+            // Step 4 (Volatile Mass), beat one: its Deploy landing arms the fuse and the unit stays on the board
+            // instead of being removed.
+            // TODO (GOOM-9): drive this through ResolveMove once MoveType.Deploy has a resolver.
+            // Published directly for now — this is the exact event ConversionController raises for a landing, and
+            // the fuse impact never reads the conversions payload.
+            MatchEvents.RaiseLandingResolved(
+                new MoveCommand(MoveType.Deploy, _volatileMassDeployHex, _volatileMassDeployHex, PlayerTwoId, VolatileMassUnitId),
+                default
+            );
 
-            // Between steps: the self-destruct must remove only Volatile Mass's own unit. Without this check, a
+            Assert.That(
+                _unitPresenter.ActiveUnits.TryGetValue(VolatileMassUnitId, out GridUnit volatileMassUnit),
+                Is.True,
+                "Volatile Mass's deploy landing should have left the unit on the board rather than removing it."
+            );
+            Assert.That(
+                volatileMassUnit.HasFuse,
+                Is.True,
+                "Volatile Mass's deploy landing should have armed its fuse instead of destroying the unit immediately."
+            );
+
+            // Step 4 (Volatile Mass), beat two: the owner Jumps the fused unit — radius-2 conversion resolves
+            // again, then the fuse detonates it the same way a SelfDestruct would.
+            float playerTwoEnergyBeforeVolatileMassJump = _energyPresenter.GetEnergy(PlayerTwoId);
+            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassDeployHex, _volatileMassJumpTarget, PlayerTwoId, VolatileMassUnitId));
+
+            // Between steps: the fuse detonation must remove only Volatile Mass's own unit. Without this check, a
             // wrong id here would surface only as a failure in the Cryo-Stasis assertions below, misattributing
             // this step's defect to the next one.
             Assert.That(
                 _unitPresenter.ActiveUnits.ContainsKey(CryoVictimUnitId),
                 Is.True,
-                "Volatile Mass's self-destruct must not have disturbed the unit reserved for the Cryo-Stasis step."
+                "Volatile Mass's fuse detonation must not have disturbed the unit reserved for the Cryo-Stasis step."
             );
 
             // Step 5 (Cryo-Stasis): freezes a 3-hex cluster that includes the reserved victim.
@@ -247,7 +288,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             Assert.That(
                 _unitPresenter.ActiveUnits.ContainsKey(VolatileMassUnitId),
                 Is.False,
-                "Volatile Mass's self-destruct should have removed the acting unit."
+                "Volatile Mass's fuse detonation should have removed the acting unit."
             );
             Assert.That(volatileMassVictim.PlayerId, Is.EqualTo(PlayerTwoId), "Volatile Mass's radius-2 conversion should have flipped the distant victim.");
             Assert.That(
