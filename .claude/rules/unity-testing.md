@@ -10,11 +10,13 @@ paths:
 
 A test exists to fail for exactly one reason, and to say which reason in its name. This document defines how tests are written, named, structured, and isolated in this project.
 
-**Tests are executed only through the open Editor**, with `run_tests` and `test_status` from [unity-editor-automation.md](unity-editor-automation.md) — never with `Unity.exe -batchmode`, and never by handing the list to the user instead of running it. Write them, name them, run them, and report what failed with the reason. A suite that was written but never run is a guess about whether the change works. CI runs both suites on every PR.
+**Tests are executed only through the open Editor**, with `npm run unity:test:editmode` and `npm run unity:test:playmode` — never with `Unity.exe -batchmode`, never with the `unity test` subcommand (it spawns its own editor), and never by handing the list to the user instead of running it. Write them, name them, run them, and report what failed with the reason. A suite that was written but never run is a guess about whether the change works. CI runs both suites on every PR.
+
+Both scripts compile first and refuse to run if the project does not build, which matters more than it sounds: **a suite launched against a broken compile runs the previously built assemblies and reports them green** — measured at 519/519 with a syntax error on disk. A green suite is never proof the code compiles. Pass a fixture name to re-run one target, e.g. `npm run unity:test:editmode -- AbilityContextTests`. See Rules 16–17 in [unity-editor-automation.md](unity-editor-automation.md).
 
 ## 2. Cross-References
 
-- **Editor Automation** → [unity-editor-automation.md](unity-editor-automation.md) (`run_tests` and `test_status` — how the suites this file defines are actually executed)
+- **Editor Automation** → [unity-editor-automation.md](unity-editor-automation.md) (The `unity:test:*` scripts and the traps they encode — how the suites this file defines are actually executed)
 - **Code Style** → [unity-code-style.md](unity-code-style.md) (Naming, braces, and formatting apply to test code unchanged)
 - **Class Organization** → [unity-class-organization.md](unity-class-organization.md) (Fixture layout follows the same member order)
 - **Code Documentation** → [unity-code-documentation.md](unity-code-documentation.md) (GIVEN-WHEN-THEN is the documentation of a test)

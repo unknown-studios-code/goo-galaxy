@@ -123,10 +123,10 @@ Feed each agent's returned notes into the next agent's brief. If an agent report
 ## 7. Integrate and Verify
 
 1. Read every file the agents touched and fix what they left broken — cross-check signatures, namespaces, and `.asmdef` references by hand before asking the editor, because a compile error names one file and a wrong reference names none.
-2. Compile through the running editor: `recompile`, then poll `recompile_status` until it reports `completed`. This is also what refreshes the `.csproj` that `dotnet format` reads, so it comes before the formatter, not after.
+2. Compile through the running editor with `npm run unity:recompile`. It waits for the compile to settle and exits non-zero if the project does not build. This is also what refreshes the `.csproj` that `dotnet format` reads, so it comes before the formatter, not after.
 3. Run `npm run format`, then `npm run check`.
 4. Confirm assembly dependency direction — `Runtime.Shared` stays the leaf, editor never referenced by runtime, no cycles.
-5. Run the suites through the open editor with `run_tests` and `test_status`, per `.claude/rules/unity-editor-automation.md`. Bound the result: a full status payload overflows the tool limit, so filter it rather than reading it whole. Report the counts and every failure with its reason — never report a suite as green without the numbers.
+5. Run the suites: `npm run unity:test:editmode`, then `npm run unity:test:playmode`. Both compile first and refuse to run against a project that does not build — which matters because a suite launched against a broken compile reports the **previously built** assemblies as green. Exit 0 means it built, tests ran, and all passed. Report the counts and every failure with its reason — never report a suite as green without the numbers. Re-run a single fixture with `npm run unity:test:editmode -- <FixtureName>` rather than the whole suite.
 6. Confirm the acceptance criteria are actually met, item by item.
 
 ## 8. Report and Hand Off
@@ -135,15 +135,15 @@ Feed each agent's returned notes into the next agent's brief. If an agent report
 - **Grounding** — the task-says vs actual table.
 - **Agents run** — roster, order, model tier, and what each produced.
 - **Changes** — files created and edited, grouped by assembly.
-- **Manual editor steps** — every `.asset`, `.meta`, prefab, or scene change the user must make in Unity. You cannot write those files; the `deny` rules in `.claude/settings.json` enforce it.
+- **Editor-side changes** — every `.asset`, `.meta`, prefab, or scene change the work needed, and whether you made it through the editor or left it for the user. Writing those files as bytes is blocked by the `deny` rules; changing them with `unity cmd set_serialized_field`, `create_asset`, `move_asset` and siblings is the sanctioned path. Leave a step to the user only when it genuinely needs judgement in the Inspector, and then give the menu path, fields, and values.
 - **Tests** — the counts from the run you performed, EditMode and PlayMode, and any suite you could not run and why.
 - **Open questions** — anything a decision is still needed on.
 - **Next** — `/create-commit`, then `/open-pull-request`, then `/track-task` to sync the Notion page.
 
 ## Boundaries
 
-- Do not create `.asset` or `.meta` files under `Assets/` — provide menu path, fields, and values instead.
-- Run the test suites through the open editor, and never through `Unity.exe -batchmode`. Do not start a player build — that is `release-engineer`'s call, not part of implementing a task.
+- Do not write `.asset`, `.meta`, `.prefab`, or `.unity` bytes directly — the `deny` rules block it and it corrupts GUIDs. Create and change them through the editor with `unity cmd`, or hand the user menu path, fields, and values when the step needs judgement.
+- Run the test suites through the open editor with the `unity:test:*` scripts, never through `Unity.exe -batchmode` and never through the `unity test` subcommand, which spawns its own editor. Do not start a player build — that is `release-engineer`'s call, not part of implementing a task.
 - Do not commit, push, or open a PR from this skill. Hand off to `/create-commit` and `/open-pull-request`.
 - Do not create or switch branches without asking. If the user wants one, follow `feat/GOOM-1`-style naming and offer to write it back to the Notion `Branch` property via `track-task`.
 - Do not edit the Notion page as part of implementation. That is `track-task`'s job, after the PR exists.

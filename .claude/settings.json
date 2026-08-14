@@ -19,6 +19,9 @@
       "Bash(npm run format:*)",
       "Bash(npm run check)",
       "Bash(npm run check:*)",
+      "Bash(npm run unity:*)",
+      "Bash(unity status:*)",
+      "Bash(unity list:*)",
       "Bash(npm ls:*)",
       "Bash(npm outdated:*)",
       "Bash(dotnet --info)",
@@ -54,6 +57,9 @@
       "PowerShell(npm run format:*)",
       "PowerShell(npm run check)",
       "PowerShell(npm run check:*)",
+      "PowerShell(npm run unity:*)",
+      "PowerShell(unity status:*)",
+      "PowerShell(unity list:*)",
       "PowerShell(npm ls:*)",
       "PowerShell(npm outdated:*)",
       "PowerShell(dotnet --info)",
@@ -81,6 +87,15 @@
       "mcp__notion__notion-search",
       "mcp__notion__notion-fetch"
     ],
-    "deny": ["Edit(Assets/**/*.meta)", "Edit(Assets/**/*.asset)"]
+    "deny": [
+      "Edit(Assets/**/*.meta)",
+      "Edit(Assets/**/*.asset)",
+      "Edit(Assets/**/*.prefab)",
+      "Edit(Assets/**/*.unity)",
+      "Write(Assets/**/*.meta)",
+      "Write(Assets/**/*.asset)",
+      "Write(Assets/**/*.prefab)",
+      "Write(Assets/**/*.unity)"
+    ]
   }
 }
