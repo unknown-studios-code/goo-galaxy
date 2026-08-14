@@ -48,6 +48,11 @@
     "format:csharpier": "dotnet csharpier format Assets/Scripts Assets/Playtest Assets/Editor --ignore-path .formatterignore",
     "format:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" \"Assets/Playtest/**/*.cs\" \"Assets/Editor/**/*.cs\" --severity info --verbosity quiet",
     "format:prettier": "prettier --write \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
-    "prepare": "husky && dotnet tool restore"
+    "prepare": "husky && dotnet tool restore",
+    "unity:console": "pwsh -NoProfile -File scripts/unity-console.ps1",
+    "unity:console:mark": "pwsh -NoProfile -File scripts/unity-console.ps1 -Mark",
+    "unity:recompile": "pwsh -NoProfile -File scripts/unity-recompile.ps1",
+    "unity:test:editmode": "pwsh -NoProfile -File scripts/unity-test-editmode.ps1",
+    "unity:test:playmode": "pwsh -NoProfile -File scripts/unity-test-playmode.ps1"
   }
 }

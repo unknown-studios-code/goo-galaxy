@@ -10,10 +10,6 @@
     "notion": {
       "type": "http",
       "url": "https://mcp.notion.com/mcp"
-    },
-    "unity": {
-      "command": "unity",
-      "args": ["mcp"]
     }
   }
 }

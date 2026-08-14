@@ -10,17 +10,29 @@ Goo Galaxy — real-time PvP mobile strategy game (Unity 6000.3.18f1, URP 17.3).
 
 Prerequisites: Unity 6000.3.18f1, Node.js (`npm` scripts and Husky), the .NET SDK (`dotnet tool restore` pulls CSharpier), and **Docker Desktop** — the pre-commit hook shells out to a container to scan staged changes for secrets and fails the commit outright if the daemon is not reachable.
 
-**Compile through the running editor before any format or check script, and before committing.** `recompile` followed by `recompile_status` until it reports `completed` — never batch mode, and never a bare `npm run format` on a project the editor has not settled. Unity generates `goo-galaxy.slnx` and the per-assembly `.csproj`, both untracked, and `dotnet format` reads them rather than the `.asmdef` files. They refresh as a side effect of a compile actually running, so a change that touches no code — restoring a plugin, editing an `.asmdef` — leaves them stale and needs a forced sync. See Rule 3a in `.claude/rules/unity-editor-automation.md`.
+**Compile through the running editor before any format or check script, and before committing.** `npm run unity:recompile` does it and waits, exiting non-zero if the project does not build — never batch mode, and never a bare `npm run format` on a project the editor has not settled. Unity generates `goo-galaxy.slnx` and the per-assembly `.csproj`, both untracked, and `dotnet format` reads them rather than the `.asmdef` files. They refresh as a side effect of a compile actually running, so a change that touches no code — restoring a plugin, editing an `.asmdef` — leaves them stale and needs a forced sync. See Rule 3a in `.claude/rules/unity-editor-automation.md`.
 
 Existing is not the same as current. A csproj stale relative to the `.asmdef` files makes `dotnet format` delete `using` directives it wrongly reads as unused — and inside `lint-staged` that deletion is re-staged straight into the commit. A settled compile is what prevents it, which is why the moment of highest risk is the commit that adds a script or an assembly.
 
-`recompile` regularly drops the MCP bridge during the domain reload and the call returns a timeout. That reports the bridge, not the compile: poll `recompile_status`, and use `unity status` in the shell to confirm the editor is alive before concluding anything. The pre-commit hook fails with an instruction to open the editor when `goo-galaxy.slnx` is absent, rather than skipping the check.
+`npm run unity:recompile` handles the awkward part: a compile drops the editor bridge during the domain reload, and the call comes back as a timeout that reports the bridge rather than the compile. The script polls **at an interval rather than in a tight loop** — while the reload is in flight each call burns its full `--timeout` before failing — and it gates on `EditorUtility.scriptCompilationFailed` rather than `recompile_status.failed`, which resets to a clean `up_to_date` while the project is still broken. Going manual means owning both; `unity status` confirms the editor is alive before you conclude anything. The pre-commit hook fails with an instruction to open the editor when `goo-galaxy.slnx` is absent, rather than skipping the check.
 
 ```powershell
-npm install            # runs husky + dotnet tool restore via the prepare script
-npm run format         # csharpier + dotnet + prettier, rewriting in place — run before every commit
-npm run check          # the same three, verify only — what the CI Format Check runs
+npm install                    # runs husky + dotnet tool restore via the prepare script
+npm run unity:recompile        # compile through the open editor and wait — run before format/check
+npm run format                 # csharpier + dotnet + prettier, rewriting in place — run before every commit
+npm run check                  # the same three, verify only — what the CI Format Check runs
+
+npm run unity:test:editmode    # EditMode suite; compiles first, exit 0 only if it built and passed
+npm run unity:test:playmode    # PlayMode suite; same gate, async internally
+
+npm run unity:test:editmode -- AbilityContextTests   # partial match on the test name
+npm run unity:console:mark     # remember where the console is, before doing something
+npm run unity:console          # show only what was logged since that mark; exit 1 on any error
 ```
+
+The `unity:*` scripts answer with an **exit code**, which is the point: reaching the editor by hand means parsing a two-layer JSON envelope, and getting it wrong reports a green suite that never ran. Both test scripts run the recompile gate themselves, so they do not need chaining. Arguments are positional and optional, so there is no flag name to misspell. Sources in `scripts/`; the traps they encode are Rules 12–18 of `.claude/rules/unity-editor-automation.md`.
+
+**A green suite is not proof the code compiles**, and the console buffer is not scoped to your change — that is what `unity:console:mark` is for. Both are measured failure modes, not hypotheticals.
 
 Run `format` first, then `check`: `format` fixes what a formatter can, and `check` reports what is left. Per-formatter variants exist as `format:csharpier`, `format:dotnet`, `format:prettier` and the matching `check:*`.
 
@@ -38,7 +50,9 @@ The trade is that the hook no longer verifies the **whole repository**: a violat
 
 **Do not disable the hooks with `HUSKY=0`.** It used to be the routine path for agent-authored commits, because the Commitizen `prepare-commit-msg` hook opened an interactive prompt that hung any non-interactive caller. That hook now exits immediately whenever git already has a message — which `git commit -m` always does — so the prompt only appears for a bare `git commit`. `HUSKY=0` today buys nothing and costs the formatting and secret gates.
 
-**Run tests and builds through the open editor, never through batch mode.** `run_tests` and `build` drive the running editor and report back; `Unity.exe -batchmode` needs the project lock, forces the editor closed, and rewrites render pipeline and project settings as a side effect. See `.claude/rules/unity-editor-automation.md`. CI runs both suites on PRs.
+**Run tests and builds through the open editor, never through batch mode.** `unity cmd run_tests` and `unity cmd build` drive the running editor and report back; `Unity.exe -batchmode` needs the project lock and forces the editor closed. **The `unity test`, `unity build`, and `unity run` subcommands fall under the same ban** — they spawn their own editor in batch mode rather than talking to the open one. `unity cmd` is the only surface that reaches the running editor. See `.claude/rules/unity-editor-automation.md`. CI runs both suites on PRs.
+
+**A build dirties the working tree, and the open editor does not save you from it.** A measured `unity cmd build` rewrote `UniversalRP.asset`, `UniversalRenderPipelineGlobalSettings.asset`, `ProjectSettings.asset` and `UnityConnectSettings.asset`, and dropped a stray `Assets/DefaultVolumeProfile.asset` — the churn comes from building, not from the mode. Validate with `--dry_run true`, leave player builds to CI, and if you must build locally do it on a clean tree and restore afterwards with `git restore` plus `git clean`. Rule 19 has the detail.
 
 **Secret scanning runs on every commit and in CI.** The `pre-commit` hook and `.github/workflows/secret-scan.yml` both run [Betterleaks](https://github.com/betterleaks/betterleaks) as a container, digest-pinned — `ghcr.io/betterleaks/betterleaks@sha256:16f903f0100ce7358ef1f870858777e55bec94cf04c6b65c45d013274ea3311c`, never a tag, never `:latest` — plus a filename-extension gate for secret-shaped files (`.key`, `.pem`, `.p12`, `.pfx`, `.keystore`, `.jks`, `.mobileprovision`, `.cer`, `.p8`, sourced from `.github/rulesets/push-rulesets/01-sensitive-files-protection.json`). If the hook fails on the Docker check, start Docker Desktop and retry — it fails the commit rather than skipping the scan, on purpose, so never work around it by uninstalling or ignoring the hook. If it fails on an actual finding, treat it as a real leak until proven otherwise: fix the content or rotate the credential. Never add `--redact` removal, `|| true`, `continue-on-error`, or a `.betterleaksignore`/`.betterleaks.toml` to force it green — ask first if you believe a finding is a false positive.
 
@@ -74,7 +88,7 @@ The project skills own each step (`/create-commit`, `/open-pull-request`, `/refi
 ## Boundaries
 
 - **Never write `.asset`, `.meta`, `.prefab`, or `.unity` files directly.** Unity authors them; writing the bytes from an agent corrupts GUIDs and serialized references. The `deny` rules in `.claude/settings.json` enforce this — a denial there is policy, not a bug.
-- **Changing those assets through the Unity MCP is allowed and is the expected path**, because the editor writes the files and GUIDs stay valid. Prefer the named tool — `set_serialized_field`, `set_component_properties`, `move_asset`, `delete_asset` — over `eval`, and read the value back with a different tool before asserting it landed. A denial on a direct write means "use the editor", not "this cannot be done". With no MCP connected, `unity status` says whether the editor is alive before you conclude anything. Full guidance in `.claude/rules/unity-editor-automation.md`.
+- **Changing those assets through the editor is allowed and is the expected path**, because the editor writes the files and GUIDs stay valid. The editor is reached with `unity cmd <command>` in the shell — there is no Unity MCP server on this project. Prefer the named command — `unity cmd set_serialized_field`, `set_component_properties`, `move_asset`, `delete_asset` — over `eval`, and read the value back with a different command before asserting it landed. A denial on a direct write means "use the editor", not "this cannot be done". `unity status` says whether the editor is alive before you conclude anything, and `unity list --json` is the authoritative list of what it exposes. Full guidance in `.claude/rules/unity-editor-automation.md`.
 - **`ProjectSettings/` and render pipeline assignment stay the user's call.** Ask before changing Graphics/Quality settings or anything project-wide.
 - **Never commit, push, or open a PR** unless asked.
 
