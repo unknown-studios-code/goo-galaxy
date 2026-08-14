@@ -100,6 +100,45 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </remarks>
         public static event Action<int, AbilityResult> AbilityResolved;
 
+        /// <summary>
+        /// Raised when a unit starts, or restarts, a fuse: the unit id, the id of the player who owns
+        /// it at that moment, and how many seconds it has left.
+        /// </summary>
+        /// <remarks>
+        /// Re-arming an already-armed unit raises it again with the refreshed time rather than reporting a
+        /// second fuse — a unit carries at most one.
+        /// <para>
+        /// Raised from inside the deployment that armed the fuse, so a subscriber runs while that deployment is
+        /// still resolving. Read the board, do not deploy: a subscriber that resolves a move or a spell is
+        /// rejected by the re-entrancy latches rather than served.
+        /// </para>
+        /// <para>
+        /// The payload is value types only and describes state that outlives the callback, so unlike the
+        /// buffer-carrying events on this bus there is nothing here a subscriber has to copy.
+        /// </para>
+        /// </remarks>
+        public static event Action<int, int, float> FuseArmed;
+
+        /// <summary>
+        /// Raised after a unit's fuse has run out and the unit has been removed from the board, carrying its id
+        /// and the id of the player who owned it when it went off.
+        /// </summary>
+        /// <remarks>
+        /// Published <b>after</b> the removal, so a subscriber reading the board sees the state this event
+        /// describes: the unit is already gone from the registry and its cell is already free. The id is
+        /// therefore the only handle left — a lookup will not find it.
+        /// <para>
+        /// The owner is the player who owned the unit at the moment it went off, which is not necessarily the
+        /// player who deployed it: a fuse survives conversion, so a bomb flipped mid-countdown expires for its
+        /// new owner.
+        /// </para>
+        /// <para>
+        /// A unit removed any other way — a Jump detonation, a conversion, ordinary cleanup — does not raise
+        /// this. It states that the clock ran out, not that a unit died.
+        /// </para>
+        /// </remarks>
+        public static event Action<int, int> FuseExpired;
+
         /// <summary>Publishes <see cref="MatchStarted"/>.</summary>
         /// <param name="config">The configuration the match runs with.</param>
         public static void RaiseMatchStarted(MatchConfiguration config)
@@ -195,6 +234,26 @@ namespace GooGalaxy.Runtime.Shared.Events
             AbilityResolved?.Invoke(actingPlayerId, result);
         }
 
+        /// <summary>Publishes <see cref="FuseArmed"/>. Called once the unit is actually carrying the fuse.</summary>
+        /// <param name="unitId">The unit whose fuse is now running.</param>
+        /// <param name="playerId">The player who owns that unit right now.</param>
+        /// <param name="remainingSeconds">Seconds of scaled match time left before it goes off.</param>
+        public static void RaiseFuseArmed(int unitId, int playerId, float remainingSeconds)
+        {
+            FuseArmed?.Invoke(unitId, playerId, remainingSeconds);
+        }
+
+        /// <summary>
+        /// Publishes <see cref="FuseExpired"/>. Called only after the unit has been removed from the registry
+        /// and its cell released, so the board already matches what this reports.
+        /// </summary>
+        /// <param name="unitId">The unit the fuse removed. Already unregistered; the id will not resolve.</param>
+        /// <param name="playerId">The player who owned it when the fuse ran out, captured before the removal.</param>
+        public static void RaiseFuseExpired(int unitId, int playerId)
+        {
+            FuseExpired?.Invoke(unitId, playerId);
+        }
+
         /// <summary>
         /// Drops every subscriber. Runs automatically on subsystem registration because domain reload is
         /// disabled, and is called by tests to isolate fixtures from one another.
@@ -211,6 +270,8 @@ namespace GooGalaxy.Runtime.Shared.Events
             ConversionResolved = null;
             LandingResolved = null;
             AbilityResolved = null;
+            FuseArmed = null;
+            FuseExpired = null;
         }
     }
 }

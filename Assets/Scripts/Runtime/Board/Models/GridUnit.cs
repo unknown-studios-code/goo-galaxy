@@ -57,6 +57,23 @@ namespace GooGalaxy.Runtime.Board.Models
         public bool IsFrozen => HasStatus(StatusType.Frozen);
 
         /// <summary>
+        /// Whether a fuse is running on the unit. A fused unit is removed the moment
+        /// <see cref="RemainingFuseSeconds"/> reaches zero, and nothing else resolves when it does.
+        /// </summary>
+        /// <remarks>
+        /// A fuse is not a status and is deliberately not one: it is unaffected by conversion, by Frozen, and by
+        /// every action window. A unit converted mid-countdown keeps its remaining time and goes off for its new
+        /// owner, and a frozen unit's fuse keeps burning.
+        /// </remarks>
+        public bool HasFuse { get; private set; }
+
+        /// <summary>
+        /// Seconds of scaled match time before the fuse removes the unit — a paused match freezes it. Zero
+        /// whenever <see cref="HasFuse"/> is false.
+        /// </summary>
+        public float RemainingFuseSeconds { get; private set; }
+
+        /// <summary>
         /// The conditions currently on the unit, at most one marker per <see cref="StatusType"/>.
         /// Empty until the first status is applied, and owned by this unit — callers must not cast and mutate it.
         /// </summary>
@@ -168,6 +185,46 @@ namespace GooGalaxy.Runtime.Board.Models
 
                 _activeStatuses[i] = new StatusMarker(marker.Type, remaining);
             }
+
+            return true;
+        }
+
+        /// <remarks>
+        /// Internal because the fuse system owns the clock, exactly as the status system owns action windows: a
+        /// caller that armed a unit directly would leave it burning a fuse no ticker knows about, and the unit
+        /// would sit on the board forever. Re-arming refreshes the remaining time rather than stacking a second
+        /// fuse — a unit carries at most one. A duration of zero or less is ignored, so a mis-authored impact
+        /// cannot arm a fuse that is already expired.
+        /// </remarks>
+        internal void ArmFuse(float durationInSeconds)
+        {
+            if (durationInSeconds <= 0f)
+            {
+                return;
+            }
+
+            HasFuse = true;
+            RemainingFuseSeconds = durationInSeconds;
+        }
+
+        /// <remarks>Reads no other state — Frozen does not pause the countdown. See <see cref="HasFuse"/> for why.</remarks>
+        /// <returns>True on the tick that runs the fuse out, and only that tick.</returns>
+        internal bool TickFuse(float deltaSeconds)
+        {
+            if (!HasFuse)
+            {
+                return false;
+            }
+
+            RemainingFuseSeconds -= deltaSeconds;
+
+            if (RemainingFuseSeconds > 0f)
+            {
+                return false;
+            }
+
+            HasFuse = false;
+            RemainingFuseSeconds = 0f;
 
             return true;
         }

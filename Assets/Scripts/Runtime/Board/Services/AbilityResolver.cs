@@ -14,8 +14,10 @@ namespace GooGalaxy.Runtime.Board.Services
     /// </summary>
     /// <remarks>
     /// Every card is expressible as authored data alone: the resolver dispatches on
-    /// <see cref="ImpactEffectType"/> and reads the impact's own radius, duration, filter, and cluster size, so
-    /// no card needs a code path of its own.
+    /// <see cref="ImpactEffectType"/> and reads the impact's own radius, duration, duration unit, filter, and
+    /// cluster size, so no card needs a code path of its own. Volatile Mass's fuse is the sharpest case: both of
+    /// the GDD's triggers for it fall out of one authored impact plus the context's
+    /// <see cref="AbilityContext.HasVacatedHex"/>, and no code path here branches on the card's identity.
     /// <para>
     /// Nothing throws for a card that is authored wrong and nothing aborts the impact loop: an impact the
     /// resolver cannot handle is skipped and the card's remaining impacts still resolve. Those conditions are
@@ -26,7 +28,9 @@ namespace GooGalaxy.Runtime.Board.Services
     /// <para>
     /// The resolver never removes a unit. A self-destruct impact only records the acting unit's id, because
     /// removal is step 6 self-cleanup and must happen after the ability event has been published — a subscriber
-    /// reading the payload would otherwise be looking up units that are already gone from the registry.
+    /// reading the payload would otherwise be looking up units that are already gone from the registry. A fuse
+    /// impact removes nothing either, and removes nothing later: it hands the unit to the fuse system, whose own
+    /// ticker performs the removal seconds afterwards, outside any deployment.
     /// </para>
     /// Allocation-free on every non-throwing path once the caller's buffers are sized.
     /// </remarks>
@@ -94,6 +98,7 @@ namespace GooGalaxy.Runtime.Board.Services
         /// Who is acting, where, what they vacated, what conversion just did, and — for a Protocol — the hexes
         /// the player picked. Its lists are borrowed for the call and never retained.
         /// </param>
+        /// <param name="fuses">The match's single fuse system. See <c>FuseController.Fuses</c>.</param>
         /// <param name="areaBuffer">Caller-owned scratch buffer for the impact area. Overwritten per impact.</param>
         /// <param name="affectedUnitIds">Caller-owned buffer receiving the units an impact conditioned. Cleared on entry.</param>
         /// <param name="affectedHexes">
@@ -105,13 +110,16 @@ namespace GooGalaxy.Runtime.Board.Services
         /// The caller performs the removal after publishing.
         /// </param>
         /// <param name="diagnostics">The authoring or state problems the resolution ran into, or None.</param>
-        /// <exception cref="ArgumentNullException">The grid, the registry, the impact list, the status system, or any buffer is null.</exception>
+        /// <exception cref="ArgumentNullException">
+        /// The grid, the registry, the impact list, the status system, the fuse system, or any buffer is null.
+        /// </exception>
         internal static void Resolve(
             HexGrid grid,
             IReadOnlyDictionary<int, GridUnit> units,
             in AbilityContext context,
             IReadOnlyList<ImpactEffect> landingEffects,
             StatusEffectResolver statusEffects,
+            FuseResolver fuses,
             List<HexCell> areaBuffer,
             List<int> affectedUnitIds,
             List<HexCoordinates> affectedHexes,
@@ -137,6 +145,11 @@ namespace GooGalaxy.Runtime.Board.Services
             if (statusEffects == null)
             {
                 throw new ArgumentNullException(nameof(statusEffects));
+            }
+
+            if (fuses == null)
+            {
+                throw new ArgumentNullException(nameof(fuses));
             }
 
             if (areaBuffer == null)
@@ -173,13 +186,28 @@ namespace GooGalaxy.Runtime.Board.Services
                     case ImpactEffectType.None:
                         break;
                     case ImpactEffectType.ApplyStatus:
-                        ApplyStatus(grid, units, context, effect, statusEffects, areaBuffer, affectedUnitIds, affectedHexes);
+                        if (HasExpectedDurationUnit(effect, ImpactDurationUnit.ActionWindows, ref diagnostics))
+                        {
+                            ApplyStatus(grid, units, context, effect, statusEffects, areaBuffer, affectedUnitIds, affectedHexes);
+                        }
+
                         break;
                     case ImpactEffectType.SpawnHazard:
-                        SpawnHazard(grid, context, effect, affectedHexes, ref diagnostics);
+                        if (HasExpectedDurationUnit(effect, ImpactDurationUnit.ActionWindows, ref diagnostics))
+                        {
+                            SpawnHazard(grid, context, effect, affectedHexes, ref diagnostics);
+                        }
+
                         break;
                     case ImpactEffectType.SelfDestruct:
                         SelfDestruct(units, context, destroyedUnitIds, ref diagnostics);
+                        break;
+                    case ImpactEffectType.ArmFuse:
+                        if (HasExpectedDurationUnit(effect, ImpactDurationUnit.Seconds, ref diagnostics))
+                        {
+                            ArmFuse(units, context, effect, fuses, destroyedUnitIds, ref diagnostics);
+                        }
+
                         break;
                     default:
                         diagnostics |= AbilityDiagnostic.UnknownEffectType;
@@ -333,6 +361,59 @@ namespace GooGalaxy.Runtime.Board.Services
             }
 
             destroyedUnitIds.Add(context.ActingUnitId);
+        }
+
+        // The GDD gives a fuse two triggers, and the context already tells them apart without a card ever being
+        // named here: HasVacatedHex is true only for a Jump, which is the deployment that detonates the bomb on
+        // purpose. That path is a self-destruct in every respect — the Jump's own landing has already converted
+        // at the card's authored radius by the time this runs, so all that is left is the removal, and it is
+        // recorded rather than performed for the same reason every other removal is. Any other deployment leaves
+        // the unit standing with the clock running, and the clock is the fuse system's business, not this one's.
+        private static void ArmFuse(
+            IReadOnlyDictionary<int, GridUnit> units,
+            in AbilityContext context,
+            in ImpactEffect effect,
+            FuseResolver fuses,
+            List<int> destroyedUnitIds,
+            ref AbilityDiagnostic diagnostics
+        )
+        {
+            if (!context.HasActingUnit)
+            {
+                diagnostics |= AbilityDiagnostic.FuseWithoutActingUnit;
+                return;
+            }
+
+            if (context.HasVacatedHex)
+            {
+                SelfDestruct(units, context, destroyedUnitIds, ref diagnostics);
+                return;
+            }
+
+            // A miss is not reported: the acting unit is read off the landing hex, so its absence is already the
+            // "nothing landed" case the caller handles by passing no impacts at all. The fuse system rejects a
+            // null or dead unit on its own, so this only has to avoid arming one that was never there.
+            if (units.TryGetValue(context.ActingUnitId, out GridUnit actingUnit))
+            {
+                fuses.ArmFuse(actingUnit, effect.Duration);
+            }
+        }
+
+        // Checked on every branch that reads a duration, not only on the new one. Action windows and seconds are
+        // the same number wearing two incompatible clocks, so a status authored in seconds would silently become
+        // that many deployments — plausible, wrong, and invisible. Skipping the one impact and reporting it is
+        // the only honest answer, because nothing here can tell which of the two the designer meant.
+        // SelfDestruct is absent on purpose: it carries no duration for a unit to disagree with.
+        private static bool HasExpectedDurationUnit(in ImpactEffect effect, ImpactDurationUnit expected, ref AbilityDiagnostic diagnostics)
+        {
+            if (effect.DurationUnit == expected)
+            {
+                return true;
+            }
+
+            diagnostics |= AbilityDiagnostic.DurationUnitMismatch;
+
+            return false;
         }
 
         private static bool IsTargeted(TargetFilter filter, GridUnit unit, in AbilityContext context)

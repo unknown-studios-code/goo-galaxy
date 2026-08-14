@@ -32,6 +32,7 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<CardPresenter>().AsSelf();
             builder.RegisterComponentInHierarchy<EnergyPresenter>().AsSelf().As<IEnergyLedger>();
             builder.RegisterComponentInHierarchy<ConversionController>().AsSelf();
+            builder.RegisterComponentInHierarchy<FuseController>().AsSelf();
             builder.RegisterComponentInHierarchy<AbilityController>().AsSelf();
             builder.RegisterComponentInHierarchy<GridView>().AsSelf();
             builder.RegisterComponentInHierarchy<UnitView>().AsSelf();

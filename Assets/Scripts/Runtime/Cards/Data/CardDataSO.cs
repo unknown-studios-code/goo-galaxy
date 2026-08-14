@@ -180,14 +180,15 @@ namespace GooGalaxy.Runtime.Cards.Data
         }
 
         /// <summary>
-        /// Warns when the asset cannot be registered because it has no id or cannot be deployed as authored,
-        /// and self-heals an out-of-range conversion radius. Runs on every Inspector edit, which is what
-        /// migrates an asset authored before the radius field existed from its deserialized 0 to the standard
-        /// single ring.
+        /// Warns about the authoring faults a designer has to fix — a missing id, an empty description, an
+        /// unplayable Protocol cluster, and a duration unit that disagrees with its impact type — and self-heals
+        /// an out-of-range conversion radius, clone distance and jump distance. Runs on every Inspector edit,
+        /// which is what migrates an asset authored before those fields existed from its deserialized 0.
         /// </summary>
         /// <remarks>
-        /// The radius write-back is an editor self-heal and nothing else: <see cref="ConversionRadius" />
-        /// clamps on read, so gameplay never depends on the stored value being in range, and its only caller —
+        /// The write-backs are an editor self-heal and nothing else: <see cref="ConversionRadius" />,
+        /// <see cref="CloneDistance" /> and <see cref="JumpDistance" /> all resolve on read, so gameplay never
+        /// depends on the stored values being in range, and their only caller —
         /// <c>OnValidate</c> — is compiled out of a player build. Writing an authored asset at runtime would
         /// persist in the Editor and silently reset in a build, so it must stay behind that guard.
         /// </remarks>
@@ -211,6 +212,7 @@ namespace GooGalaxy.Runtime.Cards.Data
             }
 
             WarnOnUnplayableSpellClusters();
+            WarnOnDurationUnitMismatch();
         }
 
         // A spell's Cluster Size doubles as the number of hexes the player must pick, so zero is not "no
@@ -233,6 +235,41 @@ namespace GooGalaxy.Runtime.Cards.Data
 
                 Debug.LogWarning(string.Format(CardLogMessages.SpellClusterSizeMissingFormat, name, i), this);
             }
+        }
+
+        // Duration is one number that two incompatible clocks read: action windows only advance when somebody
+        // deploys, seconds advance on their own. An impact authored with the wrong unit is skipped outright at
+        // runtime rather than reinterpreted, so without this the card simply does nothing and the only clue is a
+        // console line during a match. The field's own tooltip cannot say which unit is right, because that
+        // depends on the impact type sitting three fields above it.
+        private void WarnOnDurationUnitMismatch()
+        {
+            if (_landingEffects == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _landingEffects.Length; i++)
+            {
+                if (HasConsistentDurationUnit(_landingEffects[i].ToImpactEffect()))
+                {
+                    continue;
+                }
+
+                Debug.LogWarning(string.Format(CardLogMessages.DurationUnitMismatchFormat, name, i), this);
+            }
+        }
+
+        // None carries no duration at all, and an impact type this build does not know about is already reported
+        // as UnknownEffectType by the resolver — neither is worth a second warning here.
+        private static bool HasConsistentDurationUnit(in ImpactEffect effect)
+        {
+            return effect.Type switch
+            {
+                ImpactEffectType.ArmFuse => effect.DurationUnit == ImpactDurationUnit.Seconds,
+                ImpactEffectType.ApplyStatus or ImpactEffectType.SpawnHazard => effect.DurationUnit == ImpactDurationUnit.ActionWindows,
+                _ => true,
+            };
         }
 
         private static int ResolveAuthoredDistance(int authored, int fallback)

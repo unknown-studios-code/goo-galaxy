@@ -51,7 +51,8 @@ namespace GooGalaxy.Runtime.Shared.Constants
             "A LandingResolved subscriber threw. The move and its conversions were applied and the board is correct; the failing subscriber is the defect.";
 
         public const string AbilityBoardUnavailable =
-            "AbilityController is missing its GridPresenter or UnitPresenter, or the hex grid is not initialized! Landing impacts were skipped.";
+            "AbilityController is missing its GridPresenter, UnitPresenter or FuseController, or the hex grid is not initialized! "
+            + "Landing impacts were skipped.";
 
         public const string AbilityResolveReentered =
             "AbilityController was re-entered mid-dispatch. Queue follow-up landings instead of raising LandingResolved during event dispatch.";
@@ -70,6 +71,32 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string SelfDestructWithoutActingUnit =
             "A SelfDestruct impact resolved on a Protocol, which puts no unit on the board. The impact was skipped; re-author the card.";
+
+        public const string FuseWithoutActingUnit =
+            "An ArmFuse impact resolved on a deployment with no unit on the board, which is every Protocol. "
+            + "There was nothing to arm, so the impact was skipped; author the fuse on a troop instead.";
+
+        public const string DurationUnitMismatch =
+            "A card authored an impact whose Duration Unit does not match its type. "
+            + "Arm Fuse is measured in Seconds; Apply Status and Spawn Hazard are measured in Action Windows. "
+            + "That impact was skipped and the card's remaining impacts still resolved. "
+            + "The diagnostic is a bitmask, so the card is not identifiable from here — re-import the card assets to have "
+            + "CardDataSO.ValidateAuthoredData name the card and impact index, then fix the Duration Unit field on that asset.";
+
+        public const string FuseControllerMissing =
+            "FuseController was not injected. It owns the match's single fuse system, so without it no landing impact resolves at all. "
+            + "Register this component in GameLifetimeScope, or pass a controller to Construct when building it by hand.";
+
+        public const string FuseControllerPresenterMissing =
+            "FuseController was not injected with a UnitPresenter, so no fuse can tick and an armed unit will sit on the board forever. "
+            + "Register FuseController and UnitPresenter in GameLifetimeScope and keep both in the scene.";
+
+        public const string FuseArmedSubscriberFailedFormat =
+            "A FuseArmed subscriber threw while arming unit {0} (player {1}). "
+            + "The fuse itself is running and the board is correct; the failing subscriber is the defect.";
+
+        public const string FuseExpiredSubscriberFailed =
+            "A FuseExpired subscriber threw. The unit was already removed and the board is correct; the failing subscriber is the defect.";
 
         public const string SpellResolveReentered =
             "AbilityController.ResolveSpell was re-entered mid-dispatch. Queue follow-up deployments instead of resolving them during event dispatch.";

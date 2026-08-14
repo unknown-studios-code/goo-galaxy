@@ -30,6 +30,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private const int HazardDuration = 3;
         private const int OverwrittenHazardDuration = 5;
         private const int JunkUnitId = 9999;
+        private const int FuseDurationInSeconds = 3;
         private const string SourceCardIdValue = "acid_crawler";
 
         private static readonly HexCoordinates _origin = new(0, 0);
@@ -46,6 +47,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private HexGrid _grid;
         private Dictionary<int, GridUnit> _units;
         private StatusEffectResolver _statusEffects;
+        private FuseResolver _fuses;
         private List<ImpactEffect> _landingEffects;
         private List<HexCell> _areaBuffer;
         private List<int> _affectedUnitIds;
@@ -58,6 +60,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             _grid = new HexGrid(new FakeGridLayout { GridRadius = BoardRadius });
             _units = new Dictionary<int, GridUnit>();
             _statusEffects = new StatusEffectResolver(_units.Values);
+            _fuses = new FuseResolver(_units);
             _landingEffects = new List<ImpactEffect>(2);
             _areaBuffer = new List<HexCell>(6);
             _affectedUnitIds = new List<int>();
@@ -570,6 +573,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     context,
                     _landingEffects,
                     _statusEffects,
+                    _fuses,
                     _areaBuffer,
                     _affectedUnitIds,
                     _affectedHexes,
@@ -596,6 +600,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     context,
                     _landingEffects,
                     _statusEffects,
+                    _fuses,
                     _areaBuffer,
                     _affectedUnitIds,
                     _affectedHexes,
@@ -616,7 +621,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                AbilityResolver.Resolve(_grid, _units, context, null, _statusEffects, _areaBuffer, _affectedUnitIds, _affectedHexes, _destroyedUnitIds, out _);
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    null,
+                    _statusEffects,
+                    _fuses,
+                    _areaBuffer,
+                    _affectedUnitIds,
+                    _affectedHexes,
+                    _destroyedUnitIds,
+                    out _
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -631,7 +648,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                AbilityResolver.Resolve(_grid, _units, context, _landingEffects, null, _areaBuffer, _affectedUnitIds, _affectedHexes, _destroyedUnitIds, out _);
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    _landingEffects,
+                    null,
+                    _fuses,
+                    _areaBuffer,
+                    _affectedUnitIds,
+                    _affectedHexes,
+                    _destroyedUnitIds,
+                    out _
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -652,6 +681,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     context,
                     _landingEffects,
                     _statusEffects,
+                    _fuses,
                     null,
                     _affectedUnitIds,
                     _affectedHexes,
@@ -672,7 +702,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                AbilityResolver.Resolve(_grid, _units, context, _landingEffects, _statusEffects, _areaBuffer, null, _affectedHexes, _destroyedUnitIds, out _);
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    _landingEffects,
+                    _statusEffects,
+                    _fuses,
+                    _areaBuffer,
+                    null,
+                    _affectedHexes,
+                    _destroyedUnitIds,
+                    out _
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -687,7 +729,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                AbilityResolver.Resolve(_grid, _units, context, _landingEffects, _statusEffects, _areaBuffer, _affectedUnitIds, null, _destroyedUnitIds, out _);
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    _landingEffects,
+                    _statusEffects,
+                    _fuses,
+                    _areaBuffer,
+                    _affectedUnitIds,
+                    null,
+                    _destroyedUnitIds,
+                    out _
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -702,7 +756,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // WHEN
             void resolveCall() =>
-                AbilityResolver.Resolve(_grid, _units, context, _landingEffects, _statusEffects, _areaBuffer, _affectedUnitIds, _affectedHexes, null, out _);
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    _landingEffects,
+                    _statusEffects,
+                    _fuses,
+                    _areaBuffer,
+                    _affectedUnitIds,
+                    _affectedHexes,
+                    null,
+                    out _
+                );
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -1201,6 +1267,157 @@ namespace GooGalaxy.Tests.EditMode.Board
             Assert.That(unitAtOrigin.HasStatus(StatusType.Frozen), Is.False);
         }
 
+        [Test]
+        public void Resolve_NullFuses_ThrowsArgumentNullException()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+
+            // WHEN
+            void resolveCall() =>
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    _landingEffects,
+                    _statusEffects,
+                    null,
+                    _areaBuffer,
+                    _affectedUnitIds,
+                    _affectedHexes,
+                    _destroyedUnitIds,
+                    out _
+                );
+
+            // THEN
+            Assert.Throws<ArgumentNullException>(resolveCall);
+        }
+
+        [Test]
+        public void Resolve_ArmFuseOnCloneLanding_ArmsActingUnitAndDestroysNothing()
+        {
+            // GIVEN — a Clone landing vacates no hex, so the fuse arms rather than detonating.
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            Resolve(context);
+
+            // THEN
+            Assert.That(actingUnit.HasFuse, Is.True);
+            Assert.That(_destroyedUnitIds, Is.Empty);
+        }
+
+        [Test]
+        public void Resolve_ArmFuseOnJumpLanding_RecordsActingUnitAsDestroyedAndArmsNothing()
+        {
+            // GIVEN — AbilityContext.HasVacatedHex is true only for a Jump, which detonates the fuse immediately
+            // as a self-destruct rather than arming it.
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = JumpContext(ActingUnitId, _origin, _jumpSource);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            Resolve(context);
+
+            // THEN
+            Assert.That(_destroyedUnitIds, Does.Contain(actingUnit.UnitId));
+            Assert.That(actingUnit.HasFuse, Is.False);
+        }
+
+        [Test]
+        public void Resolve_ArmFuseOnSpell_SetsFuseWithoutActingUnit()
+        {
+            // GIVEN — a Protocol has no acting unit, so an authored ArmFuse impact has nothing to arm.
+            AbilityContext context = SpellContext(new List<HexCoordinates> { _origin });
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            AbilityDiagnostic diagnostics = Resolve(context);
+
+            // THEN
+            Assert.That((diagnostics & AbilityDiagnostic.FuseWithoutActingUnit) != 0, Is.True);
+        }
+
+        [Test]
+        public void Resolve_ArmFuseInActionWindows_SetsDurationUnitMismatchAndArmsNothing()
+        {
+            // GIVEN
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.ActionWindows)
+            );
+
+            // WHEN
+            AbilityDiagnostic diagnostics = Resolve(context);
+
+            // THEN
+            Assert.That((diagnostics & AbilityDiagnostic.DurationUnitMismatch) != 0, Is.True);
+            Assert.That(actingUnit.HasFuse, Is.False);
+        }
+
+        [Test]
+        public void Resolve_ApplyStatusInSeconds_SetsDurationUnitMismatchAndAppliesNothing()
+        {
+            // GIVEN
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, StatusDuration, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            AbilityDiagnostic diagnostics = Resolve(context);
+
+            // THEN
+            Assert.That((diagnostics & AbilityDiagnostic.DurationUnitMismatch) != 0, Is.True);
+            Assert.That(actingUnit.HasStatus(StatusType.Frozen), Is.False);
+        }
+
+        [Test]
+        public void Resolve_SpawnHazardInSeconds_SetsDurationUnitMismatch()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = JumpContext(ActingUnitId, _origin, _jumpSource);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            AbilityDiagnostic diagnostics = Resolve(context);
+
+            // THEN
+            Assert.That((diagnostics & AbilityDiagnostic.DurationUnitMismatch) != 0, Is.True);
+        }
+
+        [Test]
+        public void Resolve_MismatchedImpact_LaterImpactsStillResolve()
+        {
+            // GIVEN — "skip one, keep going": a mismatched impact must not abort the rest of the card's impacts.
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.ActionWindows)
+            );
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, StatusDuration, TargetFilter.Self, 0));
+
+            // WHEN
+            Resolve(context);
+
+            // THEN
+            Assert.That(actingUnit.HasStatus(StatusType.Frozen), Is.True);
+        }
+
         private static AbilityContext LandingContext(int actingUnitId, HexCoordinates originHex)
         {
             return AbilityContext.ForLanding(ActingPlayerId, actingUnitId, originHex, false, default, default);
@@ -1229,6 +1446,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                 context,
                 _landingEffects,
                 _statusEffects,
+                _fuses,
                 _areaBuffer,
                 _affectedUnitIds,
                 _affectedHexes,

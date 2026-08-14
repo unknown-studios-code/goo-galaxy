@@ -54,16 +54,24 @@ namespace GooGalaxy.Runtime.Board.Views
         // are sized from. Pre-warming to a full ring would leave most of the instances idle for the match.
         private const int FrozenOverlayPoolDefaultCapacity = BoardMetrics.MaxSpellClusterSize;
 
+        // A fuse only ever burns on a Volatile Mass, and at 4 Energy a player rarely has two ticking at once —
+        // two covers one per player. This mirrors the fuse system's own armed-roster capacity; a third
+        // simultaneous bomb Instantiates on the frame it arms and then stays pooled for the rest of the match.
+        private const int FuseOverlayPoolDefaultCapacity = 2;
+
         // Both max sizes are the true ceiling — one overlay per unit — so a release always returns the instance
         // instead of destroying it. A pool that destroys on release only shrinks, and the next landing pays an
         // Instantiate for what it just handed back.
         private const int OverlayPoolMaxSize = BoardMetrics.DefaultBoardCellCount;
 
-        // Both overlays render above the unit's ring and body, and below the transient effects, so a conversion
-        // pop still reads on top of a shielded or frozen piece. Frozen sits above the shield: a frozen armored
-        // unit is primarily frozen, because that is what stops it being converted at all.
+        // Every overlay renders above the unit's ring and body, and below the transient effects, so a conversion
+        // pop still reads on top of a shielded, frozen or fused piece. Frozen sits above the shield: a frozen
+        // armored unit is primarily frozen, because that is what stops it being converted at all. The fuse sits
+        // above both, because it is the only one of the three the player has seconds rather than windows to
+        // answer.
         private const int ShieldOverlaySortingOffset = 2;
         private const int FrozenOverlaySortingOffset = 3;
+        private const int FuseOverlaySortingOffset = 4;
 
         private static readonly ProfilerMarker _conversionFeedbackMarker = new("UnitView.ApplyConversionFeedback");
 
@@ -101,6 +109,14 @@ namespace GooGalaxy.Runtime.Board.Views
         )]
         [SerializeField]
         private GameObject _frozenOverlayPrefab;
+
+        // TODO (GOOM-26): replace with the countdown VFX GDD 06 specifies; this placeholder only reads as "armed".
+        [Tooltip(
+            "Persistent aura parented to a unit while its fuse is running. It only has to read as 'about to go "
+                + "off' — the player has the card's authored fuse duration to answer it."
+        )]
+        [SerializeField]
+        private GameObject _fuseOverlayPrefab;
 
         [Header("Layout")]
         [Tooltip("Distance from a hex center to its corner vertex, in world units. Must match GridView's cell visual size or units drift off their cells.")]
@@ -149,6 +165,7 @@ namespace GooGalaxy.Runtime.Board.Views
         private readonly Dictionary<int, SpriteRenderer> _unitBodyRenderers = new(BoardMetrics.DefaultBoardCellCount);
         private readonly Dictionary<int, GameObject> _shieldOverlays = new(BoardMetrics.DefaultBoardCellCount);
         private readonly Dictionary<int, GameObject> _frozenOverlays = new(BoardMetrics.DefaultBoardCellCount);
+        private readonly Dictionary<int, GameObject> _fuseOverlays = new(BoardMetrics.DefaultBoardCellCount);
         private readonly List<int> _staleUnitIds = new(BoardMetrics.DefaultBoardCellCount);
         private readonly List<SpriteRenderer> _rendererBuffer = new(2);
 
@@ -160,6 +177,7 @@ namespace GooGalaxy.Runtime.Board.Views
         private ObjectPool<GameObject> _armorBreakEffectPool;
         private ObjectPool<GameObject> _shieldOverlayPool;
         private ObjectPool<GameObject> _frozenOverlayPool;
+        private ObjectPool<GameObject> _fuseOverlayPool;
         private bool _areStatusOverlaysDirty;
 
         /// <summary>The number of units currently rendered. Pooled-but-idle instances are not counted.</summary>
@@ -186,6 +204,15 @@ namespace GooGalaxy.Runtime.Board.Views
         /// was assigned for <c>Awake</c> to build one from.
         /// </remarks>
         internal int FrozenOverlayPoolInactiveCount => _frozenOverlayPool?.CountInactive ?? 0;
+
+        /// <remarks>Same lazy-cleanup caveat as <see cref="TrackedShieldOverlayCount"/>.</remarks>
+        internal int TrackedFuseOverlayCount => _fuseOverlays.Count;
+
+        /// <remarks>
+        /// Reads the pool's own inactive count; 0 both when the pool is empty and when no fuse overlay prefab
+        /// was assigned for <c>Awake</c> to build one from.
+        /// </remarks>
+        internal int FuseOverlayPoolInactiveCount => _fuseOverlayPool?.CountInactive ?? 0;
 
         /// <summary>Supplies the board this view reads hex positions from, and the registry it mirrors.</summary>
         /// <remarks>
@@ -238,12 +265,18 @@ namespace GooGalaxy.Runtime.Board.Views
                 _frozenOverlayPool = CreatePool(_frozenOverlayPrefab, FrozenOverlayPoolDefaultCapacity, OverlayPoolMaxSize);
             }
 
+            if (_fuseOverlayPrefab != null)
+            {
+                _fuseOverlayPool = CreatePool(_fuseOverlayPrefab, FuseOverlayPoolDefaultCapacity, OverlayPoolMaxSize);
+            }
+
             PrewarmPool(_unitPool, UnitPoolDefaultCapacity);
             PrewarmPool(_deployEffectPool, EffectPoolDefaultCapacity);
             PrewarmPool(_conversionEffectPool, EffectPoolDefaultCapacity);
             PrewarmPool(_armorBreakEffectPool, EffectPoolDefaultCapacity);
             PrewarmPool(_shieldOverlayPool, ShieldOverlayPoolDefaultCapacity);
             PrewarmPool(_frozenOverlayPool, FrozenOverlayPoolDefaultCapacity);
+            PrewarmPool(_fuseOverlayPool, FuseOverlayPoolDefaultCapacity);
         }
 
         protected void OnEnable()
@@ -251,6 +284,12 @@ namespace GooGalaxy.Runtime.Board.Views
             MatchEvents.MoveExecuted += HandleMoveExecuted;
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
+
+            // The two events that do not ride a deployment. Arming does happen inside one, but expiry is the
+            // whole reason these exist: a fuse runs out on the frame clock, with nothing else on the board
+            // moving, so no deployment event will ever come along to flag the overlays stale.
+            MatchEvents.FuseArmed += HandleFuseArmed;
+            MatchEvents.FuseExpired += HandleFuseExpired;
 
             // While disabled the view is unsubscribed from all three events, so every deployment in that window
             // is invisible to it: statuses are stale, and a unit destroyed meanwhile never reached
@@ -289,6 +328,8 @@ namespace GooGalaxy.Runtime.Board.Views
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
+            MatchEvents.FuseArmed -= HandleFuseArmed;
+            MatchEvents.FuseExpired -= HandleFuseExpired;
         }
 
         protected void OnDestroy()
@@ -298,6 +339,7 @@ namespace GooGalaxy.Runtime.Board.Views
             _unitBodyRenderers.Clear();
             _shieldOverlays.Clear();
             _frozenOverlays.Clear();
+            _fuseOverlays.Clear();
             _staleUnitIds.Clear();
 
             _unitPool?.Dispose();
@@ -306,6 +348,7 @@ namespace GooGalaxy.Runtime.Board.Views
             _armorBreakEffectPool?.Dispose();
             _shieldOverlayPool?.Dispose();
             _frozenOverlayPool?.Dispose();
+            _fuseOverlayPool?.Dispose();
 
             _unitPool = null;
             _deployEffectPool = null;
@@ -313,6 +356,7 @@ namespace GooGalaxy.Runtime.Board.Views
             _armorBreakEffectPool = null;
             _shieldOverlayPool = null;
             _frozenOverlayPool = null;
+            _fuseOverlayPool = null;
         }
 
         /// <summary>
@@ -378,6 +422,7 @@ namespace GooGalaxy.Runtime.Board.Views
             // first would send its children into the unit pool and hand them out again with the next unit.
             SetOverlayState(_shieldOverlays, _shieldOverlayPool, unitId, false, ShieldOverlaySortingOffset);
             SetOverlayState(_frozenOverlays, _frozenOverlayPool, unitId, false, FrozenOverlaySortingOffset);
+            SetOverlayState(_fuseOverlays, _fuseOverlayPool, unitId, false, FuseOverlaySortingOffset);
 
             _unitVisuals.Remove(unitId);
             _unitRenderers.Remove(unitId);
@@ -429,6 +474,15 @@ namespace GooGalaxy.Runtime.Board.Views
             return _frozenOverlays.TryGetValue(unitId, out instance) && instance != null;
         }
 
+        /// <remarks>
+        /// Same indistinguishable-false caveat as <see cref="TryGetShieldOverlay"/>; use
+        /// <see cref="TrackedFuseOverlayCount"/> for the tracked-entry distinction.
+        /// </remarks>
+        internal bool TryGetFuseOverlay(int unitId, out GameObject instance)
+        {
+            return _fuseOverlays.TryGetValue(unitId, out instance) && instance != null;
+        }
+
         /// <summary>Assigns the pooled prefabs and board metrics before <c>Awake</c> builds the pools from them.</summary>
         internal void SetViewConfiguration(
             GameObject unitPrefab,
@@ -449,10 +503,11 @@ namespace GooGalaxy.Runtime.Board.Views
         /// Same "call before the GameObject is activated" contract as <see cref="SetViewConfiguration"/> —
         /// <c>Awake</c> builds the overlay pools from these fields and never rebuilds them afterward.
         /// </remarks>
-        internal void SetOverlayConfiguration(GameObject shieldOverlayPrefab, GameObject frozenOverlayPrefab)
+        internal void SetOverlayConfiguration(GameObject shieldOverlayPrefab, GameObject frozenOverlayPrefab, GameObject fuseOverlayPrefab = null)
         {
             _shieldOverlayPrefab = shieldOverlayPrefab;
             _frozenOverlayPrefab = frozenOverlayPrefab;
+            _fuseOverlayPrefab = fuseOverlayPrefab;
         }
 
         /// <summary>Assigns the per-player tints, so a test can assert against values it owns.</summary>
@@ -546,6 +601,26 @@ namespace GooGalaxy.Runtime.Board.Views
             }
         }
 
+        // Arming always happens inside a deployment, which has already flagged the overlays — so this is not
+        // strictly load-bearing today. It stays because the flag is what makes the fuse readable at all, and
+        // nothing enforces that a future publisher arms one from inside a deployment. Setting a boolean twice
+        // costs nothing.
+        private void HandleFuseArmed(int unitId, int playerId, float remainingSeconds)
+        {
+            _areStatusOverlaysDirty = true;
+        }
+
+        // Released from the id alone and without a registry lookup, for the opposite reason to
+        // HandleAbilityResolved: FuseController raises this *after* it has unregistered the unit, so a lookup
+        // finds nothing and the registry pass in RefreshStatusOverlays can never reach it either. The id is the
+        // only handle left, and a visual not released here stays checked out for the rest of the match —
+        // permanently shrinking a pool whose max size is the whole board.
+        private void HandleFuseExpired(int unitId, int playerId)
+        {
+            ReleaseUnitVisual(unitId);
+            _areStatusOverlaysDirty = true;
+        }
+
         // Ownership is read back from the unit rather than from the acting player id, so this is correct whether
         // it runs before or after HandleMoveExecuted — MoveExecuted subscriber order is registration order.
         private void ApplyConversionFeedback(IReadOnlyList<int> unitIds, ObjectPool<GameObject> effectPool, bool shouldRefreshOwnerTint)
@@ -577,11 +652,15 @@ namespace GooGalaxy.Runtime.Board.Views
             }
         }
 
-        // Frozen and Shield are persistent, not transient: they last as long as the state does, so they cannot
-        // ride the fire-and-forget PlayEffect path. There is no expiry event to listen for either — the status
-        // system drops a marker silently — but a status can only change at a deployment boundary, applied in
-        // step 4 and expired in step 6. Revalidating the whole registry once per deployment is therefore both
-        // sufficient and bounded: at most 61 units, and only on a frame where something actually resolved.
+        // Shield, Frozen and the fuse are persistent, not transient: they last as long as the state does, so none
+        // can ride the fire-and-forget PlayEffect path. There is no expiry event for the first two — the status
+        // system drops a marker silently — but they can only change at a deployment boundary, applied in step 4
+        // and expired in step 6. Revalidating the whole registry once per deployment is therefore both sufficient
+        // and bounded: at most 61 units, and only on a frame where something actually resolved.
+        //
+        // The fuse is the exception that the dirty flag absorbs rather than breaks. It changes on the frame
+        // clock, so no deployment event would ever flag it — which is why FuseArmed and FuseExpired set the flag
+        // themselves. The pass stays per-deployment-or-fuse-event, never per frame.
         private void RefreshStatusOverlays()
         {
             if (_unitPresenter == null)
@@ -603,6 +682,7 @@ namespace GooGalaxy.Runtime.Board.Views
 
                     SetOverlayState(_shieldOverlays, _shieldOverlayPool, unit.UnitId, isAlive && unit.HasArmor, ShieldOverlaySortingOffset);
                     SetOverlayState(_frozenOverlays, _frozenOverlayPool, unit.UnitId, isAlive && unit.HasStatus(StatusType.Frozen), FrozenOverlaySortingOffset);
+                    SetOverlayState(_fuseOverlays, _fuseOverlayPool, unit.UnitId, isAlive && unit.HasFuse, FuseOverlaySortingOffset);
                 }
             }
         }

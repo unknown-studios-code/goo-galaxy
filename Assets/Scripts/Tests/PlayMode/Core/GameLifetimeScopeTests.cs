@@ -138,6 +138,26 @@ namespace GooGalaxy.Tests.PlayMode
 
         [Test]
         [Timeout(10000)]
+        public void Configure_WithPresentersInScene_InjectsTheSceneUnitPresenterIntoTheFuseController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+
+            // WHEN
+            FuseController fuseController = _scope.Container.Resolve<FuseController>();
+
+            // THEN
+            Assert.That(
+                fuseController.Fuses,
+                Is.Not.Null,
+                "FuseController is now mandatory in any scene carrying the scope; a null Fuses means it was never injected with a UnitPresenter."
+            );
+        }
+
+        [Test]
+        [Timeout(10000)]
         public void Configure_WithPresentersInScene_InjectsTheBoardIntoTheSceneAbilityController()
         {
             // GIVEN
@@ -180,6 +200,9 @@ namespace GooGalaxy.Tests.PlayMode
             UnitPresenter unitPresenter = presenterGO.AddComponent<UnitPresenter>();
             GridPresenter presenter = presenterGO.AddComponent<GridPresenter>();
             unitPresenter.Construct(presenter, new FakeEnergyLedger());
+            // Deliberately not Constructed by hand: the container injecting it is the thing under test, and an
+            // arrange that calls Construct itself would leave Fuses non-null even if the registration were gone.
+            presenterGO.AddComponent<FuseController>();
 
             presenter.SetGridLayout(gridLayout);
 

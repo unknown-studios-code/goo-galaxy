@@ -31,5 +31,16 @@ namespace GooGalaxy.Runtime.Shared.Types
         /// Removes the acting unit once the landing has fully resolved, per the GDD's step 6 self-cleanup.
         /// </summary>
         SelfDestruct = 3,
+
+        /// <summary>
+        /// Leaves the acting unit standing with a fuse running, and removes it when that fuse reaches
+        /// zero. Its duration is counted in <see cref="ImpactDurationUnit.Seconds"/>, not in action windows.
+        /// </summary>
+        /// <remarks>
+        /// The opposite of <see cref="SelfDestruct"/>, which removes the unit the instant its landing resolves.
+        /// A deployment that vacates a hex — only a Jump does — detonates the fuse immediately and resolves as a
+        /// self-destruct instead, so the same authored impact covers both of the GDD's triggers.
+        /// </remarks>
+        ArmFuse = 4,
     }
 }

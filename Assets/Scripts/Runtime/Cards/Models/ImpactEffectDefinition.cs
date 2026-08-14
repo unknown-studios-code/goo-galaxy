@@ -31,10 +31,17 @@ namespace GooGalaxy.Runtime.Cards.Models
         [SerializeField]
         private int _radius;
 
-        [Tooltip("How long the result lasts, in action windows: defender windows for a status, owner windows for a hazard. 0 makes the impact a no-op.")]
+        [Tooltip("How long the result lasts, counted in whatever Duration Unit says below. 0 makes the impact a no-op whichever unit is selected.")]
         [Min(0)]
         [SerializeField]
         private int _duration;
+
+        [Tooltip(
+            "What Duration counts. Action Windows for statuses and hazards; Seconds only for a fuse. "
+                + "Mismatching this with the impact type is an authoring error and is reported in the console."
+        )]
+        [SerializeField]
+        private ImpactDurationUnit _durationUnit;
 
         [Tooltip("Which units inside the radius are affected. Self is the unit that just landed; All hits friendly units too, as Cryo-Stasis does.")]
         [SerializeField]
@@ -51,10 +58,19 @@ namespace GooGalaxy.Runtime.Cards.Models
         /// <param name="type">What the impact does.</param>
         /// <param name="status">The condition to apply, for an Apply Status impact.</param>
         /// <param name="radius">Hex rings around the landing hex the impact reaches.</param>
-        /// <param name="duration">How long the result lasts, in action windows.</param>
+        /// <param name="duration">How long the result lasts, counted in <paramref name="durationUnit"/>.</param>
         /// <param name="target">Which units inside the radius are affected.</param>
         /// <param name="clusterSize">Ceiling on affected units, or zero for no ceiling.</param>
-        public ImpactEffectDefinition(ImpactEffectType type, StatusType status, int radius, int duration, TargetFilter target, int clusterSize)
+        /// <param name="durationUnit">What <paramref name="duration"/> counts.</param>
+        public ImpactEffectDefinition(
+            ImpactEffectType type,
+            StatusType status,
+            int radius,
+            int duration,
+            TargetFilter target,
+            int clusterSize,
+            ImpactDurationUnit durationUnit = ImpactDurationUnit.ActionWindows
+        )
         {
             _type = type;
             _status = status;
@@ -62,13 +78,14 @@ namespace GooGalaxy.Runtime.Cards.Models
             _duration = duration;
             _target = target;
             _clusterSize = clusterSize;
+            _durationUnit = durationUnit;
         }
 
         /// <summary>Produces the immutable runtime impact this authored value describes.</summary>
         /// <returns>The runtime impact, carrying exactly the authored values.</returns>
         public readonly ImpactEffect ToImpactEffect()
         {
-            return new ImpactEffect(_type, _status, _radius, _duration, _target, _clusterSize);
+            return new ImpactEffect(_type, _status, _radius, _duration, _target, _clusterSize, _durationUnit);
         }
     }
 }
