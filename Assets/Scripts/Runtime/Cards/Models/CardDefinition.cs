@@ -13,14 +13,15 @@ namespace GooGalaxy.Runtime.Cards.Models
     /// </summary>
     /// <remarks>
     /// A reference type on purpose: consumers hold it through <see cref="ICardData"/>,
-    /// <see cref="IMoveCapable"/>, <see cref="IConversionCapable"/>, and <see cref="IAbilityCapable"/> — the
-    /// board keeps one per live unit in an <c>IMoveCapable</c> registry and tests it for the other two — and a
-    /// value type stored behind an interface boxes on every store. One definition is built per card during
-    /// match setup, never per frame, so the single allocation is outside every hot path.
+    /// <see cref="IMoveCapable"/>, <see cref="IConversionCapable"/>, <see cref="IAbilityCapable"/>, and
+    /// <see cref="IEnergyPriced"/> — the board keeps one per live unit in an <c>IMoveCapable</c> registry and
+    /// tests it for the other three — and a value type stored behind an interface boxes on every store. One
+    /// definition is built per card during match setup, never per frame, so the single allocation is outside
+    /// every hot path.
     /// The landing impacts are copied into an array this instance owns, so a later edit to the authored asset
     /// cannot change the rules of a match already in progress.
     /// </remarks>
-    public sealed class CardDefinition : ICardData, IMoveCapable, IConversionCapable, IAbilityCapable
+    public sealed class CardDefinition : ICardData, IMoveCapable, IConversionCapable, IAbilityCapable, IEnergyPriced
     {
         private static readonly ImpactEffect[] _noLandingEffects = Array.Empty<ImpactEffect>();
 

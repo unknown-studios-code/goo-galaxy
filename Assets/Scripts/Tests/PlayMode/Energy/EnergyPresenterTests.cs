@@ -2,6 +2,7 @@ using System.Collections;
 using GooGalaxy.Runtime.Energy.Models;
 using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Shared.Events;
+using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -24,6 +25,11 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         private bool _lastSpentSuccess;
 
         private const float Tolerance = 0.0001f;
+
+        // Mirrors the private EnergyPresenter.EnergyPublishQuantum: publication trails CurrentEnergy by up to
+        // this much between flushes, so an assertion pinned to the last published value needs this tolerance
+        // rather than the exact one above.
+        private const float EnergyPublishQuantum = 0.05f;
 
         private readonly WaitForSeconds _waitForHalfSecond = new(0.5f);
         private readonly WaitForSeconds _waitForThreeTenthsSecond = new(0.3f);
@@ -86,7 +92,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
             Assert.That(currentEnergy, Is.GreaterThan(1.0f));
             Assert.That(_changedCount >= 1, Is.True);
             Assert.That(_lastChangedPlayerId, Is.EqualTo(1));
-            Assert.That(_lastChangedEnergy, Is.EqualTo(currentEnergy));
+            Assert.That(_lastChangedEnergy, Is.EqualTo(currentEnergy).Within(EnergyPublishQuantum));
         }
 
         [UnityTest]
@@ -164,6 +170,121 @@ namespace GooGalaxy.Tests.PlayMode.Energy
 
             // THEN
             Assert.That(_changedCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPayForMove_PaidMove_FlushesOneEnergyChangedAndOneEnergySpentOnTheNextFrame()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForMove(1, MoveType.Clone, 4);
+
+            // WHEN
+            yield return null;
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(1));
+            Assert.That(_spentCount, Is.EqualTo(1));
+            Assert.That(_lastSpentSuccess, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator TryPayForMoveThenRefundMove_InTheSameFrame_PublishesNothingEver()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForMove(1, MoveType.Clone, 4);
+            _presenter.RefundMove(1, MoveType.Clone, 4);
+
+            // WHEN
+            yield return null;
+            yield return null;
+            yield return null;
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(0));
+            Assert.That(_spentCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPaidMovesInOneFrame_FlushAsTwoEnergySpentEventsAndOneEnergyChanged()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForMove(1, MoveType.Clone, 4);
+            _presenter.TryPayForMove(1, MoveType.Jump, 4);
+
+            // WHEN
+            yield return null;
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(1));
+            Assert.That(_spentCount, Is.EqualTo(2));
+        }
+
+        [UnityTest]
+        public IEnumerator TwoPaidMovesWithOneRefunded_FlushesExactlyOneEnergyChangedAndOneEnergySpent()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForMove(1, MoveType.Clone, 4);
+            _presenter.TryPayForMove(1, MoveType.Jump, 4);
+            _presenter.RefundMove(1, MoveType.Jump, 4);
+
+            // WHEN
+            yield return null;
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(1));
+            Assert.That(_spentCount, Is.EqualTo(1));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPayForMove_Unaffordable_PublishesNothingAndLeavesTheBalanceUntouched()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 1f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForMove(1, MoveType.Deploy, 5);
+
+            // WHEN
+            yield return null;
+
+            // THEN
+            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(1f).Within(Tolerance));
+            Assert.That(_changedCount, Is.EqualTo(0));
+            Assert.That(_spentCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TryPayForMove_PaidMove_PublishesNothingOnTheChargedFrame()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+
+            // WHEN
+            _presenter.TryPayForMove(1, MoveType.Clone, 4);
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(0));
+            Assert.That(_spentCount, Is.EqualTo(0));
         }
 
         [Test]

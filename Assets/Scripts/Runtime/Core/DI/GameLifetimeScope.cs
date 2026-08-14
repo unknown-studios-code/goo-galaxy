@@ -1,5 +1,7 @@
 using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Cards.Presenters;
+using GooGalaxy.Runtime.Energy.Presenters;
+using GooGalaxy.Runtime.Shared.Interfaces;
 using VContainer;
 using VContainer.Unity;
 
@@ -16,6 +18,7 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<GridPresenter>().AsSelf();
             builder.RegisterComponentInHierarchy<UnitPresenter>().AsSelf();
             builder.RegisterComponentInHierarchy<CardPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<EnergyPresenter>().AsSelf().As<IEnergyLedger>();
         }
     }
 }

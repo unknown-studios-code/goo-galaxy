@@ -73,6 +73,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
+            _unitPresenter.Construct(new FakeEnergyLedger());
             _unitView = _boardGO.AddComponent<UnitView>();
 
             _gridPresenter.SetGridLayout(_gridLayout);
@@ -638,6 +639,25 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public int CloneDistance => BoardMetrics.DefaultCloneDistance;
 
             public int JumpDistance => BoardMetrics.DefaultJumpDistance;
+        }
+
+        /// <summary>
+        /// Permissive stand-in for the board's <see cref="IEnergyLedger"/>. This fixture exercises the view's
+        /// rendering of moves and conversions, never Energy pricing, so every move is simply affordable.
+        /// </summary>
+        private sealed class FakeEnergyLedger : IEnergyLedger
+        {
+            public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost) { }
         }
     }
 }

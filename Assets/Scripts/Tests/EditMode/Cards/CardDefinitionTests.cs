@@ -182,6 +182,19 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
+        public void EnergyCost_ReadThroughIEnergyPriced_ReportsTheAuthoredCost()
+        {
+            // GIVEN
+            var source = new FakeCardData("bio_phalanx", "Bio-Phalanx", CardType.Troop, 3, canClone: true, canJump: true, hasArmor: true);
+
+            // WHEN
+            IEnergyPriced energyPriced = new CardDefinition(source);
+
+            // THEN
+            Assert.That(energyPriced.EnergyCost, Is.EqualTo(source.EnergyCost));
+        }
+
+        [Test]
         public void Definition_ReadBackFromMoveCapableRegistry_IsTheSameInstance()
         {
             // GIVEN

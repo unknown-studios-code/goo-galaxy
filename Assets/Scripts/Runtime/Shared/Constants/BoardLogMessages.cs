@@ -82,6 +82,10 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const string CameraFitRequiresOrthographic =
             "BoardCameraController needs an orthographic camera to frame the board. Set Projection to Orthographic on the camera.";
 
+        public const string EnergyLedgerMissing =
+            "UnitPresenter was not injected with an IEnergyLedger, so no move can be paid for and every move is rejected. "
+            + "Register EnergyPresenter as IEnergyLedger in GameLifetimeScope and keep an EnergyPresenter in the scene.";
+
         public const string UnitViewBoardUnavailable =
             "UnitView is missing its GridPresenter, its UnitPresenter, or its unit prefab, or the hex grid is not initialized! Unit visuals cannot be placed.";
     }

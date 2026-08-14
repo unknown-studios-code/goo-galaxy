@@ -9,6 +9,8 @@ using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Cards.Presenters;
+using GooGalaxy.Runtime.Energy.Models;
+using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Types;
@@ -34,6 +36,11 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private const int VolatileMassUnitId = 6;
         private const int VolatileMassVictimUnitId = 7;
         private const int CryoVictimUnitId = 8;
+
+        private const float SeededPlayerEnergy = 20f;
+        private const float NoEnergyRegen = 0f;
+        private const float VolatileMassJumpEnergyCost = 0.5f;
+        private const float EnergyTolerance = 0.0001f;
 
         private static readonly HexCoordinates _subjectAlphaSource = new(3, 0);
         private static readonly HexCoordinates _subjectAlphaCloneTarget = new(4, 0);
@@ -68,6 +75,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
         private AbilityController _abilityController;
+        private EnergyPresenter _energyPresenter;
         private FakeUnitSpawner _spawner;
 
         [SetUp]
@@ -125,6 +133,10 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
+            _energyPresenter = _boardGO.AddComponent<EnergyPresenter>();
+            _energyPresenter.InitializePlayer(PlayerOneId, new EnergyConfig(SeededPlayerEnergy, NoEnergyRegen, SeededPlayerEnergy));
+            _energyPresenter.InitializePlayer(PlayerTwoId, new EnergyConfig(SeededPlayerEnergy, NoEnergyRegen, SeededPlayerEnergy));
+            _unitPresenter.Construct(_energyPresenter);
             _boardGO.AddComponent<ConversionController>();
             _abilityController = _boardGO.AddComponent<AbilityController>();
 
@@ -199,6 +211,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             );
 
             // Step 4 (Volatile Mass): Jumps — radius-2 conversion resolves, then the acting unit self-destructs.
+            float playerTwoEnergyBeforeVolatileMassJump = _energyPresenter.GetEnergy(PlayerTwoId);
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassSource, _volatileMassJumpTarget, PlayerTwoId, VolatileMassUnitId));
 
             // Between steps: the self-destruct must remove only Volatile Mass's own unit. Without this check, a
@@ -236,6 +249,11 @@ namespace GooGalaxy.Tests.PlayMode.Cards
                 "Volatile Mass's self-destruct should have removed the acting unit."
             );
             Assert.That(volatileMassVictim.PlayerId, Is.EqualTo(PlayerTwoId), "Volatile Mass's radius-2 conversion should have flipped the distant victim.");
+            Assert.That(
+                playerTwoEnergyBeforeVolatileMassJump - _energyPresenter.GetEnergy(PlayerTwoId),
+                Is.EqualTo(VolatileMassJumpEnergyCost).Within(EnergyTolerance),
+                "A Jump charges the flat Jump cost regardless of the acting unit's own Energy cost."
+            );
 
             Assert.That(cryoVictim.HasStatus(StatusType.Frozen), Is.True, "Cryo-Stasis should have frozen the unit inside its cluster.");
             Assert.That(

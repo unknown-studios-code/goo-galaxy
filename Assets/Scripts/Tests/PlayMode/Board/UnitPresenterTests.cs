@@ -6,6 +6,8 @@ using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Presenters;
+using GooGalaxy.Runtime.Energy.Models;
+using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
@@ -32,6 +34,14 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private const MoveType UndefinedMoveType = (MoveType)99;
 
+        private const int ExpensiveUnitEnergyCost = 4;
+        private const int CheapUnitEnergyCost = 1;
+        private const float TestStartingEnergy = 10f;
+        private const float InsufficientStartingEnergy = 1f;
+        private const float TestMaxEnergy = 20f;
+        private const float NoEnergyRegen = 0f;
+        private const float EnergyTolerance = 0.0001f;
+
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _adjacentCoords = new(1, 0);
         private static readonly HexCoordinates _secondAdjacentCoords = new(1, -1);
@@ -43,14 +53,18 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         private GameObject _boardGO;
         private GameObject _detachedPresenterGO;
+        private GameObject _energyLedgerGO;
+        private GameObject _noLedgerGO;
         private GridLayoutSO _gridLayout;
         private GridPresenter _gridPresenter;
         private UnitPresenter _unitPresenter;
         private FakeUnitSpawner _spawner;
         private FakeMoveCapability _capability;
+        private FakeEnergyLedger _ledger;
         private MoveCommand _publishedCommand;
         private IReadOnlyList<HexCoordinates> _publishedPayload;
         private int _publishedEventCount;
+        private int _energySpentCount;
 
         [SetUp]
         public void SetUp()
@@ -63,6 +77,9 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
 
+            _ledger = new FakeEnergyLedger();
+            _unitPresenter.Construct(_ledger);
+
             _gridPresenter.SetGridLayout(_gridLayout);
 
             _spawner = new FakeUnitSpawner();
@@ -71,14 +88,17 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _publishedEventCount = 0;
             _publishedPayload = null;
             _publishedCoordinates.Clear();
+            _energySpentCount = 0;
 
             MatchEvents.MoveExecuted += HandleMoveExecuted;
+            MatchEvents.EnergySpent += HandleEnergySpent;
         }
 
         [TearDown]
         public void TearDown()
         {
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
+            MatchEvents.EnergySpent -= HandleEnergySpent;
             MatchEvents.ResetEvents();
 
             if (_boardGO != null)
@@ -89,6 +109,16 @@ namespace GooGalaxy.Tests.PlayMode.Board
             if (_detachedPresenterGO != null)
             {
                 Object.Destroy(_detachedPresenterGO);
+            }
+
+            if (_energyLedgerGO != null)
+            {
+                Object.Destroy(_energyLedgerGO);
+            }
+
+            if (_noLedgerGO != null)
+            {
+                Object.Destroy(_noLedgerGO);
             }
 
             if (_gridLayout != null)
@@ -840,6 +870,252 @@ namespace GooGalaxy.Tests.PlayMode.Board
             Assert.That(registered, Is.False);
         }
 
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_CloneWithEnoughEnergy_DeductsHalfTheUnitCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(realLedger.GetEnergy(ActingPlayerId), Is.EqualTo(8f).Within(EnergyTolerance));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_JumpWithEnoughEnergy_DeductsTheFlatCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
+            var command = new MoveCommand(MoveType.Jump, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(realLedger.GetEnergy(ActingPlayerId), Is.EqualTo(9.5f).Within(EnergyTolerance));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_UnaffordableClone_ReturnsInsufficientEnergy()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.InsufficientEnergy));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_UnaffordableClone_LeavesTheUnitUnspawnedAndTheTargetCellFree()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(GetCell(_adjacentCoords).OccupantUnitId, Is.EqualTo(HexCell.NoOccupant));
+            Assert.That(_spawner.SpawnCallCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_UnaffordableClone_PublishesNoMoveExecutedOrEnergySpent()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_publishedEventCount, Is.EqualTo(0));
+            Assert.That(_energySpentCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_FailedValidation_NeverCallsTryPayForMove()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            RegisterUnitAt(RivalUnitId, RivalPlayerId, _adjacentCoords);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_ledger.TryPayForMoveCallCount, Is.EqualTo(0), "Validation must reject the move before the ledger is ever touched.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_CloneWithThrowingSpawner_RefundsTheChargeWithNetZeroEnergyChange()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            _spawner.ThrowsOnSpawn = true;
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, expensiveCapability);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+            LogAssert.Expect(LogType.Error, string.Format(BoardLogMessages.UnitSpawnFailedFormat, ActingPlayerId, _adjacentCoords));
+            LogAssert.Expect(LogType.Exception, new Regex("Fake spawner failure"));
+
+            // WHEN
+            MovementResult result = _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.SpawnFailed));
+            Assert.That(realLedger.GetEnergy(ActingPlayerId), Is.EqualTo(TestStartingEnergy).Within(EnergyTolerance));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_CloneWithThrowingSpawner_CallsRefundMoveWithTheSameArgumentsAsTheCharge()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            _spawner.ThrowsOnSpawn = true;
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+            LogAssert.Expect(LogType.Error, string.Format(BoardLogMessages.UnitSpawnFailedFormat, ActingPlayerId, _adjacentCoords));
+            LogAssert.Expect(LogType.Exception, new Regex("Fake spawner failure"));
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_ledger.RefundCalls, Is.EqualTo(new[] { _ledger.PayCalls[0] }));
+        }
+
+        // ExpectedResult is mandatory on a parameterized UnityTest: the method returns IEnumerator, and a
+        // TestCase without one makes NUnit reject it as "non-void return value, but no result is expected".
+        [UnityTest]
+        [Timeout(5000)]
+        [TestCase(CheapUnitEnergyCost, ExpectedResult = null)]
+        [TestCase(ExpensiveUnitEnergyCost, ExpectedResult = null)]
+        public IEnumerator ResolveMove_Clone_ForwardsTheCapabilitysEnergyCostToTheLedger(int energyCost)
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            var capability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: energyCost);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin, capability);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_ledger.PayCalls[0].UnitEnergyCost, Is.EqualTo(energyCost));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_NoLedgerInjected_ReturnsBoardUnavailableAndLeavesTheBoardUnmutated()
+        {
+            // GIVEN
+            LogAssert.Expect(LogType.Assert, BoardLogMessages.EnergyLedgerMissing);
+            (UnitPresenter presenter, GridPresenter gridPresenter) = CreateBoardWithoutLedgerInjected();
+            yield return null;
+
+            var unit = new GridUnit(ActingUnitId, ActingPlayerId, new CardId(SourceCardIdValue), _origin);
+            Assert.That(presenter.RegisterUnit(unit, _capability), Is.True, "Test setup expects the unit to register.");
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MovementResult result = presenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.BoardUnavailable));
+            Assert.That(gridPresenter.HexGrid.TryGetCell(_adjacentCoords, out HexCell cell), Is.True);
+            Assert.That(cell.OccupantUnitId, Is.EqualTo(HexCell.NoOccupant));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_PaidClone_PublishesNoEnergyEventDuringResolution()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(realLedger);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
+            int energyEventCount = 0;
+            void handleEnergyChanged(int playerId, float energy) => energyEventCount++;
+            void handleEnergySpent(int playerId, float energy, bool wasSuccessful) => energyEventCount++;
+
+            MatchEvents.EnergyChanged += handleEnergyChanged;
+            MatchEvents.EnergySpent += handleEnergySpent;
+
+            // WHEN
+            try
+            {
+                _unitPresenter.ResolveMove(command);
+            }
+            finally
+            {
+                MatchEvents.EnergyChanged -= handleEnergyChanged;
+                MatchEvents.EnergySpent -= handleEnergySpent;
+            }
+
+            // THEN
+            Assert.That(
+                energyEventCount,
+                Is.EqualTo(0),
+                "The ledger must publish nothing synchronously from TryPayForMove, or a subscriber resolving another move from "
+                    + "inside that dispatch would be charged before the board raises its own re-entrancy latch."
+            );
+        }
+
         private IEnumerator ActivateBoard()
         {
             _boardGO.SetActive(true);
@@ -851,8 +1127,35 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private UnitPresenter CreateDetachedPresenter()
         {
             _detachedPresenterGO = new GameObject("DetachedUnitPresenter_Test");
+            _detachedPresenterGO.SetActive(false);
+            UnitPresenter presenter = _detachedPresenterGO.AddComponent<UnitPresenter>();
+            presenter.Construct(_ledger);
+            _detachedPresenterGO.SetActive(true);
 
-            return _detachedPresenterGO.AddComponent<UnitPresenter>();
+            return presenter;
+        }
+
+        private (UnitPresenter Presenter, GridPresenter GridPresenter) CreateBoardWithoutLedgerInjected()
+        {
+            _noLedgerGO = new GameObject("UnitPresenter_NoLedger_Test");
+            _noLedgerGO.SetActive(false);
+            UnitPresenter presenter = _noLedgerGO.AddComponent<UnitPresenter>();
+            GridPresenter gridPresenter = _noLedgerGO.AddComponent<GridPresenter>();
+            gridPresenter.SetGridLayout(_gridLayout);
+            _noLedgerGO.SetActive(true);
+
+            return (presenter, gridPresenter);
+        }
+
+        private EnergyPresenter CreateInitializedLedger(float startingEnergyForActingPlayer, float startingEnergyForRivalPlayer)
+        {
+            _energyLedgerGO = new GameObject("EnergyPresenter_Test");
+            EnergyPresenter presenter = _energyLedgerGO.AddComponent<EnergyPresenter>();
+
+            presenter.InitializePlayer(ActingPlayerId, new EnergyConfig(TestMaxEnergy, NoEnergyRegen, startingEnergyForActingPlayer));
+            presenter.InitializePlayer(RivalPlayerId, new EnergyConfig(TestMaxEnergy, NoEnergyRegen, startingEnergyForRivalPlayer));
+
+            return presenter;
         }
 
         private void HandleMoveExecuted(MoveCommand command, IReadOnlyList<HexCoordinates> affectedCoordinates)
@@ -869,10 +1172,20 @@ namespace GooGalaxy.Tests.PlayMode.Board
             }
         }
 
+        private void HandleEnergySpent(int playerId, float energy, bool wasSuccessful)
+        {
+            _energySpentCount++;
+        }
+
         private GridUnit RegisterUnitAt(int unitId, int playerId, HexCoordinates position)
         {
+            return RegisterUnitAt(unitId, playerId, position, _capability);
+        }
+
+        private GridUnit RegisterUnitAt(int unitId, int playerId, HexCoordinates position, IMoveCapable capability)
+        {
             var unit = new GridUnit(unitId, playerId, new CardId(SourceCardIdValue), position);
-            Assert.That(_unitPresenter.RegisterUnit(unit, _capability), Is.True, $"Test setup expects unit {unitId} to register at {position}.");
+            Assert.That(_unitPresenter.RegisterUnit(unit, capability), Is.True, $"Test setup expects unit {unitId} to register at {position}.");
 
             return unit;
         }
@@ -887,19 +1200,21 @@ namespace GooGalaxy.Tests.PlayMode.Board
             return cell;
         }
 
-        private sealed class FakeMoveCapability : IMoveCapable
+        private sealed class FakeMoveCapability : IMoveCapable, IEnergyPriced
         {
             public FakeMoveCapability(
                 bool canClone,
                 bool canJump,
                 int cloneDistance = BoardMetrics.DefaultCloneDistance,
-                int jumpDistance = BoardMetrics.DefaultJumpDistance
+                int jumpDistance = BoardMetrics.DefaultJumpDistance,
+                int energyCost = BoardMetrics.DefaultUnitEnergyCost
             )
             {
                 CanClone = canClone;
                 CanJump = canJump;
                 CloneDistance = cloneDistance;
                 JumpDistance = jumpDistance;
+                EnergyCost = energyCost;
             }
 
             public bool CanClone { get; }
@@ -911,6 +1226,35 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public int CloneDistance { get; }
 
             public int JumpDistance { get; }
+
+            public int EnergyCost { get; }
+        }
+
+        private sealed class FakeEnergyLedger : IEnergyLedger
+        {
+            public List<(int PlayerId, MoveType Type, int UnitEnergyCost)> PayCalls { get; } = new();
+
+            public List<(int PlayerId, MoveType Type, int UnitEnergyCost)> RefundCalls { get; } = new();
+
+            public int TryPayForMoveCallCount { get; private set; }
+
+            public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                return true;
+            }
+
+            public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                TryPayForMoveCallCount++;
+                PayCalls.Add((playerId, moveType, unitEnergyCost));
+
+                return true;
+            }
+
+            public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost)
+            {
+                RefundCalls.Add((playerId, moveType, unitEnergyCost));
+            }
         }
 
         private sealed class FakeUnitSpawner : IUnitSpawner

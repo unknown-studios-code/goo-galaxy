@@ -11,6 +11,7 @@ using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using Unity.Profiling;
 using UnityEngine;
+using VContainer;
 
 namespace GooGalaxy.Runtime.Board.Presenters
 {
@@ -43,6 +44,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
 
         private ReadOnlyCollection<HexCoordinates> _affectedCoordinatesView;
         private IUnitSpawner _unitSpawner;
+        private IEnergyLedger _energyLedger;
         private bool _isResolvingMove;
         private bool _hasLoggedSpawnFailure;
 
@@ -63,6 +65,20 @@ namespace GooGalaxy.Runtime.Board.Presenters
         /// </remarks>
         public Dictionary<int, GridUnit>.ValueCollection ActiveUnitValues => _activeUnits.Values;
 
+        /// <summary>
+        /// Supplies the ledger every move is priced and paid through.
+        /// </summary>
+        /// <remarks>
+        /// The board holds it as an interface from <c>Runtime.Shared</c> and never learns what a move costs, so
+        /// no dependency on the Energy assembly is created by charging for one.
+        /// </remarks>
+        /// <param name="energyLedger">The resource system's ledger, resolved from the container.</param>
+        [Inject]
+        public void Construct(IEnergyLedger energyLedger)
+        {
+            _energyLedger = energyLedger;
+        }
+
         protected void Awake()
         {
             _affectedCoordinatesView = new ReadOnlyCollection<HexCoordinates>(_affectedCoordinates);
@@ -71,6 +87,8 @@ namespace GooGalaxy.Runtime.Board.Presenters
             {
                 TryGetComponent(out _gridPresenter);
             }
+
+            Debug.Assert(_energyLedger != null, BoardLogMessages.EnergyLedgerMissing, this);
         }
 
         /// <summary>
@@ -182,11 +200,19 @@ namespace GooGalaxy.Runtime.Board.Presenters
         /// Nothing is published and the board is left untouched for any non-Success result.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// A subscriber that throws does not change the returned result, because the board has already been
         /// mutated by then. Dispatch to the remaining subscribers is still lost, so a throwing handler is a
         /// defect in that handler. A subscriber that resolves another move is rejected with
         /// <see cref="MovementResult.ResolverBusy" />, because that would clear the affected-coordinate buffer
         /// the current subscribers are still reading.
+        /// </para>
+        /// <para>
+        /// The Energy charge sits between validation and mutation: an illegal move is rejected before it can
+        /// cost anything, and an application that fails after the charge is refunded, so a rejected move of any
+        /// kind leaves the balance exactly where it was. The board reports the action and what the acting unit
+        /// is worth and never learns the price — <see cref="IEnergyLedger" /> owns that.
+        /// </para>
         /// </remarks>
         /// <param name="command">The requested move.</param>
         /// <returns>Success once the board has been mutated, or the specific reason the command was rejected.</returns>
@@ -218,7 +244,25 @@ namespace GooGalaxy.Runtime.Board.Presenters
                     return validation;
                 }
 
+                if (_energyLedger == null)
+                {
+                    return MovementResult.BoardUnavailable;
+                }
+
+                int unitEnergyCost = capability is IEnergyPriced priced ? priced.EnergyCost : BoardMetrics.DefaultUnitEnergyCost;
+
+                if (!_energyLedger.TryPayForMove(command.PlayerId, command.Type, unitEnergyCost))
+                {
+                    return MovementResult.InsufficientEnergy;
+                }
+
                 _isResolvingMove = true;
+
+                // Cleared only once the move is committed, so the refund below covers every way out of the block
+                // — each early return and any exception that escapes it — rather than resting on the callee
+                // catching its own. The ledger re-derives the price from the same arguments, so the board never
+                // remembers an amount it is not allowed to compute; net change over a failed move is zero.
+                bool isChargeOutstanding = true;
 
                 try
                 {
@@ -229,10 +273,17 @@ namespace GooGalaxy.Runtime.Board.Presenters
                         return resolution;
                     }
 
+                    isChargeOutstanding = false;
+
                     PublishMoveExecuted(command);
                 }
                 finally
                 {
+                    if (isChargeOutstanding)
+                    {
+                        _energyLedger.RefundMove(command.PlayerId, command.Type, unitEnergyCost);
+                    }
+
                     _isResolvingMove = false;
                 }
 
