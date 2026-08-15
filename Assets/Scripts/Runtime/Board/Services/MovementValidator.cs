@@ -183,7 +183,7 @@ namespace GooGalaxy.Runtime.Board.Services
                 return MovementResult.TargetOccupied;
             }
 
-            if (capability != null && !capability.IgnoresHazards && targetCell.HasHazard)
+            if (capability != null && !capability.CanIgnoreHazards && targetCell.HasHazard)
             {
                 return MovementResult.TargetHazardous;
             }

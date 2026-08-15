@@ -29,13 +29,12 @@ namespace GooGalaxy.Runtime.Cards.Presenters
             return _cardsById.TryGetValue(cardId, out card);
         }
 
-        /// <summary>Replaces the authored roster. The registry is rebuilt on the next <see cref="BuildRegistry" /> call.</summary>
+        /// <remarks>The registry is not rebuilt until the next <see cref="BuildRegistry" /> call.</remarks>
         internal void SetAuthoredCards(params CardDataSO[] cards)
         {
             _cards = cards;
         }
 
-        /// <summary>Indexes the authored roster by card id, discarding any previous registry.</summary>
         internal void BuildRegistry()
         {
             _cardsById.Clear();

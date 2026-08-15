@@ -37,7 +37,7 @@ namespace GooGalaxy.Runtime.Cards.Models
             CloneDistance = cardData.CloneDistance;
             JumpDistance = cardData.JumpDistance;
             HasArmor = cardData.HasArmor;
-            IgnoresHazards = cardData.IgnoresHazards;
+            CanIgnoreHazards = cardData.CanIgnoreHazards;
             ConversionRadius = cardData.ConversionRadius;
             LandingEffects = CopyLandingEffects(cardData.LandingEffects);
         }
@@ -62,7 +62,7 @@ namespace GooGalaxy.Runtime.Cards.Models
 
         public bool HasArmor { get; }
 
-        public bool IgnoresHazards { get; }
+        public bool CanIgnoreHazards { get; }
 
         public int ConversionRadius { get; }
 

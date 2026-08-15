@@ -36,7 +36,7 @@ namespace GooGalaxy.Playtest
 
         public int JumpDistance => _card.JumpDistance;
 
-        public bool IgnoresHazards => _card.IgnoresHazards;
+        public bool CanIgnoreHazards => _card.CanIgnoreHazards;
 
         public int ConversionRadius => _card.ConversionRadius;
 

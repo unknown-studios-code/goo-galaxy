@@ -1,7 +1,8 @@
 ---
 description: "Use when designing systems or writing Unity C# code that applies architectural patterns. Covers SOLID, Observer, State, Template Method, VContainer DI, Composition, Pooling, Factory, Command, and Strategy."
 paths:
-  - "Assets/**/*.cs"
+  - "Assets/Scripts/**/*.cs"
+  - "Assets/Editor/**/*.cs"
 ---
 
 # Design Patterns for Unity

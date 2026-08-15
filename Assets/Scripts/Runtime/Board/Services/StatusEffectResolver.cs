@@ -5,12 +5,11 @@ using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Services
 {
-    /// <summary>
+    /// <remarks>
     /// Owns when a condition on a unit expires. Applying a condition is delegated to the unit, which already
     /// refreshes rather than stacks; the value this adds is the expiry rule, which no single unit can decide
     /// because it depends on <i>whose</i> deployment closes the window.
-    /// </summary>
-    /// <remarks>
+    /// <para>
     /// Action-window semantics, per the GDD's real-time timing model, in which "turn" always means action
     /// window:
     /// <list type="bullet">
@@ -30,6 +29,7 @@ namespace GooGalaxy.Runtime.Board.Services
     /// so an EditMode test can build one over a plain dictionary. Allocation-free on both the apply and the
     /// tick path — the value collection is iterated through its concrete type so the struct enumerator binds
     /// directly, and no temporary list is built per tick.
+    /// </para>
     /// <para>
     /// <b>An instance, unlike every other <c>*Resolver</c> here, and deliberately so.</b> It holds exactly one
     /// piece of state: a <c>readonly</c> binding to the registry it expires conditions on. Making it static
@@ -43,19 +43,20 @@ namespace GooGalaxy.Runtime.Board.Services
     {
         private readonly Dictionary<int, GridUnit>.ValueCollection _units;
 
-        /// <param name="units">
-        /// The registry's value collection. It stays bound to the backing dictionary, so units registered or
-        /// removed later are picked up without rebinding.
-        /// </param>
-        /// <exception cref="ArgumentNullException">The value collection is null.</exception>
+        /// <remarks>
+        /// Takes the registry's value collection, which stays bound to the backing dictionary, so units registered or
+        /// removed later are picked up without rebinding. Throws <see cref="ArgumentNullException" /> when it is null.
+        /// </remarks>
         internal StatusEffectResolver(Dictionary<int, GridUnit>.ValueCollection units)
         {
             _units = units ?? throw new ArgumentNullException(nameof(units));
         }
 
-        /// <param name="unit">The unit to condition. A null or dead unit is ignored.</param>
-        /// <param name="type">The condition to apply. <see cref="StatusType.None"/> is ignored.</param>
-        /// <param name="duration">Action windows the condition lasts. A value below one is ignored.</param>
+        /// <remarks>
+        /// A null or dead <paramref name="unit" /> is ignored, as is a <paramref name="type" /> of
+        /// <see cref="StatusType.None" />. <paramref name="duration" /> is action windows the condition lasts; a value
+        /// below one is ignored.
+        /// </remarks>
         internal void ApplyStatus(GridUnit unit, StatusType type, int duration)
         {
             if (unit == null || !unit.IsAlive)
@@ -66,33 +67,28 @@ namespace GooGalaxy.Runtime.Board.Services
             unit.AddStatus(type, duration);
         }
 
-        /// <summary>
-        /// Closes one defender action window for the given player, decrementing every condition their units
-        /// hold and dropping the ones that reach zero.
-        /// </summary>
-        /// <param name="playerId">The player who just completed a successful deployment.</param>
+        /// <remarks>
+        /// Closes one defender action window for <paramref name="playerId" /> — the player who just completed a
+        /// successful deployment — decrementing every condition their units hold and dropping the ones that reach zero.
+        /// </remarks>
         internal void TickDurations(int playerId)
         {
             TickDurations(playerId, null);
         }
 
-        /// <summary>
-        /// Closes one defender action window for the given player, skipping the units named in the exemption
-        /// list.
-        /// </summary>
         /// <remarks>
+        /// Closes one defender action window for <paramref name="playerId" />, skipping the units named in
+        /// <paramref name="exemptUnitIds" /> — units the deployment just touched, which must not be ticked by it.
+        /// Null or empty ticks everything the player owns; the list is borrowed for the call only and never retained.
+        /// <para>
         /// The exemption exists because a deployment can condition the deploying player's own units — freezing
         /// your own flank with Cryo-Stasis is a GDD-documented defensive play. Without it, the same deployment
         /// that applied a one-window freeze would immediately close that window, and the condition would never
         /// be observable. A unit in the exemption list keeps every marker it holds for this tick, including any
         /// applied by an earlier window; that is harmless, because re-applying a condition already refreshes
         /// its duration.
+        /// </para>
         /// </remarks>
-        /// <param name="playerId">The player who just completed a successful deployment.</param>
-        /// <param name="exemptUnitIds">
-        /// Units the deployment just touched, which must not be ticked by it. Null or empty ticks everything
-        /// the player owns. Borrowed for the call only and never retained.
-        /// </param>
         internal void TickDurations(int playerId, IReadOnlyList<int> exemptUnitIds)
         {
             foreach (GridUnit unit in _units)

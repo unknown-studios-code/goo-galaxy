@@ -1,5 +1,9 @@
 namespace GooGalaxy.Runtime.Shared.Constants
 {
+    /// <summary>
+    /// Console text for the board's runtime wiring and resolution problems — read while a match is running, not
+    /// while authoring an asset. See <see cref="CardLogMessages" /> for the authoring-time counterpart.
+    /// </summary>
     public static class BoardLogMessages
     {
         public const string CannotAddBlockedCoordinateFormat =
@@ -9,9 +13,10 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string MultipleGridPresenters = "Multiple GridPresenters detected in the scene! Destroying this duplicate instance to prevent conflicts.";
 
-        public const string GridLayoutConfigurationMissing = "GridLayout configuration is missing!";
+        public const string GridLayoutConfigurationMissing =
+            "GridLayout configuration is missing! Assign a GridLayoutSO asset on GridPresenter in the Inspector.";
 
-        public const string CellViewPrefabNotAssigned = "CellView prefab is not assigned!";
+        public const string CellViewPrefabNotAssigned = "CellView prefab is not assigned! Assign a CellView prefab on GridView in the Inspector.";
 
         public const string GridPresenterMissing = "GridPresenter reference is missing or its hex grid is not initialized! Movement cannot be resolved.";
 

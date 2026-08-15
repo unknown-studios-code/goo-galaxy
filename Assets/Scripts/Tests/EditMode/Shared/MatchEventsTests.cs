@@ -6,7 +6,7 @@ using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Tests.EditMode
+namespace GooGalaxy.Tests.EditMode.Shared
 {
     [TestFixture]
     public class MatchEventsTests
@@ -75,7 +75,7 @@ namespace GooGalaxy.Tests.EditMode
             // GIVEN
             IHexGrid receivedGrid = null;
             MatchEvents.GridInitialized += grid => receivedGrid = grid;
-            var mockGrid = new MockHexGrid();
+            var mockGrid = new FakeHexGrid();
 
             // WHEN
             MatchEvents.RaiseGridInitialized(mockGrid);
@@ -90,10 +90,10 @@ namespace GooGalaxy.Tests.EditMode
             // GIVEN
             bool hasFired = false;
             MatchEvents.GridInitialized += _ => hasFired = true;
-            MatchEvents.ResetEvents();
 
             // WHEN
-            MatchEvents.RaiseGridInitialized(new MockHexGrid());
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseGridInitialized(new FakeHexGrid());
 
             // THEN
             Assert.That(hasFired, Is.False, "GridInitialized should have no subscribers after ResetEvents.");
@@ -105,9 +105,9 @@ namespace GooGalaxy.Tests.EditMode
             // GIVEN
             bool hasFired = false;
             MatchEvents.MoveExecuted += (_, _) => hasFired = true;
-            MatchEvents.ResetEvents();
 
             // WHEN
+            MatchEvents.ResetEvents();
             MatchEvents.RaiseMoveExecuted(default, Array.Empty<HexCoordinates>());
 
             // THEN
@@ -120,9 +120,9 @@ namespace GooGalaxy.Tests.EditMode
             // GIVEN
             bool hasFired = false;
             MatchEvents.ConversionResolved += (_, _) => hasFired = true;
-            MatchEvents.ResetEvents();
 
             // WHEN
+            MatchEvents.ResetEvents();
             MatchEvents.RaiseConversionResolved(1, default);
 
             // THEN
@@ -133,10 +133,8 @@ namespace GooGalaxy.Tests.EditMode
         public void RaiseConversionResolved_NoSubscribers_DoesNotThrow()
         {
             // GIVEN
-            MatchEvents.ResetEvents();
 
-            // WHEN
-            // THEN
+            // WHEN / THEN
             Assert.DoesNotThrow(() => MatchEvents.RaiseConversionResolved(1, default));
         }
 
@@ -144,26 +142,26 @@ namespace GooGalaxy.Tests.EditMode
         public void RaiseMatchStarted_NoSubscribers_DoesNotThrow()
         {
             // GIVEN
-            // WHEN
-            // THEN
+
+            // WHEN / THEN
             Assert.DoesNotThrow(() => MatchEvents.RaiseMatchStarted(new MatchConfiguration()));
         }
 
         [Test]
-        public void HandleGridInitialized_NoSubscribers_DoesNotThrow()
+        public void RaiseGridInitialized_NoSubscribers_DoesNotThrow()
         {
             // GIVEN
-            // WHEN
-            // THEN
-            Assert.DoesNotThrow(() => MatchEvents.RaiseGridInitialized(new MockHexGrid()));
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseGridInitialized(new FakeHexGrid()));
         }
 
         [Test]
         public void RaiseGamePhaseChanged_NoSubscribers_DoesNotThrow()
         {
             // GIVEN
-            // WHEN
-            // THEN
+
+            // WHEN / THEN
             Assert.DoesNotThrow(() => MatchEvents.RaiseGamePhaseChanged(1));
         }
 
@@ -215,9 +213,9 @@ namespace GooGalaxy.Tests.EditMode
             // GIVEN
             bool hasFired = false;
             MatchEvents.LandingResolved += (_, _) => hasFired = true;
-            MatchEvents.ResetEvents();
 
             // WHEN
+            MatchEvents.ResetEvents();
             MatchEvents.RaiseLandingResolved(default, default);
 
             // THEN
@@ -262,9 +260,9 @@ namespace GooGalaxy.Tests.EditMode
             // GIVEN
             bool hasFired = false;
             MatchEvents.AbilityResolved += (_, _) => hasFired = true;
-            MatchEvents.ResetEvents();
 
             // WHEN
+            MatchEvents.ResetEvents();
             MatchEvents.RaiseAbilityResolved(1, default);
 
             // THEN
@@ -296,7 +294,7 @@ namespace GooGalaxy.Tests.EditMode
             _phaseChangedValue = phase;
         }
 
-        private sealed class MockHexGrid : IHexGrid
+        private sealed class FakeHexGrid : IHexGrid
         {
             public int GridRadius => 4;
         }

@@ -2,24 +2,11 @@ using System;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Tests.EditMode
+namespace GooGalaxy.Tests.EditMode.Shared
 {
     [TestFixture]
     public class CardIdTests
     {
-        [Test]
-        public void Constructor_WithNull_ThrowsArgumentNullException()
-        {
-            // GIVEN
-            string nullString = null;
-
-            // WHEN
-            void constructorCall() => _ = new CardId(nullString);
-
-            // THEN
-            Assert.Throws<ArgumentNullException>(constructorCall);
-        }
-
         [Test]
         public void Empty_WithoutArguments_WrapsStringEmpty()
         {
@@ -152,6 +139,19 @@ namespace GooGalaxy.Tests.EditMode
             // THEN
             Assert.That(lower, Is.Not.EqualTo(upper));
             Assert.That(upper == lower, Is.False);
+        }
+
+        [Test]
+        public void Constructor_WithNull_ThrowsArgumentNullException()
+        {
+            // GIVEN
+            string nullString = null;
+
+            // WHEN
+            void constructorCall() => _ = new CardId(nullString);
+
+            // THEN
+            Assert.Throws<ArgumentNullException>(constructorCall);
         }
     }
 }

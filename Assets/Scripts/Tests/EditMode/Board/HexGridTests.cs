@@ -15,7 +15,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void HexGrid_Generation_Creates61TilesForRadius4()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
 
             // WHEN
             var grid = new HexGrid(mockLayout);
@@ -28,7 +28,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void Constructor_WithPositiveRadius_ContainsCenterCell()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
 
             // WHEN
@@ -44,7 +44,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void HexGrid_RadiusBounds_TryGetCellFailsOutside()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
 
             // WHEN
@@ -65,7 +65,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             var blockedCoords = new HashSet<HexCoordinates> { new(1, 0), new(-2, 2) };
-            var mockLayout = new MockGridLayout { GridRadius = 4, BlockedCoordinates = new ReadOnlySet<HexCoordinates>(blockedCoords) };
+            var mockLayout = new FakeGridLayout { GridRadius = 4, BlockedCoordinates = new ReadOnlySet<HexCoordinates>(blockedCoords) };
             var grid = new HexGrid(mockLayout);
 
             // WHEN
@@ -83,7 +83,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetNeighbors_CenterVSBorder_CountsCorrect()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -107,7 +107,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRing_Radius4Border_Returns24Tiles()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -122,7 +122,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetNeighbors_OnRepeatedCalls_DoesNotAllocate()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var center = new HexCoordinates(0, 0);
             var results = new List<HexCell>(6);
@@ -147,7 +147,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRingCells_OnRepeatedCalls_DoesNotAllocate()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var center = new HexCoordinates(0, 0);
             var results = new List<HexCell>(24);
@@ -172,7 +172,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetSpiral_Radius4_Returns61Tiles()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -187,7 +187,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetSpiralCells_OnRepeatedCalls_DoesNotAllocate()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var center = new HexCoordinates(0, 0);
             var results = new List<HexCell>(61);
@@ -212,7 +212,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRing_Radius0_ReturnsCenterCell()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -227,7 +227,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRing_NegativeRadius_ReturnsEmptyList()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -242,7 +242,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetSpiral_NegativeRadius_ReturnsEmptyList()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -253,7 +253,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             Assert.That(results.Count, Is.EqualTo(0), "GetSpiralCells with negative radius should return no cells.");
         }
 
-        private class MockGridLayout : IGridLayout
+        private class FakeGridLayout : IGridLayout
         {
             public int GridRadius { get; set; } = 4;
             public IReadOnlySet<HexCoordinates> BlockedCoordinates { get; set; } = new ReadOnlySet<HexCoordinates>(new HashSet<HexCoordinates>());
@@ -272,7 +272,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetNeighbors_NullResults_ThrowsArgumentNullException()
         {
             // GIVEN
-            var grid = new HexGrid(new MockGridLayout());
+            var grid = new HexGrid(new FakeGridLayout());
 
             // WHEN
             // THEN
@@ -283,7 +283,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRingCells_NullResults_ThrowsArgumentNullException()
         {
             // GIVEN
-            var grid = new HexGrid(new MockGridLayout());
+            var grid = new HexGrid(new FakeGridLayout());
 
             // WHEN
             // THEN
@@ -294,7 +294,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetSpiralCells_NullResults_ThrowsArgumentNullException()
         {
             // GIVEN
-            var grid = new HexGrid(new MockGridLayout());
+            var grid = new HexGrid(new FakeGridLayout());
 
             // WHEN
             // THEN
@@ -305,7 +305,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void HexGrid_Radius0_GeneratesExactlyOneCell()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 0 };
+            var mockLayout = new FakeGridLayout { GridRadius = 0 };
 
             // WHEN
             var grid = new HexGrid(mockLayout);
@@ -319,7 +319,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRingCells_Radius1_ReturnsSixCells()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -334,7 +334,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetSpiralCells_Radius0_ReturnsCenterOnly()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -350,7 +350,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetRingCells_OffCenterAtCorner_ReturnsOnlyInBoundsNeighbors()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 
@@ -365,7 +365,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         public void GetSpiralCells_OffCenterOrigin_ReturnsCorrectCount()
         {
             // GIVEN
-            var mockLayout = new MockGridLayout { GridRadius = 4 };
+            var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var results = new List<HexCell>();
 

@@ -7,7 +7,7 @@ using UnityEditor;
 namespace GooGalaxy.Tests.EditMode.Cards
 {
     [TestFixture]
-    public class MvpRosterValidationTests
+    public class RosterValidationTests
     {
         private const string SubjectAlphaPath = "Assets/Data/Cards/Troops/SubjectAlpha.asset";
         private const string AcidCrawlerPath = "Assets/Data/Cards/Troops/AcidCrawler.asset";
@@ -22,7 +22,9 @@ namespace GooGalaxy.Tests.EditMode.Cards
         [TestCase(CryoStasisPath)]
         public void LoadAssetAtPath_ForRosterCard_ReturnsANonNullAsset(string path)
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             CardDataSO card = AssetDatabase.LoadAssetAtPath<CardDataSO>(path);
 
             // THEN
@@ -51,16 +53,16 @@ namespace GooGalaxy.Tests.EditMode.Cards
         [TestCase(BioPhalanxPath, true, true, true, false)]
         [TestCase(VolatileMassPath, false, true, false, false)]
         [TestCase(CryoStasisPath, false, false, false, false)]
-        public void AuthoredCard_KnownValues_MatchesTheAuthoredCapability(string path, bool canClone, bool canJump, bool hasArmor, bool ignoresHazards)
+        public void AuthoredCard_KnownValues_MatchesTheAuthoredCapability(string path, bool canClone, bool canJump, bool hasArmor, bool canIgnoreHazards)
         {
             // GIVEN
             CardDataSO card = LoadCard(path);
 
             // WHEN
-            (bool CanClone, bool CanJump, bool HasArmor, bool IgnoresHazards) actual = (card.CanClone, card.CanJump, card.HasArmor, card.IgnoresHazards);
+            (bool CanClone, bool CanJump, bool HasArmor, bool CanIgnoreHazards) actual = (card.CanClone, card.CanJump, card.HasArmor, card.CanIgnoreHazards);
 
             // THEN
-            Assert.That(actual, Is.EqualTo((canClone, canJump, hasArmor, ignoresHazards)));
+            Assert.That(actual, Is.EqualTo((canClone, canJump, hasArmor, canIgnoreHazards)));
         }
 
         [TestCase(SubjectAlphaPath, 1)]

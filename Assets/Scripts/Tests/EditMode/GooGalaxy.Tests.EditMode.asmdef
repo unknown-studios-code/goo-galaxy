@@ -16,7 +16,6 @@
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",
-    "GooGalaxy.Runtime.Networking",
     "UnityEngine.TestRunner"
   ],
   "versionDefines": [],

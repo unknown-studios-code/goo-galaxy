@@ -138,6 +138,9 @@ namespace GooGalaxy.Playtest
         private int _selectedSpellClusterSize;
         private Vector2 _lastPreviewPointerPosition;
         private bool _hasPreviewPointerPosition;
+        private Vector2 _lastHudCheckPosition;
+        private bool _hasHudCheckPosition;
+        private bool _lastIsPointerOverHud;
 
         /// <remarks>
         /// The runtime systems come from <c>GameLifetimeScope</c> and the HUD from
@@ -1253,9 +1256,28 @@ namespace GooGalaxy.Playtest
             cellView.SetHighlightState(isActive);
         }
 
+        // PERF: IsPointerOverUI walks the visual tree and recomputes world clip rects, and the aim path calls this
+        // every frame a Protocol stays selected. A resting pointer cannot change the answer, so the pick only re-runs
+        // when the pointer actually moved — the same gate UpdateSpellPreview already uses for its own per-frame query.
         private bool IsPointerOverHud(Pointer pointer)
         {
-            return _hudView != null && _hudView.IsPointerOverUI(pointer.position.ReadValue());
+            if (_hudView == null)
+            {
+                return false;
+            }
+
+            Vector2 position = pointer.position.ReadValue();
+
+            if (_hasHudCheckPosition && position == _lastHudCheckPosition)
+            {
+                return _lastIsPointerOverHud;
+            }
+
+            _hasHudCheckPosition = true;
+            _lastHudCheckPosition = position;
+            _lastIsPointerOverHud = _hudView.IsPointerOverUI(position);
+
+            return _lastIsPointerOverHud;
         }
 
         private bool TryGetBoardPoint(Vector2 screenPosition, out Vector3 worldPoint)

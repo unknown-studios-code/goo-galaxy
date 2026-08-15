@@ -586,16 +586,16 @@ MonoBehaviour:
   _playerTwoColor: {r: 1, g: 0.176, b: 0.667, a: 1}
   _unclaimedColor: {r: 0.6, g: 0.6, b: 0.6, a: 1}
   _cardBodyColors:
-  - CardId: subject_alpha
-    Color: {r: 0.55, g: 0.9, b: 0.55, a: 1}
-  - CardId: acid_crawler
-    Color: {r: 0.95, g: 0.8, b: 0.35, a: 1}
-  - CardId: bio_phalanx
-    Color: {r: 0.75, g: 0.78, b: 0.85, a: 1}
-  - CardId: volatile_mass
-    Color: {r: 0.95, g: 0.45, b: 0.35, a: 1}
-  - CardId: cryo_stasis
-    Color: {r: 0.55, g: 0.8, b: 0.95, a: 1}
+  - _cardId: subject_alpha
+    _color: {r: 0.55, g: 0.9, b: 0.55, a: 1}
+  - _cardId: acid_crawler
+    _color: {r: 0.95, g: 0.8, b: 0.35, a: 1}
+  - _cardId: bio_phalanx
+    _color: {r: 0.75, g: 0.78, b: 0.85, a: 1}
+  - _cardId: volatile_mass
+    _color: {r: 0.95, g: 0.45, b: 0.35, a: 1}
+  - _cardId: cryo_stasis
+    _color: {r: 0.55, g: 0.8, b: 0.95, a: 1}
   _effectLifetimeInSeconds: 1
 --- !u!4 &1630103205
 Transform:

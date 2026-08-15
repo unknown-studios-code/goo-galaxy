@@ -36,6 +36,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
         [TearDown]
         public void TearDown()
         {
+            // Destroy is deferred to the end of the frame, so a GridView this fixture built is still subscribed to
+            // MatchEvents.GridInitialized when the next test arranges its own board. Clearing the bus is what stops a
+            // stale view from rebuilding itself off the next test's RaiseGridInitialized.
+            MatchEvents.ResetEvents();
+
             if (_prefabGO != null)
             {
                 Object.Destroy(_prefabGO);

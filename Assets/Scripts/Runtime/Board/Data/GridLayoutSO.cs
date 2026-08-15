@@ -43,10 +43,10 @@ namespace GooGalaxy.Runtime.Board.Data
             ValidateAuthoredData();
         }
 
-        /// <summary>
+        /// <remarks>
         /// Replaces the authored values without running validation, so a caller can observe what
         /// <see cref="ValidateAuthoredData" /> does to raw input.
-        /// </summary>
+        /// </remarks>
         internal void SetAuthoredData(int gridRadius, params Vector2Int[] blockedCoordinates)
         {
             _gridRadius = gridRadius;
@@ -54,10 +54,7 @@ namespace GooGalaxy.Runtime.Board.Data
             _blockedCoordinatesWrapper = null;
         }
 
-        /// <summary>
-        /// Clamps the radius, removes duplicate blocked coordinates, and rebuilds the lookup set.
-        /// Runs on every Inspector edit through <c>OnValidate</c>.
-        /// </summary>
+        /// <remarks>Runs on every Inspector edit through <c>OnValidate</c>.</remarks>
         internal void ValidateAuthoredData()
         {
             ClampGridRadius();

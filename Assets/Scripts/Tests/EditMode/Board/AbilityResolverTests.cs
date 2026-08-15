@@ -306,6 +306,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            _grid.TryGetCell(_jumpSource, out HexCell vacatedCell);
             AbilityContext context = JumpContext(ActingUnitId, _origin, _jumpSource);
             _landingEffects.Add(new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0));
 
@@ -313,7 +314,6 @@ namespace GooGalaxy.Tests.EditMode.Board
             Resolve(context);
 
             // THEN
-            _grid.TryGetCell(_jumpSource, out HexCell vacatedCell);
             Assert.That(vacatedCell.Hazard.RemainingDuration, Is.EqualTo(HazardDuration));
             Assert.That(vacatedCell.Hazard.OwnerPlayerId, Is.EqualTo(ActingPlayerId));
         }

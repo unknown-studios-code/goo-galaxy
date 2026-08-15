@@ -186,11 +186,9 @@ namespace GooGalaxy.Tests.PlayMode
             _scope = _scopeGO.AddComponent<GameLifetimeScope>();
         }
 
-        /// <summary>
-        /// Creates the board GameObject carrying every registration that needs authored data before it wakes:
-        /// <c>GridPresenter</c> needs a grid layout, and the two views assert on a prefab. The generic
-        /// auto-scaffolding in <see cref="BuildContainer"/> cannot supply any of that, so they are built here.
-        /// </summary>
+        // Creates the board GameObject carrying every registration that needs authored data before it wakes:
+        // GridPresenter needs a grid layout, and the two views assert on a prefab. The generic auto-scaffolding
+        // in BuildContainer (below) cannot supply any of that, so they are built here.
         private GameObject CreateBoard()
         {
             GridLayoutSO gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
@@ -219,11 +217,9 @@ namespace GooGalaxy.Tests.PlayMode
             return presenterGO;
         }
 
-        /// <summary>
-        /// Creates an <c>EnergyPresenter</c> scene GameObject so <see cref="GameLifetimeScope"/>'s
-        /// <c>RegisterComponentInHierarchy&lt;EnergyPresenter&gt;()</c> registration resolves to a known instance
-        /// instead of one auto-scaffolded anonymously by <see cref="BuildContainer"/>.
-        /// </summary>
+        // Creates an EnergyPresenter scene GameObject so GameLifetimeScope's
+        // RegisterComponentInHierarchy<EnergyPresenter>() registration resolves to a known instance instead of one
+        // auto-scaffolded anonymously by BuildContainer (below).
         private GameObject CreateEnergyPresenter()
         {
             var energyPresenterGO = new GameObject("EnergyPresenter_DI_Test");
@@ -232,18 +228,15 @@ namespace GooGalaxy.Tests.PlayMode
             return energyPresenterGO;
         }
 
-        /// <summary>
-        /// Builds the scope's container by calling <see cref="LifetimeScope.Build"/> directly instead of
-        /// activating the GameObject, since Unity silently swallows exceptions thrown from <c>Awake</c> and
-        /// only logs them (which is what previously made a missing scene component look like a log-only
-        /// failure instead of a catchable exception). Any type registered in <see cref="GameLifetimeScope"/>
-        /// via <c>RegisterComponentInHierarchy</c> that isn't yet present in the scene is reported by VContainer
-        /// as a <see cref="VContainerException"/> carrying the missing <see cref="System.Type"/>; this method
-        /// auto-scaffolds a bare component of that type and retries, so this test does not need to change every
-        /// time a new plain component-in-hierarchy registration is added. Registrations that need bespoke setup
-        /// data (like <c>GridPresenter</c>'s grid layout) must still be created explicitly above, since no
-        /// generic scaffolding can know what data they require.
-        /// </summary>
+        // WORKAROUND: builds the scope's container by calling LifetimeScope.Build directly instead of activating the
+        // GameObject, since Unity silently swallows exceptions thrown from Awake and only logs them — which is what
+        // previously made a missing scene component look like a log-only failure instead of a catchable exception.
+        // Any type registered in GameLifetimeScope via RegisterComponentInHierarchy that isn't yet present in the
+        // scene is reported by VContainer as a VContainerException carrying the missing Type; this method
+        // auto-scaffolds a bare component of that type and retries, so this test does not need to change every time a
+        // new plain component-in-hierarchy registration is added. Registrations that need bespoke setup data (like
+        // GridPresenter's grid layout) must still be created explicitly above, since no generic scaffolding can know
+        // what data they require.
         private void BuildContainer()
         {
             for (int attempt = 0; attempt < MaxAutoScaffoldAttempts; attempt++)
@@ -289,7 +282,7 @@ namespace GooGalaxy.Tests.PlayMode
 
             public bool CanJump => true;
 
-            public bool IgnoresHazards => false;
+            public bool CanIgnoreHazards => false;
 
             public int CloneDistance => BoardMetrics.DefaultCloneDistance;
 

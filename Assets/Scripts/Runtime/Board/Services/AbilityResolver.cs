@@ -5,19 +5,19 @@ using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Services
 {
-    /// <summary>
+    /// <remarks>
     /// Applies the impacts a card authored, once movement and standard conversion have finished — step 4 of the
     /// GDD's interaction resolution order. Stateless and free of any engine dependency: every buffer is
     /// caller-owned, nothing is logged, and the entry point stays internal so no assembly outside Board can
     /// call it — <c>AbilityController</c> is its only production caller, and the EditMode suite reaches it
     /// through <c>InternalsVisibleTo</c>.
-    /// </summary>
-    /// <remarks>
+    /// <para>
     /// Every card is expressible as authored data alone: the resolver dispatches on
     /// <see cref="ImpactEffectType"/> and reads the impact's own radius, duration, duration unit, filter, and
     /// cluster size, so no card needs a code path of its own. Volatile Mass's fuse is the sharpest case: both of
     /// the GDD's triggers for it fall out of one authored impact plus the context's
     /// <see cref="AbilityContext.HasVacatedHex"/>, and no code path here branches on the card's identity.
+    /// </para>
     /// <para>
     /// Nothing throws for a card that is authored wrong and nothing aborts the impact loop: an impact the
     /// resolver cannot handle is skipped and the card's remaining impacts still resolve. Those conditions are
@@ -36,10 +36,10 @@ namespace GooGalaxy.Runtime.Board.Services
     /// </remarks>
     internal static class AbilityResolver
     {
-        /// <summary>
-        /// Checks that a set of player-chosen hexes forms the cluster a Protocol's impact was authored for.
-        /// </summary>
         /// <remarks>
+        /// Checks that <paramref name="targets" /> — the hexes the player picked, centre first — forms the cluster
+        /// <paramref name="effect" /> was authored for, against <paramref name="grid" />.
+        /// <para>
         /// The GDD describes a Protocol's target as "a 3-hex cluster (1 center hex + 2 adjacent)", and the two
         /// authored fields already say exactly that without a new schema:
         /// <see cref="ImpactEffect.ClusterSize"/> is how many hexes the player picks, and
@@ -52,15 +52,10 @@ namespace GooGalaxy.Runtime.Board.Services
         /// </para>
         /// Allocation-free. Distinctness is a nested indexed scan rather than a set, because the count is the
         /// authored cluster size — three or four — and a <c>HashSet</c> would cost an allocation to save
-        /// nothing.
+        /// nothing. Returns true when the count matches the authored cluster size, every hex is on the board, no hex
+        /// repeats, and every hex is within the authored radius of the first one.
+        /// </para>
         /// </remarks>
-        /// <param name="targets">The hexes the player picked, centre first.</param>
-        /// <param name="effect">The impact the targets must satisfy.</param>
-        /// <param name="grid">The board every target must exist on.</param>
-        /// <returns>
-        /// True when the count matches the authored cluster size, every hex is on the board, no hex repeats,
-        /// and every hex is within the authored radius of the first one.
-        /// </returns>
         internal static bool ValidateTargets(IReadOnlyList<HexCoordinates> targets, ImpactEffect effect, HexGrid grid)
         {
             if (targets == null || grid == null || effect.ClusterSize <= 0 || targets.Count != effect.ClusterSize)
@@ -91,28 +86,21 @@ namespace GooGalaxy.Runtime.Board.Services
             return true;
         }
 
-        /// <summary>
-        /// Resolves every impact the acting card authored, in order, against the board described by the context.
-        /// </summary>
-        /// <param name="context">
-        /// Who is acting, where, what they vacated, what conversion just did, and — for a Protocol — the hexes
-        /// the player picked. Its lists are borrowed for the call and never retained.
-        /// </param>
-        /// <param name="fuses">The match's single fuse system. See <c>FuseController.Fuses</c>.</param>
-        /// <param name="areaBuffer">Caller-owned scratch buffer for the impact area. Overwritten per impact.</param>
-        /// <param name="affectedUnitIds">Caller-owned buffer receiving the units an impact conditioned. Cleared on entry.</param>
-        /// <param name="affectedHexes">
-        /// Caller-owned buffer receiving the coordinates whose hex state changed — the affected units' hexes,
-        /// plus any hex a hazard was spawned on. Cleared on entry.
-        /// </param>
-        /// <param name="destroyedUnitIds">
-        /// Caller-owned buffer receiving the units a self-destruct impact marked for removal. Cleared on entry.
-        /// The caller performs the removal after publishing.
-        /// </param>
-        /// <param name="diagnostics">The authoring or state problems the resolution ran into, or None.</param>
-        /// <exception cref="ArgumentNullException">
-        /// The grid, the registry, the impact list, the status system, the fuse system, or any buffer is null.
-        /// </exception>
+        /// <remarks>
+        /// Resolves every impact the acting card authored, in order, against the board described by
+        /// <paramref name="context" /> — who is acting, where, what they vacated, what conversion just did, and, for a
+        /// Protocol, the hexes the player picked; its lists are borrowed for the call and never retained.
+        /// <paramref name="fuses" /> is the match's single fuse system — see <c>FuseController.Fuses</c>.
+        /// <paramref name="areaBuffer" /> is caller-owned scratch overwritten per impact.
+        /// <paramref name="affectedUnitIds" />, <paramref name="affectedHexes" /> and
+        /// <paramref name="destroyedUnitIds" /> are caller-owned buffers cleared on entry: the first receives the
+        /// units an impact conditioned, the second the coordinates whose hex state changed — the affected units'
+        /// hexes plus any hex a hazard was spawned on — and the third the units a self-destruct impact marked for
+        /// removal, which the caller removes after publishing. <paramref name="diagnostics" /> reports the authoring
+        /// or state problems the resolution ran into, or <see cref="AbilityDiagnostic.None" />. Throws
+        /// <see cref="ArgumentNullException" /> when the grid, the registry, the impact list, the status system, the
+        /// fuse system, or any buffer is null.
+        /// </remarks>
         internal static void Resolve(
             HexGrid grid,
             IReadOnlyDictionary<int, GridUnit> units,

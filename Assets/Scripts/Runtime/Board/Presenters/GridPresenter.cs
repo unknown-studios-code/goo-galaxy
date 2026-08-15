@@ -41,7 +41,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         }
 #endif
 
-        /// <summary>Assigns the layout asset that <c>Awake</c> builds the grid from.</summary>
+        /// <remarks>Assigns the layout asset that <c>Awake</c> builds the grid from, so it must run before it.</remarks>
         internal void SetGridLayout(GridLayoutSO gridLayout)
         {
             _gridLayout = gridLayout;
