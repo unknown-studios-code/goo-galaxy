@@ -9,7 +9,9 @@ namespace GooGalaxy.Tests.EditMode.Board
         [Test]
         public void Success_Value_Equals0()
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             const MovementResult result = MovementResult.Success;
 
             // THEN
@@ -19,7 +21,9 @@ namespace GooGalaxy.Tests.EditMode.Board
         [Test]
         public void TargetHazardous_Value_Equals13()
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             const MovementResult result = MovementResult.TargetHazardous;
 
             // THEN
@@ -29,7 +33,9 @@ namespace GooGalaxy.Tests.EditMode.Board
         [Test]
         public void InsufficientEnergy_Value_Equals14()
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             const MovementResult result = MovementResult.InsufficientEnergy;
 
             // THEN

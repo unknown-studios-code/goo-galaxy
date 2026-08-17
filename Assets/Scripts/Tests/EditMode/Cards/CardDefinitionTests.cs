@@ -37,7 +37,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: true,
-                ignoresHazards: true,
+                canIgnoreHazards: true,
                 conversionRadius: 2,
                 description: "Absorbs the first conversion attempt."
             );
@@ -56,7 +56,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(definition.CloneDistance, Is.EqualTo(source.CloneDistance));
             Assert.That(definition.JumpDistance, Is.EqualTo(source.JumpDistance));
             Assert.That(definition.HasArmor, Is.EqualTo(source.HasArmor));
-            Assert.That(definition.IgnoresHazards, Is.EqualTo(source.IgnoresHazards));
+            Assert.That(definition.CanIgnoreHazards, Is.EqualTo(source.CanIgnoreHazards));
             Assert.That(definition.ConversionRadius, Is.EqualTo(source.ConversionRadius));
         }
 
@@ -74,7 +74,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: true,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null
             );
@@ -221,7 +221,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 bool canClone,
                 bool canJump,
                 bool hasArmor,
-                bool ignoresHazards = false,
+                bool canIgnoreHazards = false,
                 int conversionRadius = 1,
                 IReadOnlyList<ImpactEffect> landingEffects = null,
                 string description = "",
@@ -239,7 +239,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 CloneDistance = cloneDistance;
                 JumpDistance = jumpDistance;
                 HasArmor = hasArmor;
-                IgnoresHazards = ignoresHazards;
+                CanIgnoreHazards = canIgnoreHazards;
                 ConversionRadius = conversionRadius;
                 LandingEffects = landingEffects ?? _noLandingEffects;
             }
@@ -264,7 +264,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             public bool HasArmor { get; }
 
-            public bool IgnoresHazards { get; }
+            public bool CanIgnoreHazards { get; }
 
             public int ConversionRadius { get; }
 

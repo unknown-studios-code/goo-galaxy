@@ -21,8 +21,13 @@ using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.PlayMode.Cards
 {
+    // Drives each roster card end to end through the real controllers, rather than through a resolver in
+    // isolation: the card asset resolves to a definition, the definition registers a unit, and the move goes
+    // through UnitPresenter so conversion, abilities and Energy all run in their production order.
+    // Every test arranges only the units its own card needs, on coordinates far enough apart that no two cards
+    // reach each other. That separation is what lets a failure name one card instead of a sequence.
     [TestFixture]
-    public class MvpRosterIntegrationTests
+    public class RosterIntegrationTests
     {
         private const int BoardRadius = 10;
         private const int PlayerOneId = 1;
@@ -41,6 +46,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private const float NoEnergyRegen = 0f;
         private const float VolatileMassJumpEnergyCost = 0.5f;
         private const int VolatileMassFuseDurationInSeconds = 3;
+        private const int AcidCrawlerHazardDuration = 2;
         private const float EnergyTolerance = 0.0001f;
 
         private static readonly HexCoordinates _subjectAlphaSource = new(3, 0);
@@ -98,7 +104,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
                 false,
                 false,
                 1,
-                new[] { new ImpactEffectDefinition(ImpactEffectType.SpawnHazard, StatusType.None, 0, 2, TargetFilter.Self, 0) }
+                new[] { new ImpactEffectDefinition(ImpactEffectType.SpawnHazard, StatusType.None, 0, AcidCrawlerHazardDuration, TargetFilter.Self, 0) }
             );
             _bioPhalanxData = CreateCardData("bio_phalanx", "Bio-Phalanx", CardType.Troop, 3, true, true, true, false, 1, null);
             _volatileMassData = CreateCardData(
@@ -146,7 +152,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             _gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
             _gridLayout.SetAuthoredData(BoardRadius);
 
-            _boardGO = new GameObject("MvpRosterIntegration_Test");
+            _boardGO = new GameObject("RosterIntegration_Test");
             _boardGO.SetActive(false);
             _gridPresenter = _boardGO.AddComponent<GridPresenter>();
             _unitPresenter = _boardGO.AddComponent<UnitPresenter>();
@@ -196,114 +202,213 @@ namespace GooGalaxy.Tests.PlayMode.Cards
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator ResolveRosterSequence_AllFiveMvpCardsInOneMatch_ProducesTheExpectedBoardState()
+        public IEnumerator ResolveMove_SubjectAlphaClone_FlipsTheAdjacentVictim()
         {
             // GIVEN
             yield return ActivateBoardCo();
-
             CardDefinition subjectAlpha = ResolveDefinition("subject_alpha");
-            CardDefinition acidCrawler = ResolveDefinition("acid_crawler");
-            CardDefinition bioPhalanx = ResolveDefinition("bio_phalanx");
-            CardDefinition volatileMass = ResolveDefinition("volatile_mass");
-            CardDefinition cryoStasis = ResolveDefinition("cryo_stasis");
-
             RegisterUnit(SubjectAlphaUnitId, PlayerOneId, _subjectAlphaSource, subjectAlpha);
-            GridUnit subjectAlphaVictim = RegisterUnit(SubjectAlphaVictimUnitId, PlayerTwoId, _subjectAlphaVictimCoords, subjectAlpha);
-            RegisterUnit(AcidCrawlerUnitId, PlayerOneId, _acidCrawlerSource, acidCrawler);
-            GridUnit bioPhalanxDefender = RegisterUnit(BioPhalanxUnitId, PlayerOneId, _bioPhalanxDefenderCoords, bioPhalanx);
-            RegisterUnit(BioPhalanxAttackerUnitId, PlayerTwoId, _bioPhalanxAttackerSource, subjectAlpha);
-            RegisterUnit(VolatileMassUnitId, PlayerTwoId, _volatileMassDeployHex, volatileMass);
-            GridUnit volatileMassVictim = RegisterUnit(VolatileMassVictimUnitId, PlayerOneId, _volatileMassVictimCoords, subjectAlpha);
-            GridUnit cryoVictim = RegisterUnit(CryoVictimUnitId, PlayerOneId, _cryoAdjacentOne, subjectAlpha);
-
-            var cryoTargets = new List<HexCoordinates> { _cryoCenter, _cryoAdjacentOne, _cryoAdjacentTwo };
+            GridUnit victim = RegisterUnit(SubjectAlphaVictimUnitId, PlayerTwoId, _subjectAlphaVictimCoords, subjectAlpha);
 
             // WHEN
-            // Step 1 (Subject Alpha): Clones; its radius-1 conversion resolves against the adjacent victim.
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Clone, _subjectAlphaSource, _subjectAlphaCloneTarget, PlayerOneId, SubjectAlphaUnitId));
 
-            // Step 2 (Acid Crawler): Jumps, leaving a hazard on the hex it vacated.
+            // THEN
+            Assert.That(victim.PlayerId, Is.EqualTo(PlayerOneId), "Subject Alpha's radius-1 conversion should have flipped its adjacent victim.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_AcidCrawlerJump_LeavesAHazardOnTheVacatedHex()
+        {
+            // GIVEN
+            yield return ArrangeAcidCrawlerJumpCo();
+
+            // WHEN
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _acidCrawlerSource, _acidCrawlerJumpTarget, PlayerOneId, AcidCrawlerUnitId));
 
-            // Step 3 (Bio-Phalanx): a Clone lands beside it; its armor absorbs the attempt instead of flipping.
+            // THEN
+            Assert.That(GetCell(_acidCrawlerSource).HasHazard, Is.True, "Acid Crawler should have left a hazard on the hex it vacated.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_AcidCrawlerJump_KeepsTheAuthoredHazardDuration()
+        {
+            // GIVEN
+            yield return ArrangeAcidCrawlerJumpCo();
+
+            // WHEN
+            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _acidCrawlerSource, _acidCrawlerJumpTarget, PlayerOneId, AcidCrawlerUnitId));
+
+            // THEN
+            Assert.That(
+                GetCell(_acidCrawlerSource).Hazard.RemainingDuration,
+                Is.EqualTo(AcidCrawlerHazardDuration),
+                "Nothing here deploys as the hazard's owner again, so its authored duration must be untouched."
+            );
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_CloneBesideBioPhalanx_SpendsItsArmorInsteadOfFlippingOwnership()
+        {
+            // GIVEN
+            yield return ActivateBoardCo();
+            CardDefinition subjectAlpha = ResolveDefinition("subject_alpha");
+            CardDefinition bioPhalanx = ResolveDefinition("bio_phalanx");
+            GridUnit defender = RegisterUnit(BioPhalanxUnitId, PlayerOneId, _bioPhalanxDefenderCoords, bioPhalanx);
+            RegisterUnit(BioPhalanxAttackerUnitId, PlayerTwoId, _bioPhalanxAttackerSource, subjectAlpha);
+
+            // WHEN
             _unitPresenter.ResolveMove(
                 new MoveCommand(MoveType.Clone, _bioPhalanxAttackerSource, _bioPhalanxAttackerCloneTarget, PlayerTwoId, BioPhalanxAttackerUnitId)
             );
 
-            // Step 4 (Volatile Mass), beat one: its Deploy landing arms the fuse and the unit stays on the board
-            // instead of being removed.
-            // TODO (GOOM-9): drive this through ResolveMove once MoveType.Deploy has a resolver.
-            // Published directly for now — this is the exact event ConversionController raises for a landing, and
-            // the fuse impact never reads the conversions payload.
-            MatchEvents.RaiseLandingResolved(
-                new MoveCommand(MoveType.Deploy, _volatileMassDeployHex, _volatileMassDeployHex, PlayerTwoId, VolatileMassUnitId),
-                default
-            );
-
-            Assert.That(
-                _unitPresenter.ActiveUnits.TryGetValue(VolatileMassUnitId, out GridUnit volatileMassUnit),
-                Is.True,
-                "Volatile Mass's deploy landing should have left the unit on the board rather than removing it."
-            );
-            Assert.That(
-                volatileMassUnit.HasFuse,
-                Is.True,
-                "Volatile Mass's deploy landing should have armed its fuse instead of destroying the unit immediately."
-            );
-
-            // Step 4 (Volatile Mass), beat two: the owner Jumps the fused unit — radius-2 conversion resolves
-            // again, then the fuse detonates it the same way a SelfDestruct would.
-            float playerTwoEnergyBeforeVolatileMassJump = _energyPresenter.GetEnergy(PlayerTwoId);
-            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassDeployHex, _volatileMassJumpTarget, PlayerTwoId, VolatileMassUnitId));
-
-            // Between steps: the fuse detonation must remove only Volatile Mass's own unit. Without this check, a
-            // wrong id here would surface only as a failure in the Cryo-Stasis assertions below, misattributing
-            // this step's defect to the next one.
-            Assert.That(
-                _unitPresenter.ActiveUnits.ContainsKey(CryoVictimUnitId),
-                Is.True,
-                "Volatile Mass's fuse detonation must not have disturbed the unit reserved for the Cryo-Stasis step."
-            );
-
-            // Step 5 (Cryo-Stasis): freezes a 3-hex cluster that includes the reserved victim.
-            _abilityController.ResolveSpell(new SpellCommand(PlayerTwoId, new CardId("cryo_stasis"), cryoTargets), cryoStasis);
-
             // THEN
-            Assert.That(subjectAlphaVictim.PlayerId, Is.EqualTo(PlayerOneId), "Subject Alpha's radius-1 conversion should have flipped its adjacent victim.");
-
-            HexCell acidCrawlerHazardCell = GetCell(_acidCrawlerSource);
-            Assert.That(acidCrawlerHazardCell.HasHazard, Is.True, "Acid Crawler should have left a hazard on the hex it vacated.");
             Assert.That(
-                acidCrawlerHazardCell.Hazard.RemainingDuration,
-                Is.EqualTo(2),
-                "Nothing later in this sequence deploys as the hazard's owner again, so its authored duration must be untouched."
-            );
-
-            Assert.That(
-                (bioPhalanxDefender.HasArmor, bioPhalanxDefender.PlayerId),
+                (defender.HasArmor, defender.PlayerId),
                 Is.EqualTo((false, PlayerOneId)),
                 "Bio-Phalanx's armor should absorb the attempt rather than flipping ownership."
             );
+        }
 
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator RaiseLandingResolved_VolatileMassDeploy_LeavesTheActingUnitOnTheBoard()
+        {
+            // GIVEN
+            yield return ArrangeVolatileMassOnBoardCo();
+
+            // WHEN
+            RaiseVolatileMassDeployLanding();
+
+            // THEN
+            Assert.That(
+                _unitPresenter.ActiveUnits.ContainsKey(VolatileMassUnitId),
+                Is.True,
+                "Volatile Mass's deploy landing should have left the unit on the board rather than removing it."
+            );
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator RaiseLandingResolved_VolatileMassDeploy_ArmsTheFuse()
+        {
+            // GIVEN
+            yield return ArrangeVolatileMassOnBoardCo();
+
+            // WHEN
+            RaiseVolatileMassDeployLanding();
+
+            // THEN
+            Assert.That(
+                _unitPresenter.ActiveUnits[VolatileMassUnitId].HasFuse,
+                Is.True,
+                "Volatile Mass's deploy landing should have armed its fuse instead of destroying the unit immediately."
+            );
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_VolatileMassJumpAfterDeploy_RemovesTheActingUnit()
+        {
+            // GIVEN
+            yield return ArrangeVolatileMassOnBoardCo();
+            RaiseVolatileMassDeployLanding();
+
+            // WHEN
+            ResolveVolatileMassJump();
+
+            // THEN
             Assert.That(
                 _unitPresenter.ActiveUnits.ContainsKey(VolatileMassUnitId),
                 Is.False,
                 "Volatile Mass's fuse detonation should have removed the acting unit."
             );
-            Assert.That(volatileMassVictim.PlayerId, Is.EqualTo(PlayerTwoId), "Volatile Mass's radius-2 conversion should have flipped the distant victim.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_VolatileMassJumpAfterDeploy_FlipsTheVictimTwoRingsOut()
+        {
+            // GIVEN
+            yield return ArrangeVolatileMassOnBoardCo();
+            GridUnit victim = _unitPresenter.ActiveUnits[VolatileMassVictimUnitId];
+            RaiseVolatileMassDeployLanding();
+
+            // WHEN
+            ResolveVolatileMassJump();
+
+            // THEN
+            Assert.That(victim.PlayerId, Is.EqualTo(PlayerTwoId), "Volatile Mass's radius-2 conversion should have flipped the distant victim.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_VolatileMassJumpAfterDeploy_ChargesTheFlatJumpCost()
+        {
+            // GIVEN
+            yield return ArrangeVolatileMassOnBoardCo();
+            RaiseVolatileMassDeployLanding();
+            float energyBeforeJump = _energyPresenter.GetEnergy(PlayerTwoId);
+
+            // WHEN
+            ResolveVolatileMassJump();
+
+            // THEN
             Assert.That(
-                playerTwoEnergyBeforeVolatileMassJump - _energyPresenter.GetEnergy(PlayerTwoId),
+                energyBeforeJump - _energyPresenter.GetEnergy(PlayerTwoId),
                 Is.EqualTo(VolatileMassJumpEnergyCost).Within(EnergyTolerance),
                 "A Jump charges the flat Jump cost regardless of the acting unit's own Energy cost."
             );
+        }
 
-            Assert.That(cryoVictim.HasStatus(StatusType.Frozen), Is.True, "Cryo-Stasis should have frozen the unit inside its cluster.");
-            Assert.That(
-                cryoVictim.ReceiveConversionAttempt(PlayerTwoId),
-                Is.EqualTo(ConversionOutcome.Immune),
-                "A frozen unit must resist a conversion attempt."
-            );
-            Assert.That(cryoVictim.PlayerId, Is.EqualTo(PlayerOneId), "Resisting the conversion attempt must leave the frozen unit's owner unchanged.");
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_CryoStasisCluster_FreezesAUnitInsideIt()
+        {
+            // GIVEN
+            yield return ArrangeCryoVictimCo();
+            GridUnit victim = _unitPresenter.ActiveUnits[CryoVictimUnitId];
+
+            // WHEN
+            ResolveCryoStasisOnCluster();
+
+            // THEN
+            Assert.That(victim.HasStatus(StatusType.Frozen), Is.True, "Cryo-Stasis should have frozen the unit inside its cluster.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_CryoStasisCluster_LeavesTheFrozenUnitImmuneToConversion()
+        {
+            // GIVEN
+            yield return ArrangeCryoVictimCo();
+            GridUnit victim = _unitPresenter.ActiveUnits[CryoVictimUnitId];
+            ResolveCryoStasisOnCluster();
+
+            // WHEN
+            ConversionOutcome outcome = victim.ReceiveConversionAttempt(PlayerTwoId);
+
+            // THEN
+            Assert.That(outcome, Is.EqualTo(ConversionOutcome.Immune), "A frozen unit must resist a conversion attempt.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_CryoStasisCluster_LeavesTheFrozenUnitsOwnerUnchanged()
+        {
+            // GIVEN
+            yield return ArrangeCryoVictimCo();
+            GridUnit victim = _unitPresenter.ActiveUnits[CryoVictimUnitId];
+            ResolveCryoStasisOnCluster();
+
+            // WHEN
+            victim.ReceiveConversionAttempt(PlayerTwoId);
+
+            // THEN
+            Assert.That(victim.PlayerId, Is.EqualTo(PlayerOneId), "Resisting the conversion attempt must leave the frozen unit's owner unchanged.");
         }
 
         private static CardDataSO CreateCardData(
@@ -314,7 +419,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             bool canClone,
             bool canJump,
             bool hasArmor,
-            bool ignoresHazards,
+            bool canIgnoreHazards,
             int conversionRadius,
             ImpactEffectDefinition[] landingEffects
         )
@@ -329,7 +434,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
                 canClone,
                 canJump,
                 hasArmor,
-                ignoresHazards,
+                canIgnoreHazards,
                 conversionRadius,
                 landingEffects
             );
@@ -351,6 +456,51 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             yield return null;
 
             _unitPresenter.SetUnitSpawner(_spawner);
+        }
+
+        private IEnumerator ArrangeAcidCrawlerJumpCo()
+        {
+            yield return ActivateBoardCo();
+
+            RegisterUnit(AcidCrawlerUnitId, PlayerOneId, _acidCrawlerSource, ResolveDefinition("acid_crawler"));
+        }
+
+        private IEnumerator ArrangeVolatileMassOnBoardCo()
+        {
+            yield return ActivateBoardCo();
+
+            RegisterUnit(VolatileMassUnitId, PlayerTwoId, _volatileMassDeployHex, ResolveDefinition("volatile_mass"));
+            RegisterUnit(VolatileMassVictimUnitId, PlayerOneId, _volatileMassVictimCoords, ResolveDefinition("subject_alpha"));
+        }
+
+        private IEnumerator ArrangeCryoVictimCo()
+        {
+            yield return ActivateBoardCo();
+
+            RegisterUnit(CryoVictimUnitId, PlayerOneId, _cryoAdjacentOne, ResolveDefinition("subject_alpha"));
+        }
+
+        // TODO (GOOM-9): drive this through ResolveMove once MoveType.Deploy has a resolver. Published directly
+        // for now — this is the exact event ConversionController raises for a landing, and the fuse impact never
+        // reads the conversions payload.
+        private void RaiseVolatileMassDeployLanding()
+        {
+            MatchEvents.RaiseLandingResolved(
+                new MoveCommand(MoveType.Deploy, _volatileMassDeployHex, _volatileMassDeployHex, PlayerTwoId, VolatileMassUnitId),
+                default
+            );
+        }
+
+        private void ResolveVolatileMassJump()
+        {
+            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassDeployHex, _volatileMassJumpTarget, PlayerTwoId, VolatileMassUnitId));
+        }
+
+        private void ResolveCryoStasisOnCluster()
+        {
+            var targets = new List<HexCoordinates> { _cryoCenter, _cryoAdjacentOne, _cryoAdjacentTwo };
+
+            _abilityController.ResolveSpell(new SpellCommand(PlayerTwoId, new CardId("cryo_stasis"), targets), ResolveDefinition("cryo_stasis"));
         }
 
         private CardDefinition ResolveDefinition(string cardIdValue)

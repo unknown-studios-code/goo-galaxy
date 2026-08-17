@@ -32,6 +32,6 @@ namespace GooGalaxy.Runtime.Shared.Interfaces
         /// Whether the entity may land on a hex carrying a hazard. Plasmic Leaper's Hover is the only authored
         /// case; every other entity is rejected with <c>MovementResult.TargetHazardous</c>.
         /// </summary>
-        public bool IgnoresHazards { get; }
+        public bool CanIgnoreHazards { get; }
     }
 }

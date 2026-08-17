@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
@@ -13,6 +14,22 @@ namespace GooGalaxy.Tests.EditMode.Cards
     [TestFixture]
     public class CardPresenterTests
     {
+        private readonly List<Object> _spawned = new();
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (Object created in _spawned)
+            {
+                if (created != null)
+                {
+                    Object.DestroyImmediate(created);
+                }
+            }
+
+            _spawned.Clear();
+        }
+
         [Test]
         public void TryGetCard_WithRegisteredId_ReturnsTrueAndCorrectCard()
         {
@@ -91,7 +108,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(resolved, Is.Null);
         }
 
-        private static CardDataSO CreateCard(string cardId, string displayName, CardType type, int energyCost, bool canClone, bool canJump, bool hasArmor)
+        private CardDataSO CreateCard(string cardId, string displayName, CardType type, int energyCost, bool canClone, bool canJump, bool hasArmor)
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
             card.SetAuthoredData(
@@ -103,17 +120,19 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone,
                 canJump,
                 hasArmor,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null
             );
+            _spawned.Add(card);
 
             return card;
         }
 
-        private static CardPresenter CreatePresenter(params CardDataSO[] cards)
+        private CardPresenter CreatePresenter(params CardDataSO[] cards)
         {
             CardPresenter presenter = new GameObject("CardPresenter").AddComponent<CardPresenter>();
+            _spawned.Add(presenter.gameObject);
             presenter.SetAuthoredCards(cards);
             presenter.BuildRegistry();
 

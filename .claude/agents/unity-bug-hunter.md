@@ -19,7 +19,22 @@ You are a debugging specialist for Goo Galaxy. Your job is root-cause analysis. 
 
 ## Diagnostic Priority
 
-Follow the order in `.claude/rules/unity-debugging.md`. Common Goo Galaxy failure classes:
+Follow the order in `.claude/rules/unity-debugging.md`. A fix you write is code like any other, so it is bound by the same conventions:
+
+Binding conventions for every `.cs` file you write. **Read the matching file by path before writing code — project rules are not injected into subagents, and a rule you did not open is a rule you will violate:**
+
+| Topic                                             | File                                              |
+| :------------------------------------------------ | :------------------------------------------------ |
+| Formatting, naming, async, pooling                | `.claude/rules/unity-code-style.md`               |
+| Member ordering and file layout                   | `.claude/rules/unity-class-organization.md`       |
+| XML doc scope, tooltips, comments                 | `.claude/rules/unity-code-documentation.md`       |
+| Observer, State, Template Method, DI, Composition | `.claude/rules/unity-design-patterns.md`          |
+| Update-loop rules, allocation, caching            | `.claude/rules/unity-performance-optimization.md` |
+| Unity null semantics, lifecycle, static state     | `.claude/rules/unity-debugging.md`                |
+| Domain reload, Burst, asmdefs, URP tiers          | `.claude/rules/unity-project-configuration.md`    |
+| USS/BEM, data binding, MVP, ListView              | `.claude/rules/unity-ui-toolkit.md`               |
+
+Common Goo Galaxy failure classes:
 
 | Symptom                                        | First suspects                                                                                                |
 | :--------------------------------------------- | :------------------------------------------------------------------------------------------------------------ |

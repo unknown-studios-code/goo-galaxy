@@ -1,7 +1,8 @@
 ---
 description: "Use when writing or reviewing Unity C# code. Covers formatting, naming, braces, fields, properties, methods, events, async, pooling, and file conventions."
 paths:
-  - "Assets/**/*.cs"
+  - "Assets/Scripts/**/*.cs"
+  - "Assets/Editor/**/*.cs"
 ---
 
 # Unity C# Code Style
@@ -48,7 +49,7 @@ This document defines the C# style, formatting, naming, and architectural conven
 - **Events:** Use `event Action` or `event Action<T>`. Use `UnityEvent` only when Inspector exposure is required. Name events with past-tense verbs (`DoorOpened`, `MoveExecuted`). Raise them with null-conditional invocation from a method whose prefix matches the shape: `protected virtual void OnMoveExecuted(...)` for an instance event on an unsealed class — the one case the .NET guidelines define, since the point is letting a subclass override it — and `RaiseMoveExecuted(...)` for a static event, a sealed class, or an event bus, where no override is possible and the caller is the publisher. Never `Fire*` or `Trigger*`; `On*` is also what handlers and Unity messages are called, so it must not name a publicly callable publisher. Subscribe in `OnEnable` and unsubscribe in `OnDisable`, always with a named method — never a lambda, which cannot be unsubscribed.
 - **Event payloads:** Pass one argument, or a single struct/`EventArgs`-style type when the payload has several fields. Do not grow an event to four or five loose parameters.
 - **Event lifetime:** Be explicit when a long-lived publisher (a static bus, a container-scoped service) outlives its subscribers — the subscriber owns the unsubscription, and a missed one is a leak that survives scene loads.
-- **Methods:** Use active verbs (`Jump`, `ApplyDamage`). Use `Set` for assignment, `Change` for state modification, `Process` for system-driven game logic, and `Handle` for event callbacks. Name boolean methods with `Is`, `Has`, or `Can`. Avoid noun-only and gerund names (`Walking()`); those describe state, which belongs in a property.
+- **Methods:** Use active verbs (`Jump`, `ApplyDamage`). Use `Set` for assignment, `Change` for state modification, `Process` for system-driven game logic, and `Handle` for event callbacks. Name boolean **predicates** — state queries with no side effect — with `Is`, `Has`, or `Can`. A method that mutates and reports whether it succeeded takes the `Try` prefix instead (`TryRegisterUnit`), following `Dictionary.TryGetValue` and `List.Remove`: the prefix is what says "this does not throw, it returns success". An action verb returning `bool` without `Try` stands in existing code but is not written in new code. Avoid noun-only and gerund names (`Walking()`); those describe state, which belongs in a property.
 
 ### MonoBehaviour Lifecycle & Composition
 

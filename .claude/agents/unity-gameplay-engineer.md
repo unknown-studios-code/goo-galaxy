@@ -40,8 +40,11 @@ Binding conventions for `Assets/Scripts/**/*.cs`. Read the matching file before 
 | XML doc scope, tooltips, comments                 | `.claude/rules/unity-code-documentation.md`       |
 | Observer, State, Template Method, DI, Composition | `.claude/rules/unity-design-patterns.md`          |
 | Update-loop rules, allocation, caching            | `.claude/rules/unity-performance-optimization.md` |
+| Unity null semantics, lifecycle, static state     | `.claude/rules/unity-debugging.md`                |
 | USS/BEM, data binding, MVP, ListView              | `.claude/rules/unity-ui-toolkit.md`               |
-| Domain reload, Burst, asmdefs, URP tiers          | `.claude/rules/unity-project-configuration.md`    |
+
+Before your first command against the running editor — compiling, running a suite, reading the console, touching an asset — read `.claude/rules/unity-editor-automation.md`. It is not loaded for you automatically, and it encodes traps that make a broken call look like a working one: a green suite that ran the previously built assemblies, a `success` field with two layers where the outer one lies, and a bare `key=value` argument that is silently dropped. **Never `Unity.exe -batchmode`, and never the `unity test` / `unity build` / `unity run` subcommands** — they spawn a second editor and force the user's closed.
+| Domain reload, Burst, asmdefs, URP tiers | `.claude/rules/unity-project-configuration.md` |
 
 ## Approach
 

@@ -34,7 +34,9 @@ namespace GooGalaxy.Tests.EditMode.Energy
         [Test]
         public void Constructor_ThreeArg_CloneCostMultiplierDefaultsToOneHalf()
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             var config = new EnergyConfig(10f, 1f, 5f);
 
             // THEN
@@ -44,7 +46,9 @@ namespace GooGalaxy.Tests.EditMode.Energy
         [Test]
         public void Constructor_ThreeArg_JumpEnergyCostDefaultsToOneHalf()
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             var config = new EnergyConfig(10f, 1f, 5f);
 
             // THEN
@@ -54,7 +58,9 @@ namespace GooGalaxy.Tests.EditMode.Energy
         [Test]
         public void Constructor_ThreeArg_SamplePurgeEnergyCostDefaultsToTheValueTheDeletedConstUsedToState()
         {
-            // GIVEN / WHEN
+            // GIVEN
+
+            // WHEN
             var config = new EnergyConfig(10f, 1f, 5f);
 
             // THEN

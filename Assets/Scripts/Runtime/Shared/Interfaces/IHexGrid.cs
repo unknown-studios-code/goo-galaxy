@@ -6,6 +6,7 @@ namespace GooGalaxy.Runtime.Shared.Interfaces
     /// </summary>
     public interface IHexGrid
     {
+        /// <summary>The board's radius, counted in rings around the centre hex — not in cells.</summary>
         public int GridRadius { get; }
     }
 }

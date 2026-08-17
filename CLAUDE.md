@@ -66,7 +66,9 @@ Runtime code is split into one assembly per feature domain — `Assets/Scripts/R
 
 ## Conventions
 
-Detailed rules live in `.claude/rules/`. Most carry `paths:` frontmatter so they load when you touch the files they govern (`Assets/**/*.cs`, `.uxml`/`.uss`, `.asmdef`); `unity-editor-automation.md` deliberately has none, because how to reach the editor is not triggered by opening a particular file. Read the matching file before writing or reviewing code — **subagents do not receive them automatically and must open them by path.**
+Detailed rules live in `.claude/rules/`. Most carry `paths:` frontmatter so they load when you touch the files they govern (`Assets/Scripts/**`, `Assets/Editor/**`, `.uxml`/`.uss`, `.asmdef`); `unity-editor-automation.md` deliberately has none, because how to reach the editor is not triggered by opening a particular file. Read the matching file before writing or reviewing code — **subagents do not receive them automatically and must open them by path.**
+
+**`Assets/Playtest/` is outside every rule, deliberately.** It is a throwaway harness that gets deleted when the Match Orchestrator lands, so the `paths:` globs enumerate `Assets/Scripts/**` and `Assets/Editor/**` rather than `Assets/**`. Do not audit it, do not report findings against it, and do not spend a task bringing it into line — the code is leaving. Fix something there only when it blocks a playtest.
 
 The rules that get violated most:
 
@@ -74,7 +76,7 @@ The rules that get violated most:
 - **No allocations, LINQ, or `Camera.main` in update loops** — cache, pool, reuse
 - **`Awaitable` methods take an `Async` suffix**, coroutines a `Co` suffix — always pass `destroyCancellationToken`
 - **Never `is null` / `is not null` on `UnityEngine.Object`** — use `== null`
-- **XML docs only** for interfaces, abstract members, cross-assembly public APIs, and generic utilities
+- **XML `<summary>` only** for interfaces, abstract members, cross-assembly public APIs, and generic utilities — plus `<remarks>` at any accessibility level for an invariant (`unity-code-documentation.md` Rule 4)
 - **Tests use GIVEN-WHEN-THEN** with literal `// GIVEN`, `// WHEN`, `// THEN` comments and `MethodUnderTest_Scenario_ExpectedOutcome` names
 
 ## Workflow

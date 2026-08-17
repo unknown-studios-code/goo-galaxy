@@ -339,14 +339,6 @@ namespace GooGalaxy.Tests.PlayMode.Board
             Assert.That(enemyUnit.PlayerId, Is.EqualTo(RivalPlayerId), "Fuse expiry must never resolve a conversion.");
         }
 
-        private IEnumerator ActivateBoardCo()
-        {
-            _boardGO.SetActive(true);
-            yield return null;
-
-            _unitPresenter.SetUnitSpawner(_spawner);
-        }
-
         private static IEnumerator WaitUntilCo(Func<bool> condition, string failureMessage)
         {
             for (int frame = 0; frame < MaxPollFrames; frame++)
@@ -360,6 +352,14 @@ namespace GooGalaxy.Tests.PlayMode.Board
             }
 
             Assert.Fail(failureMessage);
+        }
+
+        private IEnumerator ActivateBoardCo()
+        {
+            _boardGO.SetActive(true);
+            yield return null;
+
+            _unitPresenter.SetUnitSpawner(_spawner);
         }
 
         private GridUnit RegisterUnitAt(int unitId, int playerId, HexCoordinates position, IMoveCapable capability)
@@ -388,7 +388,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             public bool CanJump { get; set; }
 
-            public bool IgnoresHazards { get; set; }
+            public bool CanIgnoreHazards { get; set; }
 
             public int CloneDistance { get; set; } = BoardMetrics.DefaultCloneDistance;
 

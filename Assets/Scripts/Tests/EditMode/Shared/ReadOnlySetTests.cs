@@ -10,17 +10,6 @@ namespace GooGalaxy.Tests.EditMode.Shared
     public class ReadOnlySetTests
     {
         [Test]
-        public void Constructor_NullSet_ThrowsArgumentNullException()
-        {
-            // GIVEN
-            // WHEN
-            static void constructorCall() => _ = new ReadOnlySet<int>(null);
-
-            // THEN
-            Assert.Throws<ArgumentNullException>(constructorCall);
-        }
-
-        [Test]
         public void Count_EmptySet_ReturnsZero()
         {
             // GIVEN
@@ -227,6 +216,18 @@ namespace GooGalaxy.Tests.EditMode.Shared
 
             // THEN
             Assert.That(set.SetEquals(other), Is.False);
+        }
+
+        [Test]
+        public void Constructor_NullSet_ThrowsArgumentNullException()
+        {
+            // GIVEN
+
+            // WHEN
+            static void constructorCall() => _ = new ReadOnlySet<int>(null);
+
+            // THEN
+            Assert.Throws<ArgumentNullException>(constructorCall);
         }
     }
 }

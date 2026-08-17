@@ -35,7 +35,7 @@ namespace GooGalaxy.Runtime.Board.Models
 
         public int UnitId { get; }
 
-        public int PlayerId { get; set; }
+        public int PlayerId { get; internal set; }
 
         public CardId CardId { get; }
 
@@ -159,12 +159,9 @@ namespace GooGalaxy.Runtime.Board.Models
         /// <summary>
         /// Closes one action window on every condition the unit holds, dropping the ones whose last window
         /// expires. Internal because the status system owns expiry timing: a caller that ticked directly would
-        /// bypass the ownership rule that decides <i>whose</i> deployment closes the window.
-        /// </summary>
-        /// <remarks>
-        /// Allocation-free.
+        /// bypass the ownership rule that decides <i>whose</i> deployment closes the window. Allocation-free.
+        /// Returns true when the unit held at least one condition and it was ticked.
         /// </remarks>
-        /// <returns>True when the unit held at least one condition and it was ticked.</returns>
         internal bool TickStatusDurations()
         {
             if (_activeStatuses == null || _activeStatuses.Count == 0)
@@ -207,8 +204,10 @@ namespace GooGalaxy.Runtime.Board.Models
             RemainingFuseSeconds = durationInSeconds;
         }
 
-        /// <remarks>Reads no other state — Frozen does not pause the countdown. See <see cref="HasFuse"/> for why.</remarks>
-        /// <returns>True on the tick that runs the fuse out, and only that tick.</returns>
+        /// <remarks>
+        /// Reads no other state — Frozen does not pause the countdown. See <see cref="HasFuse" /> for why. Returns
+        /// true on the tick that runs the fuse out, and only that tick.
+        /// </remarks>
         internal bool TickFuse(float deltaSeconds)
         {
             if (!HasFuse)

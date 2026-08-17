@@ -30,7 +30,22 @@ Editor code is organized by tool domain under `Assets/Editor/`:
 | `Validation/` | Project validation and content checks    |
 | `Windows/`    | `EditorWindow` tools and dashboards      |
 
-`Editor.Shared` is the only assembly the other editor assemblies depend on. C# conventions in `.claude/rules/` apply, including member ordering and documentation scope. Domain-reload behavior is governed by `.claude/rules/unity-project-configuration.md` — static state in editor tools must survive or reset deliberately.
+`Editor.Shared` is the only assembly the other editor assemblies depend on. Static state in editor tools must survive or reset deliberately across a domain reload.
+
+Binding conventions for every `.cs` file you write. **Read the matching file by path before writing code — project rules are not injected into subagents, and a rule you did not open is a rule you will violate:**
+
+| Topic                                             | File                                              |
+| :------------------------------------------------ | :------------------------------------------------ |
+| Formatting, naming, async, pooling                | `.claude/rules/unity-code-style.md`               |
+| Member ordering and file layout                   | `.claude/rules/unity-class-organization.md`       |
+| XML doc scope, tooltips, comments                 | `.claude/rules/unity-code-documentation.md`       |
+| Observer, State, Template Method, DI, Composition | `.claude/rules/unity-design-patterns.md`          |
+| Update-loop rules, allocation, caching            | `.claude/rules/unity-performance-optimization.md` |
+| Unity null semantics, lifecycle, static state     | `.claude/rules/unity-debugging.md`                |
+| Domain reload, Burst, asmdefs, URP tiers          | `.claude/rules/unity-project-configuration.md`    |
+| USS/BEM, data binding, MVP, ListView              | `.claude/rules/unity-ui-toolkit.md`               |
+
+Before your first command against the running editor — compiling, running a suite, reading the console, touching an asset — read `.claude/rules/unity-editor-automation.md`. It is not loaded for you automatically, and it encodes traps that make a broken call look like a working one: a green suite that ran the previously built assemblies, a `success` field with two layers where the outer one lies, and a bare `key=value` argument that is silently dropped. **Never `Unity.exe -batchmode`, and never the `unity test` / `unity build` / `unity run` subcommands** — they spawn a second editor and force the user's closed.
 
 `Assets/Editor/Build/` is yours only for editor-side build scripting (`BuildPipeline` calls, pre/post-process hooks, build profile helpers). GitHub Actions workflows, CI caching, signing, and player settings belong to the `release-engineer`.
 

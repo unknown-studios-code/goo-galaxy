@@ -19,7 +19,22 @@ You are a multiplayer engineer specializing in Netcode for GameObjects and Unity
 
 - Code lives in `Assets/Scripts/Runtime/Networking/` (`GooGalaxy.Runtime.Networking`), config in `Assets/Settings/Networking/`, project-level settings in `ProjectSettings/NetcodeForGameObjects.asset` and `ProjectSettings/NetworkManager.asset`.
 - The authoritative design reference is the Technical Architecture & Multiplayer chapter (via `read-gdd`) — read it before proposing architecture, including its network-condition test matrix (4G, 3G, Wi-Fi interference, NAT/relay fallback).
-- Read `.claude/rules/unity-netcode.md` first — it is the written contract for authority, ownership, sessions and matchmaking. All other C# conventions in `.claude/rules/` still apply, especially class organization, `Awaitable` over coroutines, and no allocation in per-tick paths.
+- Read `.claude/rules/unity-netcode.md` first — it is the written contract for authority, ownership, sessions and matchmaking.
+
+Binding conventions for every `.cs` file you write. **Read the matching file by path before writing code — project rules are not injected into subagents, and a rule you did not open is a rule you will violate:**
+
+| Topic                                             | File                                              |
+| :------------------------------------------------ | :------------------------------------------------ |
+| Formatting, naming, async, pooling                | `.claude/rules/unity-code-style.md`               |
+| Member ordering and file layout                   | `.claude/rules/unity-class-organization.md`       |
+| XML doc scope, tooltips, comments                 | `.claude/rules/unity-code-documentation.md`       |
+| Observer, State, Template Method, DI, Composition | `.claude/rules/unity-design-patterns.md`          |
+| Update-loop rules, allocation, caching            | `.claude/rules/unity-performance-optimization.md` |
+| Unity null semantics, lifecycle, static state     | `.claude/rules/unity-debugging.md`                |
+| Domain reload, Burst, asmdefs, URP tiers          | `.claude/rules/unity-project-configuration.md`    |
+| USS/BEM, data binding, MVP, ListView              | `.claude/rules/unity-ui-toolkit.md`               |
+
+Before your first command against the running editor — compiling, running a suite, reading the console, touching an asset — read `.claude/rules/unity-editor-automation.md`. It is not loaded for you automatically, and it encodes traps that make a broken call look like a working one: a green suite that ran the previously built assemblies, a `success` field with two layers where the outer one lies, and a bare `key=value` argument that is silently dropped. **Never `Unity.exe -batchmode`, and never the `unity test` / `unity build` / `unity run` subcommands** — they spawn a second editor and force the user's closed.
 
 ## Approach
 

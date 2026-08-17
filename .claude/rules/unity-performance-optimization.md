@@ -1,7 +1,8 @@
 ---
 description: "Use when writing performance-sensitive Unity C# code. Covers update loop rules, allocation avoidance, caching, collections, physics, rendering, and the LINQ ban."
 paths:
-  - "Assets/**/*.cs"
+  - "Assets/Scripts/**/*.cs"
+  - "Assets/Editor/**/*.cs"
 ---
 
 # Unity Performance Optimization
@@ -10,7 +11,9 @@ paths:
 
 This document defines performance optimization rules and constraints for a mobile IL2CPP target. Its primary objective is to eliminate garbage collection allocations in hot paths, optimize CPU overhead in update loops, and establish efficient rendering and physics practices.
 
-**Hot path** means `Update`, `FixedUpdate`, `LateUpdate`, network tick handlers, input callbacks, UI rebuild callbacks, animation events, and anything invoked per tile of the board. One-time setup in `Awake`, `Start`, or `OnEnable` may allocate.
+**Hot path** means `Update`, `FixedUpdate`, `LateUpdate`, network tick handlers, input callbacks, UI rebuild callbacks, animation events, and anything invoked per tile of the board **on a repeating pass**. One-time setup in `Awake`, `Start`, or `OnEnable` may allocate.
+
+Frequency decides, not shape. A loop that touches every tile once at match start is setup; the same loop running per frame, per move, or on every rematch is hot. When a pass sits between the two — rare today, recurring once a feature lands — grade it by the frequency it will actually have, and say which one you assumed.
 
 ## 2. Cross-References
 
@@ -25,6 +28,7 @@ This document defines performance optimization rules and constraints for a mobil
 - **Rule 2 (Component Caching):** Resolve component references once — `[SerializeField]` assignment, constructor/`[Inject]` injection, or a single `GetComponent` in `Awake` — and reuse the cached field. Cache `Camera.main`, `transform`, and `gameObject` the same way. Use `TryGetComponent` when the component is genuinely optional; it avoids the failed-lookup allocation of `GetComponent` plus a null check.
 - **Rule 3 (Execution Throttling):** Throttle expensive logic with elapsed timers, distance checks, or staggered frame counts, and spread batch work across frames. Never run a whole-board or whole-scene pass every frame.
 - **Rule 4 (Collections and Boxing):** Initialize collections with a capacity, reuse them via `.Clear()`, and never allocate one inside a loop. Use generic collections only — a value type stored as `object`, in a non-generic collection, or through an interface it implements will box. Supply an `IEqualityComparer<T>` for enum-keyed dictionaries. Use `Span<T>` and `stackalloc` for short-lived temporary buffers, and borrow from `ListPool<T>`, `DictionaryPool<TKey, TValue>`, or `CollectionPool<T, TItem>` for temporary collections inside a method.
+- **Rule 4a (Where Dependency Inversion Yields):** Depending on an abstraction is right for a _behavior_ seam and wrong for a collection on a hot one — `IReadOnlyDictionary<K,V>` and `IReadOnlySet<T>` extend `IEnumerable<T>`, so `foreach` through the interface boxes the backing struct enumerator once per pass. Resolve it the way the BCL does rather than by picking a winner: expose a public `GetEnumerator()` returning the concrete struct enumerator **alongside** the explicit interface implementation, exactly as `List<T>` and `Dictionary<K,V>` do. `foreach` binds by pattern before it consults `IEnumerable<T>`, so a caller holding the concrete type never boxes and a caller holding the interface pays knowingly. Where that is impractical, expose a second concrete-typed member next to the interface one (`HexGrid.CellValues` beside `Cells`, `UnitPresenter.ActiveUnitValues` beside `ActiveUnits`) and say in its `<remarks>` which one a whole-collection pass should take. By convention `IReadOnlySet<T>` in this project is contains/count only: a consumer that needs to iterate asks for the concrete `ReadOnlySet<T>` or an `IReadOnlyList<T>` snapshot, and the interface is not widened to accommodate it.
 - **Rule 5 (Data Structure Selection):** Choose by access pattern, not by habit: `Dictionary<TKey, TValue>` for O(1) keyed lookup, `HashSet<T>` for O(1) membership, `List<T>` for ordered iteration and growth, arrays for fixed-size hot data, `Queue<T>` for FIFO, `Stack<T>` for LIFO and undo history, `NativeArray<T>` when the data feeds Jobs or Burst.
 - **Rule 6 (String Handling):** Keep every string operation out of hot paths, including `string.Format` and interpolation. Build dynamic text with `StringBuilder`, cache formatted strings while their inputs are unchanged, and only refresh them when the underlying value actually changes.
 - **Rule 7 (Object Pooling):** Use `UnityEngine.Pool.ObjectPool<T>` for anything spawned more than a few times per second. Set `defaultCapacity` and `maxSize` deliberately, pre-warm to the expected peak, and reset state through `actionOnGet`/`actionOnRelease` — position, rotation, active state, subscriptions, and accumulated data. Return objects instead of destroying them, and never pool an object whose state cannot be reliably reset.

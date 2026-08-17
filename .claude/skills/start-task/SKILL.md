@@ -67,6 +67,8 @@ Classify every piece of the task into one or more of these:
 | GDD chapters that the change makes stale                                | `gdd-steward`              |
 | Mobile hot-path review of what was built                                | `unity-perf-auditor`       |
 | Convention audit of the finished diff                                   | `unity-code-reviewer`      |
+| Documentation and comment audit of the finished diff                    | `unity-doc-auditor`        |
+| Class organization and member-order audit of the finished diff          | `unity-structure-auditor`  |
 
 ## 4. Decide How Many Agents
 
@@ -76,13 +78,14 @@ Rules, in priority order:
 2. **No agent for trivial work.** If the whole task lives in one discipline and is under roughly three files, implement it yourself following the `.claude/rules/` files. Delegation costs more than it saves.
 3. **Sequential when output feeds input.** Netcode contracts before gameplay that calls them. Gameplay Models/Presenters before the Views that bind to them. Everything before tests. Tests before review.
 4. **Parallel only when the file sets are disjoint.** UI markup and editor tooling can run at once; two agents editing the same assembly cannot.
-5. **Always close with `unity-code-reviewer`** once the code is in place.
+5. **Always close with three audits once the code is in place** — `unity-code-reviewer` for correctness and conventions, `unity-doc-auditor` for comments and XML docs, and `unity-structure-auditor` for file layout and member order. All three read the same diff and never write, so dispatch them in parallel. **Do not fold any of them into the reviewer.** Measured on GOOM-26: the same agent, on the same diff, at the same tier, found one documentation defect inside a broad review and more than twenty when documentation was the whole brief. Documentation loses the competition for attention against correctness every time, and the broad report still reads as complete. Class organization was split out for the same profile: it governs every `.cs` file, it is pure judgement, and `.editorconfig` carries only two ordering diagnostics, so nothing mechanical catches it.
 6. **Always include `unity-test-author`** unless the task is documentation-, config-, or asset-only.
 7. **Add `unity-perf-auditor`** when the task touches an update loop, per-tile board work, the network tick, or rendering. Otherwise skip it — the reviewer delegates on its own if needed.
+8. **Give every agent that writes code the rule files its slice touches, by path.** Subagents do not receive `.claude/rules/` or CLAUDE.md, so an unlisted rule is an unread rule — and naming a neighbouring file as the template silently outranks any rule that file happens to violate. When you point at an exemplar, say which rules it does _not_ follow.
 
 ## 5. Choose the Model Tier per Agent
 
-The `Agent` tool takes a `model` parameter that **overrides** the agent's frontmatter for that one dispatch. Only the two read-only analysts pin a model; every other agent in `.claude/agents/` inherits, so **pass `model` explicitly when you dispatch them** — an omitted parameter falls back to the session model, and this project's lead runs on `opus`, which would silently promote every routine slice to the top tier.
+The `Agent` tool takes a `model` parameter that **overrides** the agent's frontmatter for that one dispatch. Only the four read-only analysts pin a model; every other agent in `.claude/agents/` inherits, so **pass `model` explicitly when you dispatch them** — an omitted parameter falls back to the session model, and this project's lead runs on `opus`, which would silently promote every routine slice to the top tier.
 
 Pick the tier from the **complexity of that agent's slice**, not from the agent's identity — the same `unity-gameplay-engineer` takes `haiku` for a rename sweep and `opus` for designing a resolver.
 
@@ -94,13 +97,13 @@ Pick the tier from the **complexity of that agent's slice**, not from the agent'
 
 Three rules that override the table:
 
-1. **The read-only analysts are always `opus`, whatever the diff looks like.** `unity-perf-auditor` and `unity-code-reviewer` produce findings nobody double-checks — a false negative there ships silently. They pin `model: opus` in their own frontmatter, so leaving the parameter off already gets this right; never pass a lower tier to either.
+1. **The read-only analysts are always `opus`, whatever the diff looks like.** `unity-perf-auditor`, `unity-code-reviewer`, `unity-doc-auditor` and `unity-structure-auditor` produce findings nobody double-checks — a false negative there ships silently. They pin `model: opus` in their own frontmatter, so leaving the parameter off already gets this right; never pass a lower tier to any of them.
 2. **Never send `haiku` into an unresolved question.** The tier is a floor for work whose answer is already decided. If the agent still has a decision to make, it is not `haiku` work.
 3. **`sonnet` is the resting point, not `opus`.** Escalate on a named reason you can state in the roster line. "The task feels important" is not one — most slices of an important task are still ordinary implementation.
 
 State the roster, the order, **and the tier** before you dispatch, e.g.:
 
-> 3 agents, sequential: `unity-gameplay-engineer` (opus — new assembly + resolver design) → `unity-test-author` (haiku — mirrors `BoardMovementTests`) → `unity-code-reviewer` (opus, pinned).
+> 5 agents: `unity-gameplay-engineer` (opus — new assembly + resolver design) → `unity-test-author` (haiku — mirrors `BoardMovementTests`) → then `unity-code-reviewer`, `unity-doc-auditor` and `unity-structure-auditor` in parallel (opus, all pinned).
 
 ## 6. Dispatch
 

@@ -1,9 +1,10 @@
 ---
 description: "Use when writing Unity UI Toolkit code, UXML, or USS. Covers USS/CSS differences, BEM naming, flexbox, data binding, MVP, custom elements, and ListView virtualization."
 paths:
-  - "Assets/**/*.cs"
-  - "Assets/**/*.uxml"
-  - "Assets/**/*.uss"
+  - "Assets/Scripts/**/*.cs"
+  - "Assets/Editor/**/*.cs"
+  - "Assets/UI/**/*.uxml"
+  - "Assets/UI/**/*.uss"
 ---
 
 # Unity UI Toolkit Reference
