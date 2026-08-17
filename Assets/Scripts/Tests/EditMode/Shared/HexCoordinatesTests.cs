@@ -1,7 +1,7 @@
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Tests.EditMode
+namespace GooGalaxy.Tests.EditMode.Shared
 {
     [TestFixture]
     public class HexCoordinatesTests

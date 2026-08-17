@@ -116,10 +116,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             Assert.DoesNotThrow(() => destroyedView.SetHighlightState(true));
         }
 
-        /// <summary>
-        /// Returns a view whose GameObject — and therefore its cached renderer — is pending destruction.
-        /// The caller must yield one frame before using it so the destruction actually lands.
-        /// </summary>
+        // Returns a view whose GameObject — and therefore its cached renderer — is pending destruction.
+        // The caller must yield one frame before using it so the destruction actually lands.
         private static CellView CreateDestroyedCellView()
         {
             var gameObject = new GameObject("CellView_Destroyed");

@@ -11,8 +11,10 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
     /// </summary>
     public interface ICardData
     {
+        /// <summary>Unique, stable identifier used as the registry lookup key. Must not be empty.</summary>
         public CardId CardId { get; }
 
+        /// <summary>Player-facing card name shown in the HUD and card inspector tools.</summary>
         public string DisplayName { get; }
 
         /// <summary>
@@ -21,12 +23,25 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
         /// </summary>
         public string Description { get; }
 
+        /// <summary>Whether this card deploys a troop unit or resolves a one-time Protocol effect.</summary>
         public CardType Type { get; }
 
+        /// <summary>
+        /// The card's authored Energy cost. See <see cref="Shared.Interfaces.IEnergyPriced.EnergyCost" /> for how it
+        /// prices an action.
+        /// </summary>
         public int EnergyCost { get; }
 
+        /// <summary>
+        /// Whether this card's units may Clone at all. See <see cref="Shared.Interfaces.IMoveCapable.CanClone" /> for
+        /// the capability contract.
+        /// </summary>
         public bool CanClone { get; }
 
+        /// <summary>
+        /// Whether this card's units may Jump at all. See <see cref="Shared.Interfaces.IMoveCapable.CanJump" /> for
+        /// the capability contract.
+        /// </summary>
         public bool CanJump { get; }
 
         /// <summary>Exact hex distance a Clone by this card's units must cover. One for every launch card.</summary>
@@ -35,10 +50,11 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
         /// <summary>Exact hex distance a Jump by this card's units must cover. Two for every launch card.</summary>
         public int JumpDistance { get; }
 
+        /// <summary>Whether this card's units require two conversion events to flip instead of one.</summary>
         public bool HasArmor { get; }
 
         /// <summary>Whether the card's units may land on a hex carrying a hazard. Plasmic Leaper's Hover.</summary>
-        public bool IgnoresHazards { get; }
+        public bool CanIgnoreHazards { get; }
 
         /// <summary>
         /// Hex rings around the landing hex whose enemy occupants receive a conversion attempt. One for every

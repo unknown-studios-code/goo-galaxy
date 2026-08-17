@@ -4,6 +4,7 @@ using UnityEngine;
 namespace GooGalaxy.Runtime.Board.Views
 {
     [RequireComponent(typeof(SpriteRenderer))]
+    [DisallowMultipleComponent]
     public class CellView : MonoBehaviour
     {
         [Tooltip("The color tint applied when this cell is highlighted.")]

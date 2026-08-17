@@ -51,10 +51,7 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// <summary>
         /// Raised after a landing has resolved its conversions, carrying the acting player id and what the
         /// landing did to the units around it. Only raised when at least one unit was converted or lost its
-        /// armor. The lists inside the payload are owned by the publisher and are only valid for the duration
-        /// of the callback; subscribers must copy what they keep, and must read them with an indexed
-        /// <c>for</c> loop — <c>foreach</c> over the interface boxes the backing enumerator, one allocation
-        /// per subscriber per landing.
+        /// armor. See <see cref="ConversionResult" /> for buffer ownership and iteration.
         /// </summary>
         public static event Action<int, ConversionResult> ConversionResolved;
 
@@ -71,13 +68,7 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// an impact, so no coordinate buffer travels with this event. The payload's second half is what step 3
         /// just did, so step 4 can target the units conversion flipped without re-deriving them; an empty
         /// <see cref="ConversionResult"/> means nobody was converted, which is a normal landing and not an
-        /// error.
-        /// <para>
-        /// The result's lists are owned by the publisher and are only valid for the duration of the callback;
-        /// subscribers must copy what they keep rather than retain the reference, and must read them with an
-        /// indexed <c>for</c> loop — <c>foreach</c> over the interface boxes the backing enumerator, one
-        /// allocation per subscriber per landing.
-        /// </para>
+        /// error — see that type for buffer ownership and iteration.
         /// </remarks>
         public static event Action<MoveCommand, ConversionResult> LandingResolved;
 
@@ -90,13 +81,8 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// Both kinds of deployment publish it. A troop landing places its impacts around the hex its acting
         /// unit landed on. A Protocol has neither an acting unit nor a landing — it resolves on the hexes the
         /// player picked — so nothing in its payload is relative to a unit, and a subscriber must not read one
-        /// back from it.
-        /// <para>
-        /// The lists inside the payload are owned by the publisher and are only valid for the duration of the
-        /// callback; subscribers must copy what they keep, and must read them with an indexed <c>for</c> loop —
-        /// <c>foreach</c> over the interface boxes the backing enumerator, one allocation per subscriber per
-        /// deployment.
-        /// </para>
+        /// back from it. See <see cref="AbilityResult" /> for buffer ownership, iteration, and why
+        /// <c>DestroyedUnitIds</c> names units that are still registered while the callback runs.
         /// </remarks>
         public static event Action<int, AbilityResult> AbilityResolved;
 
@@ -194,8 +180,8 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </summary>
         /// <param name="actingPlayerId">The player whose landing triggered the attempts.</param>
         /// <param name="result">
-        /// The units the landing converted and the armored units it stripped. Its lists are owned by the
-        /// caller and only valid for the duration of the dispatch, so subscribers must copy what they keep.
+        /// The units the landing converted and the armored units it stripped. Its buffers must stay valid for
+        /// the whole dispatch — see <see cref="ConversionResult" />.
         /// </param>
         public static void RaiseConversionResolved(int actingPlayerId, ConversionResult result)
         {
@@ -212,8 +198,8 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </param>
         /// <param name="conversions">
         /// What step 3 just did, so a landing impact can target the units it flipped. Empty when nothing was
-        /// converted, which is normal. Its lists are owned by the caller and only valid for the duration of the
-        /// dispatch, so subscribers must copy what they intend to keep.
+        /// converted, which is normal. Its buffers must stay valid for the whole dispatch — see
+        /// <see cref="ConversionResult" />.
         /// </param>
         public static void RaiseLandingResolved(MoveCommand command, ConversionResult conversions)
         {
@@ -226,8 +212,8 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </summary>
         /// <param name="actingPlayerId">The player whose deployment resolved the impacts.</param>
         /// <param name="result">
-        /// The units and hexes the impacts changed. Its lists are owned by the caller and only valid for the
-        /// duration of the dispatch, so subscribers must copy what they keep.
+        /// The units and hexes the impacts changed. Its buffers must stay valid for the whole dispatch — see
+        /// <see cref="AbilityResult" />.
         /// </param>
         public static void RaiseAbilityResolved(int actingPlayerId, AbilityResult result)
         {

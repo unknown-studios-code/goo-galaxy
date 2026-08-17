@@ -9,39 +9,33 @@ using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Services
 {
-    /// <summary>
-    /// Applies an already-validated move to the board. Stateless and free of any engine dependency: the
-    /// caller owns the affected-coordinate buffer, decides what to log, and keeps the entry point private
-    /// to the Board assembly.
-    /// </summary>
     /// <remarks>
+    /// Applies an already-validated move to the board. Stateless and free of any engine dependency: the caller owns
+    /// the affected-coordinate buffer, decides what to log, and keeps the entry point private to the Board assembly.
+    /// <para>
     /// Only board rules are re-checked here, and violating one throws rather than corrupting grid or registry
     /// state. Ownership, unit status, and card capability are <b>not</b> re-checked, which is why resolution is
     /// internal: <c>UnitPresenter</c> runs the full <see cref="MovementValidator"/> first and is the only caller.
     /// A Clone consults the spawner before mutating anything, so a spawner that throws leaves the board
     /// untouched and the exception is the caller's to report.
+    /// </para>
     /// </remarks>
     internal static class MovementResolver
     {
-        /// <summary>
-        /// Executes the command, mutating the grid, the unit registry, and the moved unit.
-        /// Clone leaves the source untouched and asks the spawner for a new unit on the target;
+        /// <remarks>
+        /// Executes <paramref name="command" /> — an already-validated move — mutating <paramref name="grid" />,
+        /// <paramref name="units" /> (a Clone adds its new unit here), and the moved unit. Clone leaves the source
+        /// untouched and asks <paramref name="spawner" /> for a new unit on the target, only consulted for Clone;
         /// Jump relocates the existing unit, preserving its identity and runtime state.
-        /// </summary>
-        /// <param name="grid">The board to mutate.</param>
-        /// <param name="units">The registry of live units, keyed by unit id. A Clone adds its new unit here.</param>
-        /// <param name="spawner">The factory used to create the cloned unit. Only consulted for Clone.</param>
-        /// <param name="command">The already-validated move.</param>
-        /// <param name="capability">The moved unit's movement capability, supplying the authored hex distance to re-check.</param>
-        /// <param name="affectedCoordinates">
-        /// Caller-owned buffer that receives the coordinates whose contents changed: the target for a Clone,
-        /// source then target for a Jump. Cleared on entry, and left empty when the move is not applied.
-        /// </param>
-        /// <param name="spawnedUnit">The unit a Clone created, or null for a Jump and for any failure.</param>
-        /// <returns>Success once the board has been mutated, or SpawnFailed when the spawner produced no usable unit.</returns>
-        /// <exception cref="ArgumentNullException">The affected-coordinate buffer is null.</exception>
-        /// <exception cref="InvalidOperationException">The command does not match the current board state.</exception>
-        /// <exception cref="ArgumentException">The command carries a move type other than Clone or Jump.</exception>
+        /// <paramref name="capability" /> supplies the authored hex distance to re-check.
+        /// <paramref name="affectedCoordinates" /> is a caller-owned buffer receiving the coordinates whose contents
+        /// changed — the target for a Clone, source then target for a Jump — cleared on entry and left empty when the
+        /// move is not applied. <paramref name="spawnedUnit" /> is the unit a Clone created, or null for a Jump and
+        /// for any failure. Returns Success once the board has been mutated, or SpawnFailed when the spawner produced
+        /// no usable unit. Throws <see cref="ArgumentNullException" /> when the affected-coordinate buffer is null,
+        /// <see cref="InvalidOperationException" /> when the command does not match the current board state, and
+        /// <see cref="ArgumentException" /> when the command carries a move type other than Clone or Jump.
+        /// </remarks>
         internal static MovementResult Resolve(
             HexGrid grid,
             Dictionary<int, GridUnit> units,

@@ -36,7 +36,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private static readonly IMoveCapable _fullCapability = new FakeMoveCapability(canClone: true, canJump: true);
         private static readonly IMoveCapable _jumpOnlyCapability = new FakeMoveCapability(canClone: false, canJump: true);
         private static readonly IMoveCapable _cloneOnlyCapability = new FakeMoveCapability(canClone: true, canJump: false);
-        private static readonly IMoveCapable _hazardIgnoringCapability = new FakeMoveCapability(canClone: true, canJump: true, ignoresHazards: true);
+        private static readonly IMoveCapable _hazardIgnoringCapability = new FakeMoveCapability(canClone: true, canJump: true, canIgnoreHazards: true);
 
         private HexGrid _grid;
         private Dictionary<int, GridUnit> _units;
@@ -779,14 +779,14 @@ namespace GooGalaxy.Tests.EditMode.Board
             public FakeMoveCapability(
                 bool canClone,
                 bool canJump,
-                bool ignoresHazards = false,
+                bool canIgnoreHazards = false,
                 int cloneDistance = BoardMetrics.DefaultCloneDistance,
                 int jumpDistance = BoardMetrics.DefaultJumpDistance
             )
             {
                 CanClone = canClone;
                 CanJump = canJump;
-                IgnoresHazards = ignoresHazards;
+                CanIgnoreHazards = canIgnoreHazards;
                 CloneDistance = cloneDistance;
                 JumpDistance = jumpDistance;
             }
@@ -795,7 +795,7 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             public bool CanJump { get; }
 
-            public bool IgnoresHazards { get; }
+            public bool CanIgnoreHazards { get; }
 
             public int CloneDistance { get; }
 

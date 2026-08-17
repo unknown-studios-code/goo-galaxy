@@ -685,7 +685,7 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             public bool CanJump => true;
 
-            public bool IgnoresHazards => false;
+            public bool CanIgnoreHazards => false;
 
             public int CloneDistance { get; set; } = BoardMetrics.DefaultCloneDistance;
 

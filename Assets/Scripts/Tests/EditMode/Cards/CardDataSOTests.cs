@@ -41,7 +41,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: false,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null
             );
@@ -78,7 +78,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: true,
-                ignoresHazards: true,
+                canIgnoreHazards: true,
                 conversionRadius: 2,
                 landingEffects: null
             );
@@ -91,7 +91,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(_card.CanClone, Is.True);
             Assert.That(_card.CanJump, Is.True);
             Assert.That(_card.HasArmor, Is.True);
-            Assert.That(_card.IgnoresHazards, Is.True);
+            Assert.That(_card.CanIgnoreHazards, Is.True);
             Assert.That(_card.ConversionRadius, Is.EqualTo(2));
         }
 
@@ -108,7 +108,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(card.CanClone, Is.False);
             Assert.That(card.CanJump, Is.False);
             Assert.That(card.HasArmor, Is.False);
-            Assert.That(card.IgnoresHazards, Is.False);
+            Assert.That(card.CanIgnoreHazards, Is.False);
             Assert.That(card.ConversionRadius, Is.EqualTo(1));
             Assert.That(card.CloneDistance, Is.EqualTo(1));
             Assert.That(card.JumpDistance, Is.EqualTo(2));
@@ -142,7 +142,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null
             );
@@ -166,7 +166,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null
             );
@@ -195,7 +195,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 2,
                 landingEffects: null
             );
@@ -220,7 +220,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null,
                 cloneDistance: 2,
@@ -248,7 +248,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null,
                 jumpDistance: authored
@@ -275,7 +275,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null,
                 cloneDistance: authored
@@ -286,7 +286,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
-        public void IgnoresHazards_AfterSetAuthoredData_RoundTrips()
+        public void CanIgnoreHazards_AfterSetAuthoredData_RoundTrips()
         {
             // GIVEN
             _card = ScriptableObject.CreateInstance<CardDataSO>();
@@ -301,13 +301,13 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: true,
+                canIgnoreHazards: true,
                 conversionRadius: 1,
                 landingEffects: null
             );
 
             // THEN
-            Assert.That(_card.IgnoresHazards, Is.True);
+            Assert.That(_card.CanIgnoreHazards, Is.True);
         }
 
         [Test]
@@ -324,7 +324,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 0,
                 landingEffects: null
             );
@@ -350,7 +350,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 5,
                 landingEffects: null
             );
@@ -378,7 +378,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 5,
                 landingEffects: null
             );
@@ -410,7 +410,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: false,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: definitions
             );
@@ -445,7 +445,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 2,
                 landingEffects: definitions
             );
@@ -472,7 +472,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: null
             );
@@ -498,7 +498,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: true,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: Array.Empty<ImpactEffectDefinition>()
             );
@@ -529,7 +529,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: false,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: definitions
             );
@@ -562,7 +562,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: false,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: definitions
             );
@@ -596,7 +596,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: definitions
             );
@@ -627,7 +627,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 2,
                 landingEffects: definitions
             );
@@ -659,7 +659,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 canClone: false,
                 canJump: true,
                 hasArmor: false,
-                ignoresHazards: false,
+                canIgnoreHazards: false,
                 conversionRadius: 1,
                 landingEffects: definitions
             );

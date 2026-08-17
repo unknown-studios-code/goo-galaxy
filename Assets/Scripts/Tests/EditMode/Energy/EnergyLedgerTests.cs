@@ -8,14 +8,11 @@ using UnityEngine;
 
 namespace GooGalaxy.Tests.EditMode.Energy
 {
-    /// <summary>
-    /// Exercises the pure balance arithmetic of <see cref="EnergyPresenter"/> through the <see cref="IEnergyLedger"/>
-    /// surface the board depends on. <see cref="EnergyPresenter.TryPayForMove"/> and
-    /// <see cref="EnergyPresenter.RefundMove"/> mutate the balance synchronously and publish nothing themselves —
-    /// publication is deferred to <c>Update</c>, which needs a frame and therefore cannot be driven from EditMode.
-    /// The publication behavior lives in <c>GooGalaxy.Tests.PlayMode.Energy.EnergyPresenterTests</c> instead, which
-    /// already owns this presenter's other frame-dependent behavior (regeneration, overtime).
-    /// </summary>
+    // Exercises the pure balance arithmetic of EnergyPresenter through the IEnergyLedger surface the board depends
+    // on. TryPayForMove and RefundMove mutate the balance synchronously and publish nothing themselves — publication
+    // is deferred to Update, which needs a frame and therefore cannot be driven from EditMode. That behavior lives in
+    // GooGalaxy.Tests.PlayMode.Energy.EnergyPresenterTests instead, which already owns this presenter's other
+    // frame-dependent behavior (regeneration, overtime).
     [TestFixture]
     public class EnergyLedgerTests
     {

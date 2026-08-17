@@ -180,7 +180,7 @@ namespace GooGalaxy.Runtime.Board.Views
         private ObjectPool<GameObject> _fuseOverlayPool;
         private bool _areStatusOverlaysDirty;
 
-        /// <summary>The number of units currently rendered. Pooled-but-idle instances are not counted.</summary>
+        /// <remarks>Counts only units currently rendered — pooled-but-idle instances are excluded.</remarks>
         internal int RenderedUnitCount => _unitVisuals.Count;
 
         /// <remarks>
@@ -365,8 +365,10 @@ namespace GooGalaxy.Runtime.Board.Views
         /// and again after any bulk change the move and conversion events did not describe.
         /// </summary>
         /// <remarks>
-        /// A whole-board pass that walks the registry through its interface, so it boxes one enumerator per
-        /// call. Intended for bootstrap and recovery, never for a per-frame or per-move path.
+        /// A whole-board pass. It reads the registry through <c>ActiveUnitValues</c> so the rebuild loop binds the
+        /// struct enumerator directly and allocates nothing; the staleness sweep still probes the interface, but
+        /// only with <c>ContainsKey</c>, which does not enumerate. Intended for bootstrap and recovery, never for a
+        /// per-frame or per-move path.
         /// </remarks>
         public void SyncUnitVisuals()
         {
@@ -393,11 +395,11 @@ namespace GooGalaxy.Runtime.Board.Views
                 ReleaseUnitVisual(_staleUnitIds[i]);
             }
 
-            foreach (KeyValuePair<int, GridUnit> entry in activeUnits)
+            foreach (GridUnit unit in _unitPresenter.ActiveUnitValues)
             {
-                if (entry.Value != null)
+                if (unit != null)
                 {
-                    ShowUnit(entry.Key, entry.Value.Position, entry.Value.PlayerId, entry.Value.CardId);
+                    ShowUnit(unit.UnitId, unit.Position, unit.PlayerId, unit.CardId);
                 }
             }
 
@@ -434,13 +436,13 @@ namespace GooGalaxy.Runtime.Board.Views
             }
         }
 
-        /// <summary>Looks up the live visual of a unit, so a test can assert where and how it was rendered.</summary>
+        /// <remarks>Looks up the live visual of a unit, so a test can assert where and how it was rendered.</remarks>
         internal bool TryGetUnitVisual(int unitId, out GameObject instance)
         {
             return _unitVisuals.TryGetValue(unitId, out instance) && instance != null;
         }
 
-        /// <summary>Reads back the tint currently applied to a unit's visual.</summary>
+        /// <remarks>Reads back the tint currently applied to a unit's visual.</remarks>
         internal bool TryGetUnitColor(int unitId, out Color color)
         {
             color = default;
@@ -483,7 +485,7 @@ namespace GooGalaxy.Runtime.Board.Views
             return _fuseOverlays.TryGetValue(unitId, out instance) && instance != null;
         }
 
-        /// <summary>Assigns the pooled prefabs and board metrics before <c>Awake</c> builds the pools from them.</summary>
+        /// <remarks>Assigns the pooled prefabs and board metrics, so it must run before <c>Awake</c> builds the pools.</remarks>
         internal void SetViewConfiguration(
             GameObject unitPrefab,
             GameObject deployEffectPrefab,
@@ -510,7 +512,7 @@ namespace GooGalaxy.Runtime.Board.Views
             _fuseOverlayPrefab = fuseOverlayPrefab;
         }
 
-        /// <summary>Assigns the per-player tints, so a test can assert against values it owns.</summary>
+        /// <remarks>Assigns the per-player tints, so a test can assert against values it owns.</remarks>
         internal void SetFactionColors(Color playerOneColor, Color playerTwoColor)
         {
             _playerOneColor = playerOneColor;
@@ -938,13 +940,19 @@ namespace GooGalaxy.Runtime.Board.Views
             return grid != null;
         }
 
-        /// <summary>Placeholder body tint for one card, matched by id. Authored in the Inspector.</summary>
+        // Placeholder body tint for one card, matched by id. Authored in the Inspector.
         [Serializable]
         private struct CardBodyColor
         {
-            public string CardId;
+            [SerializeField]
+            private string _cardId;
 
-            public Color Color;
+            [SerializeField]
+            private Color _color;
+
+            public readonly string CardId => _cardId;
+
+            public readonly Color Color => _color;
         }
     }
 }

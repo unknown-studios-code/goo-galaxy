@@ -59,7 +59,7 @@ namespace GooGalaxy.Runtime.Cards.Data
 
         [Tooltip("Hover: whether this card may land on hazardous hexes. Leave off for everything but Plasmic Leaper, or acid puddles stop denying area.")]
         [SerializeField]
-        private bool _ignoresHazards;
+        private bool _canIgnoreHazards;
 
         [Header("Protection")]
         [Tooltip("Whether this card requires two conversion events to flip instead of one.")]
@@ -118,7 +118,7 @@ namespace GooGalaxy.Runtime.Cards.Data
 
         public bool HasArmor => _hasArmor;
 
-        public bool IgnoresHazards => _ignoresHazards;
+        public bool CanIgnoreHazards => _canIgnoreHazards;
 
         /// <inheritdoc />
         /// <remarks>
@@ -146,7 +146,6 @@ namespace GooGalaxy.Runtime.Cards.Data
         }
 #endif
 
-        /// <summary>Replaces every authored field in one call, mirroring what the Inspector writes.</summary>
         internal void SetAuthoredData(
             string cardId,
             string displayName,
@@ -156,7 +155,7 @@ namespace GooGalaxy.Runtime.Cards.Data
             bool canClone,
             bool canJump,
             bool hasArmor,
-            bool ignoresHazards,
+            bool canIgnoreHazards,
             int conversionRadius,
             ImpactEffectDefinition[] landingEffects,
             int cloneDistance = BoardMetrics.DefaultCloneDistance,
@@ -173,24 +172,22 @@ namespace GooGalaxy.Runtime.Cards.Data
             _cloneDistance = cloneDistance;
             _jumpDistance = jumpDistance;
             _hasArmor = hasArmor;
-            _ignoresHazards = ignoresHazards;
+            _canIgnoreHazards = canIgnoreHazards;
             _conversionRadius = conversionRadius;
             _landingEffects = landingEffects;
             _cachedLandingEffects = null;
         }
 
-        /// <summary>
-        /// Warns about the authoring faults a designer has to fix — a missing id, an empty description, an
-        /// unplayable Protocol cluster, and a duration unit that disagrees with its impact type — and self-heals
-        /// an out-of-range conversion radius, clone distance and jump distance. Runs on every Inspector edit,
-        /// which is what migrates an asset authored before those fields existed from its deserialized 0.
-        /// </summary>
         /// <remarks>
+        /// Runs on every Inspector edit, which is what migrates an asset authored before those fields existed from
+        /// its deserialized 0.
+        /// <para>
         /// The write-backs are an editor self-heal and nothing else: <see cref="ConversionRadius" />,
         /// <see cref="CloneDistance" /> and <see cref="JumpDistance" /> all resolve on read, so gameplay never
         /// depends on the stored values being in range, and their only caller —
         /// <c>OnValidate</c> — is compiled out of a player build. Writing an authored asset at runtime would
         /// persist in the Editor and silently reset in a build, so it must stay behind that guard.
+        /// </para>
         /// </remarks>
         internal void ValidateAuthoredData()
         {

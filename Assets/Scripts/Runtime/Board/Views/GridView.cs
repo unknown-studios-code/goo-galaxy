@@ -48,7 +48,7 @@ namespace GooGalaxy.Runtime.Board.Views
             MatchEvents.GridInitialized -= HandleGridInitialized;
         }
 
-        /// <summary>Assigns the cell prefab and its world size before the view builds a grid.</summary>
+        /// <remarks>Assigns the cell prefab and its world size, so it must run before the view builds a grid.</remarks>
         internal void SetViewConfiguration(CellView cellPrefab, float cellVisualSize)
         {
             _cellPrefab = cellPrefab;
@@ -73,9 +73,8 @@ namespace GooGalaxy.Runtime.Board.Views
                 return;
             }
 
-            foreach (KeyValuePair<HexCoordinates, HexCell> cellKvp in grid.Cells)
+            foreach (HexCell cell in grid.CellValues)
             {
-                HexCell cell = cellKvp.Value;
                 Vector3 worldPos = HexMathUtils.ProjectToWorldSpace(cell.Coordinates, _cellVisualSize);
 
                 CellView tileInstance = Instantiate(_cellPrefab, worldPos, Quaternion.identity, transform);

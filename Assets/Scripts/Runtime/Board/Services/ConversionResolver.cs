@@ -6,16 +6,16 @@ using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Board.Services
 {
-    /// <summary>
+    /// <remarks>
     /// Applies the conversion attempts a landing triggers on the units around it. Stateless and free of any
     /// engine dependency: every buffer is caller-owned, nothing is logged, and the entry point stays internal
     /// so no assembly outside Board can call it — <c>ConversionController</c> is its only production caller,
     /// and the EditMode suite reaches it through <c>InternalsVisibleTo</c>.
-    /// </summary>
-    /// <remarks>
+    /// <para>
     /// The unit, not this service, decides what one attempt does: <c>GridUnit.ReceiveConversionAttempt</c>
     /// mutates its own armor and ownership, and this service only sorts the reported outcome into the output
     /// buffers. Writing either field here would double-apply the rule.
+    /// </para>
     /// <para>
     /// Every unit receives <b>at most one attempt per resolution</b>, which the GDD's armored resolution rule
     /// requires: one landing never both strips a unit's armor and converts it. No current move type can violate
@@ -36,29 +36,19 @@ namespace GooGalaxy.Runtime.Board.Services
     /// </remarks>
     internal static class ConversionResolver
     {
-        /// <summary>
-        /// Runs one conversion attempt against every enemy unit within the acting card's conversion radius of
-        /// an affected coordinate, and sorts the results into the two output buffers. Coordinates that are
-        /// off-grid or whose cell is now empty — a Jump's source — contribute nothing, because only a landing
-        /// converts.
-        /// </summary>
-        /// <param name="grid">The board to read adjacency and occupancy from.</param>
-        /// <param name="units">The registry of live units, keyed by unit id.</param>
-        /// <param name="affectedCoordinates">The coordinates the landing changed, as published with the move.</param>
-        /// <param name="actingPlayerId">The player whose landing triggers the attempts.</param>
-        /// <param name="conversionRadius">
-        /// Hex rings around each landing coordinate whose enemy occupants are attempted, from the acting card's
-        /// authored value. Clamped up to one, so a card authored with a nonsensical radius still converts
-        /// adjacently rather than silently converting nothing.
-        /// </param>
-        /// <param name="areaBuffer">Caller-owned scratch buffer for the spiral lookup. Overwritten per coordinate.</param>
-        /// <param name="attemptedUnitIds">
-        /// Caller-owned set enforcing one attempt per unit. Cleared on entry, and left holding every unit the
-        /// resolution touched — including the ones that were immune or unaffected.
-        /// </param>
-        /// <param name="convertedUnitIds">Caller-owned buffer receiving the units whose ownership flipped. Cleared on entry.</param>
-        /// <param name="armorStrippedUnitIds">Caller-owned buffer receiving the units that spent their armor. Cleared on entry.</param>
-        /// <exception cref="ArgumentNullException">The grid, the registry, the coordinate list, or any buffer is null.</exception>
+        /// <remarks>
+        /// Runs one conversion attempt against every enemy unit within <paramref name="conversionRadius" /> — the
+        /// acting card's authored value, clamped up to one so a nonsensical radius still converts adjacently rather
+        /// than silently converting nothing — of each coordinate in <paramref name="affectedCoordinates" />, the
+        /// coordinates the landing changed as published with the move, and sorts the results into
+        /// <paramref name="convertedUnitIds" /> and <paramref name="armorStrippedUnitIds" />. A coordinate that is
+        /// off-grid or whose cell is now empty (a Jump's source) contributes nothing, because only a landing converts.
+        /// <paramref name="areaBuffer" /> is caller-owned scratch overwritten per coordinate.
+        /// <paramref name="attemptedUnitIds" /> is a caller-owned set enforcing one attempt per unit, cleared on entry
+        /// and left holding every unit the resolution touched, including the immune and the unaffected. All three
+        /// output buffers are cleared on entry. Throws <see cref="ArgumentNullException" /> when the grid, the
+        /// registry, the coordinate list, or any buffer is null.
+        /// </remarks>
         internal static void Resolve(
             HexGrid grid,
             IReadOnlyDictionary<int, GridUnit> units,

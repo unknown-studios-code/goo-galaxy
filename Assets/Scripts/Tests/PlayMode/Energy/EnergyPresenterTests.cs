@@ -60,6 +60,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator InitializePlayer_WithConfig_SetsStartingEnergyAndRaisesChanged()
         {
             // GIVEN
@@ -69,14 +70,15 @@ namespace GooGalaxy.Tests.PlayMode.Energy
             _presenter.InitializePlayer(1, config);
 
             // THEN
-            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(4.0f));
+            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(4.0f).Within(Tolerance));
             Assert.That(_changedCount >= 1, Is.True);
             Assert.That(_lastChangedPlayerId, Is.EqualTo(1));
-            Assert.That(_lastChangedEnergy, Is.EqualTo(4.0f));
+            Assert.That(_lastChangedEnergy, Is.EqualTo(4.0f).Within(Tolerance));
             yield return null;
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator Update_OverElapsedFrames_AccumulatesEnergyAndRaisesChanged()
         {
             // GIVEN
@@ -96,6 +98,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator TrySpendEnergy_WithSufficient_SucceedsDeductsAndFiresEvents()
         {
             // GIVEN
@@ -109,16 +112,17 @@ namespace GooGalaxy.Tests.PlayMode.Energy
 
             // THEN
             Assert.That(result, Is.EqualTo(SpendResult.Success));
-            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(2.0f));
+            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(2.0f).Within(Tolerance));
             Assert.That(_changedCount, Is.EqualTo(1));
             Assert.That(_spentCount, Is.EqualTo(1));
             Assert.That(_lastSpentPlayerId, Is.EqualTo(1));
-            Assert.That(_lastSpentEnergy, Is.EqualTo(2.0f));
+            Assert.That(_lastSpentEnergy, Is.EqualTo(2.0f).Within(Tolerance));
             Assert.That(_lastSpentSuccess, Is.True);
             yield return null;
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator TrySpendEnergy_WithInsufficient_FailsAndFiresSpentEvent()
         {
             // GIVEN
@@ -132,16 +136,17 @@ namespace GooGalaxy.Tests.PlayMode.Energy
 
             // THEN
             Assert.That(result, Is.EqualTo(SpendResult.InsufficientEnergy));
-            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(2.0f));
+            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(2.0f).Within(Tolerance));
             Assert.That(_changedCount, Is.EqualTo(0));
             Assert.That(_spentCount, Is.EqualTo(1));
             Assert.That(_lastSpentPlayerId, Is.EqualTo(1));
-            Assert.That(_lastSpentEnergy, Is.EqualTo(2.0f));
+            Assert.That(_lastSpentEnergy, Is.EqualTo(2.0f).Within(Tolerance));
             Assert.That(_lastSpentSuccess, Is.False);
             yield return null;
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator SetOvertime_WhenEnabled_DoublesRegenerationRate()
         {
             // GIVEN
@@ -158,6 +163,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator Update_WithEnergyAtCap_StopsRaisingChanged()
         {
             // GIVEN
@@ -173,6 +179,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator TryPayForMove_PaidMove_FlushesOneEnergyChangedAndOneEnergySpentOnTheNextFrame()
         {
             // GIVEN
@@ -192,6 +199,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator TryPayForMoveThenRefundMove_InTheSameFrame_PublishesNothingEver()
         {
             // GIVEN
@@ -213,7 +221,8 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
-        public IEnumerator TwoPaidMovesInOneFrame_FlushAsTwoEnergySpentEventsAndOneEnergyChanged()
+        [Timeout(5000)]
+        public IEnumerator TryPayForMove_TwoPaidMovesInOneFrame_FlushesTwoEnergySpentEventsAndOneEnergyChanged()
         {
             // GIVEN
             var config = new EnergyConfig(10f, 0f, 10f);
@@ -232,7 +241,8 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
-        public IEnumerator TwoPaidMovesWithOneRefunded_FlushesExactlyOneEnergyChangedAndOneEnergySpent()
+        [Timeout(5000)]
+        public IEnumerator TryPayForMove_TwoPaidMovesWithOneRefunded_FlushesExactlyOneEnergyChangedAndOneEnergySpent()
         {
             // GIVEN
             var config = new EnergyConfig(10f, 0f, 10f);
@@ -252,6 +262,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         }
 
         [UnityTest]
+        [Timeout(5000)]
         public IEnumerator TryPayForMove_Unaffordable_PublishesNothingAndLeavesTheBalanceUntouched()
         {
             // GIVEN

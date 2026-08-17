@@ -1,8 +1,10 @@
 ---
 description: "Use when configuring Unity project settings or writing code affected by domain reload. Covers Enter Play Mode, static field resets, Burst, asset presets, URP tiers, build profiles, and asmdefs."
 paths:
-  - "Assets/**/*.cs"
-  - "Assets/**/*.asmdef"
+  - "Assets/Scripts/**/*.cs"
+  - "Assets/Editor/**/*.cs"
+  - "Assets/Scripts/**/*.asmdef"
+  - "Assets/Editor/**/*.asmdef"
 ---
 
 # Unity Project Configuration

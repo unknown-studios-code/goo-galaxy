@@ -1386,7 +1386,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             public bool CanJump { get; set; }
 
-            public bool IgnoresHazards { get; set; }
+            public bool CanIgnoreHazards { get; set; }
 
             public int CloneDistance { get; set; } = BoardMetrics.DefaultCloneDistance;
 
@@ -1403,7 +1403,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             public bool CanJump => true;
 
-            public bool IgnoresHazards => false;
+            public bool CanIgnoreHazards => false;
 
             public int CloneDistance => BoardMetrics.DefaultCloneDistance;
 

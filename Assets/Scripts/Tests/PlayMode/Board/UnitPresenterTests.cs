@@ -1034,8 +1034,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             Assert.That(_ledger.RefundCalls, Is.EqualTo(new[] { _ledger.PayCalls[0] }));
         }
 
-        // ExpectedResult is mandatory on a parameterized UnityTest: the method returns IEnumerator, and a
-        // TestCase without one makes NUnit reject it as "non-void return value, but no result is expected".
+        // WORKAROUND: ExpectedResult is mandatory on a parameterized UnityTest — the method returns IEnumerator, and
+        // a TestCase without one makes NUnit reject it as "non-void return value, but no result is expected".
         [UnityTest]
         [Timeout(5000)]
         [TestCase(CheapUnitEnergyCost, ExpectedResult = null)]
@@ -1229,7 +1229,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             public bool CanJump { get; }
 
-            public bool IgnoresHazards => false;
+            public bool CanIgnoreHazards => false;
 
             public int CloneDistance { get; }
 

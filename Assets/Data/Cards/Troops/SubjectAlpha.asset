@@ -21,7 +21,7 @@ MonoBehaviour:
   _canJump: 1
   _cloneDistance: 1
   _jumpDistance: 2
-  _ignoresHazards: 0
+  _canIgnoreHazards: 0
   _hasArmor: 0
   _conversionRadius: 1
   _landingEffects: []
