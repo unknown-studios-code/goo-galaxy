@@ -66,7 +66,8 @@ namespace GooGalaxy.Runtime.Board.Models
         BoardUnavailable = 10,
 
         /// <summary>
-        /// The move was legal, but the unit spawner failed to produce the cloned unit. The board is unchanged.
+        /// The move was legal, but the unit spawner failed to produce the new unit. The board is unchanged.
+        /// Reported for a Clone and for a Deploy alike — both are the two actions that add a unit to the board.
         /// </summary>
         SpawnFailed = 11,
 
@@ -90,5 +91,13 @@ namespace GooGalaxy.Runtime.Board.Models
         /// for the reason stated above: the numbers travel to the client, so only the end of the list is safe.
         /// </summary>
         InsufficientEnergy = 14,
+
+        /// <summary>
+        /// The target is a legal empty hex, but no hex adjacent to it holds a unit the acting player owns, so
+        /// the Deploy would place a unit outside their territory. Appended rather than grouped with the other
+        /// target rejections for the reason stated above: the numbers travel to the client, so only the end of
+        /// the list is safe.
+        /// </summary>
+        NotAdjacentToOwnedTerritory = 15,
     }
 }

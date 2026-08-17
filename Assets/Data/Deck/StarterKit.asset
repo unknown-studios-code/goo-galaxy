@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 574147b9c08cde9479f4da17ec05372f, type: 3}
+  m_Name: StarterKit
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Deck::GooGalaxy.Runtime.Deck.Data.KitDataSO
+  _cards:
+  - {fileID: 11400000, guid: 44b513ab577b5c74586ee903b3b6dfa8, type: 2}
+  - {fileID: 11400000, guid: ccb30fcafa14a9948844b05a3961366a, type: 2}
+  - {fileID: 11400000, guid: f059dd7c47a59cd4e9c561fa72d22dca, type: 2}
+  - {fileID: 11400000, guid: 0403280ef01266648adad690bd7f66d7, type: 2}
+  - {fileID: 11400000, guid: fbbcfe1f89d5ccc499bf70dd8288a098, type: 2}

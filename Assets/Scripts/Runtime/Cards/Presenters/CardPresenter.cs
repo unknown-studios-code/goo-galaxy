@@ -7,6 +7,10 @@ using UnityEngine;
 
 namespace GooGalaxy.Runtime.Cards.Presenters
 {
+    /// <summary>
+    /// Owns the registry of authored cards available to a match, keyed by <see cref="CardId" /> and built from the
+    /// serialized <see cref="CardDataSO" /> array in <c>Awake</c>.
+    /// </summary>
     public class CardPresenter : MonoBehaviour
     {
         [Tooltip("Authored card assets available to this match. Drop CardDataSO assets here to register them.")]
@@ -23,6 +27,8 @@ namespace GooGalaxy.Runtime.Cards.Presenters
         /// <summary>
         /// Attempts to resolve the authored data for the given card id.
         /// </summary>
+        /// <param name="cardId">The id of the card to look up.</param>
+        /// <param name="card">The registered card, or <see langword="null"/> when <paramref name="cardId"/> was not found.</param>
         /// <returns><see langword="true"/> if a card with the given id was registered; otherwise <see langword="false"/>.</returns>
         public bool TryGetCard(CardId cardId, out ICardData card)
         {

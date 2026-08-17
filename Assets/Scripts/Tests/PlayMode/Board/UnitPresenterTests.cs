@@ -470,15 +470,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             MovementResult outerResult;
 
             // WHEN
-            try
-            {
-                outerResult = _unitPresenter.ResolveMove(outerCommand);
-            }
-            finally
-            {
-                MatchEvents.MoveExecuted -= handleReentrantMove;
-                MatchEvents.MoveExecuted -= handleLateMove;
-            }
+            outerResult = _unitPresenter.ResolveMove(outerCommand);
 
             // THEN
             Assert.That(outerResult, Is.EqualTo(MovementResult.Success));
@@ -505,14 +497,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             MovementResult result;
 
             // WHEN
-            try
-            {
-                result = _unitPresenter.ResolveMove(command);
-            }
-            finally
-            {
-                MatchEvents.MoveExecuted -= handleThrowingMove;
-            }
+            result = _unitPresenter.ResolveMove(command);
 
             // THEN
             Assert.That(
@@ -540,14 +525,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             LogAssert.Expect(LogType.Exception, new Regex("Faulty subscriber"));
 
             // WHEN
-            try
-            {
-                _unitPresenter.ResolveMove(command);
-            }
-            finally
-            {
-                MatchEvents.MoveExecuted -= handleThrowingMove;
-            }
+            _unitPresenter.ResolveMove(command);
 
             // THEN
             Assert.That(GetCell(_distantCoords).OccupantUnitId, Is.EqualTo(ActingUnitId));
@@ -575,6 +553,9 @@ namespace GooGalaxy.Tests.PlayMode.Board
             }
             finally
             {
+                // Unlike the try/finally blocks elsewhere in this fixture, this one is not cleanup — the second
+                // ResolveMove below is still to come, and a subscriber left throwing on it would need a second
+                // pair of LogAssert.Expect calls this test does not declare.
                 MatchEvents.MoveExecuted -= handleThrowingMove;
             }
 
@@ -1097,15 +1078,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             MatchEvents.EnergySpent += handleEnergySpent;
 
             // WHEN
-            try
-            {
-                _unitPresenter.ResolveMove(command);
-            }
-            finally
-            {
-                MatchEvents.EnergyChanged -= handleEnergyChanged;
-                MatchEvents.EnergySpent -= handleEnergySpent;
-            }
+            _unitPresenter.ResolveMove(command);
 
             // THEN
             Assert.That(
@@ -1114,6 +1087,118 @@ namespace GooGalaxy.Tests.PlayMode.Board
                 "The ledger must publish nothing synchronously from TryPayForMove, or a subscriber resolving another move from "
                     + "inside that dispatch would be charged before the board raises its own re-entrancy latch."
             );
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveDeploy_LegalDeploy_ReturnsSuccessAndPublishesMoveExecutedExactlyOnce()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = _unitPresenter.ResolveDeploy(in command, new CardId(SourceCardIdValue), _capability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+            Assert.That(_publishedEventCount, Is.EqualTo(1));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveDeploy_LegalDeploy_RegistersTheSpawnedUnitsCapabilityAndPosition()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+            _unitPresenter.ResolveDeploy(in command, new CardId(SourceCardIdValue), _capability);
+
+            // WHEN
+            bool foundCapability = _unitPresenter.TryGetCapability(FirstSpawnedUnitId, out IMoveCapable spawnedCapability);
+            bool wasUnregistered = _unitPresenter.UnregisterUnit(FirstSpawnedUnitId);
+
+            // THEN
+            Assert.That((foundCapability, spawnedCapability), Is.EqualTo((true, (IMoveCapable)_capability)));
+            Assert.That(wasUnregistered, Is.True, "The spawned unit's position must have been registered, or it would have nothing to unregister.");
+            Assert.That(
+                GetCell(_adjacentCoords).OccupantUnitId,
+                Is.EqualTo(HexCell.NoOccupant),
+                "Unregistering must free the cell the registered position points at."
+            );
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveDeploy_InsufficientEnergy_ReturnsInsufficientEnergyAndLeavesBoardAndBalanceUntouched()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(InsufficientStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var expensiveCapability = new FakeMoveCapability(canClone: true, canJump: true, energyCost: ExpensiveUnitEnergyCost);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = _unitPresenter.ResolveDeploy(in command, new CardId(SourceCardIdValue), expensiveCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.InsufficientEnergy));
+            Assert.That(GetCell(_adjacentCoords).OccupantUnitId, Is.EqualTo(HexCell.NoOccupant));
+            Assert.That(realLedger.GetEnergy(ActingPlayerId), Is.EqualTo(InsufficientStartingEnergy).Within(EnergyTolerance));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveDeploy_FailedSpawn_RefundsTheChargeWithNetZeroEnergyChange()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            EnergyPresenter realLedger = CreateInitializedLedger(TestStartingEnergy, TestStartingEnergy);
+            _unitPresenter.Construct(_gridPresenter, realLedger);
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            _spawner.ReturnsNull = true;
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+            LogAssert.Expect(LogType.Error, string.Format(BoardLogMessages.UnitSpawnFailedFormat, ActingPlayerId, _adjacentCoords));
+
+            // WHEN
+            MovementResult result = _unitPresenter.ResolveDeploy(in command, new CardId(SourceCardIdValue), _capability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.SpawnFailed));
+            Assert.That(realLedger.GetEnergy(ActingPlayerId), Is.EqualTo(TestStartingEnergy).Within(EnergyTolerance));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveDeploy_ReentrantCallFromSubscriber_ReturnsResolverBusy()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _origin);
+            var outerCommand = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+            var reentrantCommand = MoveCommand.ForDeploy(_secondAdjacentCoords, ActingPlayerId);
+            MovementResult reentrantResult = MovementResult.Success;
+
+            void handleReentrantDeploy(MoveCommand command, IReadOnlyList<HexCoordinates> affectedCoordinates) =>
+                reentrantResult = _unitPresenter.ResolveDeploy(in reentrantCommand, new CardId(SourceCardIdValue), _capability);
+
+            MatchEvents.MoveExecuted += handleReentrantDeploy;
+            LogAssert.Expect(LogType.Error, BoardLogMessages.MoveResolveReentered);
+
+            // WHEN
+            MovementResult outerResult = _unitPresenter.ResolveDeploy(in outerCommand, new CardId(SourceCardIdValue), _capability);
+
+            // THEN
+            Assert.That((outerResult, reentrantResult), Is.EqualTo((MovementResult.Success, MovementResult.ResolverBusy)));
         }
 
         private IEnumerator ActivateBoard()

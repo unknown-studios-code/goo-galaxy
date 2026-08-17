@@ -61,9 +61,9 @@ namespace GooGalaxy.Playtest
         private Button _playerButton;
         private VisualElement _hand;
 
-        private readonly Dictionary<string, Button> _cardButtons = new();
+        private readonly Dictionary<int, Button> _cardButtons = new();
 
-        private string _selectedCardId;
+        private int _selectedSlotIndex = -1;
 
         // NaN so the first energy update always publishes, whatever value it carries.
         private float _lastShownEnergyOne = float.NaN;
@@ -72,8 +72,12 @@ namespace GooGalaxy.Playtest
         /// <summary>Raised when the player asks for a fresh match. The harness owns what "reset" actually does.</summary>
         public event Action ResetRequested;
 
-        /// <summary>Raised when a card is picked, or with null when the pick is cleared by re-clicking it.</summary>
-        public event Action<string> CardSelected;
+        /// <summary>
+        /// Raised when a card is picked, carrying its hand slot index, or -1 when the pick is cleared by
+        /// re-clicking it. The slot, not the card id, is what names the pick — a Kit can deal the same card
+        /// into two slots at once.
+        /// </summary>
+        public event Action<int> CardSelected;
 
         /// <summary>Raised when the active-player button is pressed. The harness decides who is active next.</summary>
         public event Action ActivePlayerToggleRequested;
@@ -139,8 +143,11 @@ namespace GooGalaxy.Playtest
         /// Rebuilds the hand from the roster the harness supplies. Each card renders as a flat coloured
         /// rectangle carrying its name and energy cost — placeholder art, per the MVP scope.
         /// </summary>
-        /// <param name="cards">The cards to show, in display order.</param>
-        public void SetHand(IReadOnlyList<HandCard> cards)
+        /// <param name="cards">The cards to show, in slot order.</param>
+        /// <param name="nextCard">
+        /// The card queued behind the hand, drawn dimmed and unclickable at the end, or null to show nothing.
+        /// </param>
+        public void SetHand(IReadOnlyList<HandCard> cards, HandCard? nextCard)
         {
             if (_hand == null)
             {
@@ -149,57 +156,60 @@ namespace GooGalaxy.Playtest
 
             ClearHand();
 
-            if (cards == null)
+            if (cards != null)
             {
-                return;
+                for (int i = 0; i < cards.Count; i++)
+                {
+                    HandCard card = cards[i];
+                    var button = new Button();
+                    button.AddToClassList(CardClass);
+                    button.style.backgroundColor = ResolveCardColor(card.CardId);
+
+                    var cost = new Label(card.EnergyCost.ToString());
+                    cost.AddToClassList(CardCostClass);
+                    button.Add(cost);
+
+                    var name = new Label(card.DisplayName);
+                    name.AddToClassList(CardNameClass);
+                    button.Add(name);
+
+                    // The slot is captured per button rather than read back from the event target, so a later
+                    // reordering of the hand cannot desynchronise the click from the card it draws.
+                    int slotIndex = card.SlotIndex;
+                    button.RegisterCallback<ClickEvent>(_ => HandleCardClicked(slotIndex));
+
+                    _cardButtons[slotIndex] = button;
+                    _hand.Add(button);
+                }
             }
 
-            for (int i = 0; i < cards.Count; i++)
+            if (nextCard.HasValue)
             {
-                HandCard card = cards[i];
-                var button = new Button();
-                button.AddToClassList(CardClass);
-                button.style.backgroundColor = ResolveCardColor(card.CardId);
-
-                var cost = new Label(card.EnergyCost.ToString());
-                cost.AddToClassList(CardCostClass);
-                button.Add(cost);
-
-                var name = new Label(card.DisplayName);
-                name.AddToClassList(CardNameClass);
-                button.Add(name);
-
-                // The id is captured per button rather than read back from the event target, so a later
-                // reordering of the hand cannot desynchronise the click from the card it draws.
-                string cardId = card.CardId;
-                button.RegisterCallback<ClickEvent>(_ => HandleCardClicked(cardId));
-
-                _cardButtons[card.CardId] = button;
-                _hand.Add(button);
+                _hand.Add(BuildNextCardElement(nextCard.Value));
             }
 
             ApplySelectionClasses();
         }
 
-        /// <summary>Marks which card is currently picked, or clears the pick when given null.</summary>
-        /// <param name="cardId">The picked card's id, or null for no pick.</param>
-        public void SetSelectedCard(string cardId)
+        /// <summary>Marks which hand slot is currently picked, or clears the pick when given -1.</summary>
+        /// <param name="slotIndex">The picked card's hand slot, or -1 for no pick.</param>
+        public void SetSelectedCard(int slotIndex)
         {
-            _selectedCardId = cardId;
+            _selectedSlotIndex = slotIndex;
             ApplySelectionClasses();
         }
 
         /// <summary>Dims the cards the active player cannot currently pay for.</summary>
         /// <param name="availableEnergy">The active player's current energy.</param>
-        /// <param name="costs">Energy cost per card id, as shown in the hand.</param>
-        public void SetAffordability(float availableEnergy, IReadOnlyDictionary<string, int> costs)
+        /// <param name="costs">Energy cost per hand slot, as shown in the hand.</param>
+        public void SetAffordability(float availableEnergy, IReadOnlyDictionary<int, int> costs)
         {
             if (costs == null)
             {
                 return;
             }
 
-            foreach (KeyValuePair<string, Button> entry in _cardButtons)
+            foreach (KeyValuePair<int, Button> entry in _cardButtons)
             {
                 bool canAfford = !costs.TryGetValue(entry.Key, out int cost) || availableEnergy >= cost;
                 entry.Value.EnableInClassList(CardUnaffordableClass, !canAfford);
@@ -372,16 +382,16 @@ namespace GooGalaxy.Playtest
         }
 
         // Clicking the picked card again clears the pick, so there is always a way back to plain board moves.
-        private void HandleCardClicked(string cardId)
+        private void HandleCardClicked(int slotIndex)
         {
-            CardSelected?.Invoke(_selectedCardId == cardId ? null : cardId);
+            CardSelected?.Invoke(_selectedSlotIndex == slotIndex ? -1 : slotIndex);
         }
 
         private void ApplySelectionClasses()
         {
-            foreach (KeyValuePair<string, Button> entry in _cardButtons)
+            foreach (KeyValuePair<int, Button> entry in _cardButtons)
             {
-                entry.Value.EnableInClassList(CardSelectedClass, entry.Key == _selectedCardId);
+                entry.Value.EnableInClassList(CardSelectedClass, entry.Key == _selectedSlotIndex);
             }
         }
 
@@ -398,6 +408,26 @@ namespace GooGalaxy.Playtest
             return new Color(0.6f, 0.6f, 0.6f, 1f);
         }
 
+        // The 5th deck slot: not part of the playable hand, so it is drawn like a card but never registered in
+        // _cardButtons — it never gets a click handler, an affordability class, or a selection highlight.
+        private VisualElement BuildNextCardElement(HandCard next)
+        {
+            var element = new VisualElement { pickingMode = PickingMode.Ignore };
+            element.AddToClassList(CardClass);
+            element.AddToClassList(CardUnaffordableClass);
+            element.style.backgroundColor = ResolveCardColor(next.CardId);
+
+            var cost = new Label(next.EnergyCost.ToString());
+            cost.AddToClassList(CardCostClass);
+            element.Add(cost);
+
+            var name = new Label($"Next: {next.DisplayName}");
+            name.AddToClassList(CardNameClass);
+            element.Add(name);
+
+            return element;
+        }
+
         private void ClearHand()
         {
             _cardButtons.Clear();
@@ -405,14 +435,19 @@ namespace GooGalaxy.Playtest
             _hand?.Clear();
         }
 
-        /// <summary>One card as the hand renders it. The harness owns which cards are in play.</summary>
+        /// <summary>
+        /// One card as the hand renders it. The harness owns which cards are in play; <see cref="SlotIndex" />
+        /// is what a click reports back, since the slot — not the card id — is what <c>DeployController</c>
+        /// plays from.
+        /// </summary>
         public readonly struct HandCard
         {
-            public HandCard(string cardId, string displayName, int energyCost)
+            public HandCard(string cardId, string displayName, int energyCost, int slotIndex)
             {
                 CardId = cardId;
                 DisplayName = displayName;
                 EnergyCost = energyCost;
+                SlotIndex = slotIndex;
             }
 
             public string CardId { get; }
@@ -420,6 +455,8 @@ namespace GooGalaxy.Playtest
             public string DisplayName { get; }
 
             public int EnergyCost { get; }
+
+            public int SlotIndex { get; }
         }
 
         /// <summary>Placeholder colour for one card, matched by id. Authored in the Inspector.</summary>

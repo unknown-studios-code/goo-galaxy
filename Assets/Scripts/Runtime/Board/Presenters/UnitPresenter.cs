@@ -34,6 +34,14 @@ namespace GooGalaxy.Runtime.Board.Presenters
 
         private static readonly ProfilerMarker _resolveMoveMarker = new("UnitPresenter.ResolveMove");
 
+        // Separate from the move marker on purpose: a Deploy is driven by the player's hand rather than by a
+        // unit already on the board, so folding the two together would hide a deploy-rate regression inside an
+        // average dominated by Clones and Jumps. Its scope encloses PublishMoveExecuted, so — like
+        // ResolveMove's own marker — it charges the whole landing cascade: conversions, abilities, and every
+        // view subscriber. Read it alongside ConversionController's and AbilityController's markers rather than
+        // alone, the same narrower-marker convention those two state for themselves.
+        private static readonly ProfilerMarker _resolveDeployMarker = new("UnitPresenter.ResolveDeploy");
+
         private readonly Dictionary<int, GridUnit> _activeUnits = new(LiveUnitCapacity);
         private readonly Dictionary<int, IMoveCapable> _unitCapabilities = new(LiveUnitCapacity);
         private readonly Dictionary<int, HexCoordinates> _registeredPositions = new(LiveUnitCapacity);
@@ -89,12 +97,12 @@ namespace GooGalaxy.Runtime.Board.Presenters
         }
 
         /// <summary>
-        /// Assigns the factory used to create units for Clone moves.
-        /// Must be set by match bootstrap before any Clone is resolved.
+        /// Assigns the factory used to create units for the two moves that put a new one on the board, Deploy
+        /// and Clone. Must be set by match bootstrap before either is resolved.
         /// </summary>
         /// <remarks>
         /// This is also the only point at which the spawn-failure log re-arms: a broken spawner is reported
-        /// once, not once per Clone the player attempts.
+        /// once, not once per spawning move the player attempts.
         /// </remarks>
         /// <param name="spawner">The spawner implementation, or null to clear it.</param>
         public void SetUnitSpawner(IUnitSpawner spawner)
@@ -241,51 +249,128 @@ namespace GooGalaxy.Runtime.Board.Presenters
                     return validation;
                 }
 
-                if (_energyLedger == null)
+                return ChargeAndApply(grid, command, CardId.Empty, capability);
+            }
+        }
+
+        /// <summary>
+        /// Validates and, when legal, executes a Deploy — a new unit of the played card's type placed on the
+        /// target — publishing <c>MatchEvents.MoveExecuted</c> on success. Nothing is published and the board is
+        /// left untouched for any non-Success result.
+        /// </summary>
+        /// <remarks>
+        /// The Deploy counterpart of <see cref="ResolveMove" />, and deliberately a separate entry point rather
+        /// than a branch inside it. <see cref="ResolveMove" /> resolves the acting capability out of the registry
+        /// by <c>MoveCommand.UnitId</c>, and a Deploy has no unit id to resolve one by — so the capability and
+        /// the card arrive as parameters instead, which is also what keeps the Board assembly free of any
+        /// reference to Cards. <see cref="ResolveMove" /> therefore keeps rejecting a Deploy with
+        /// <see cref="MovementResult.InvalidCommand" />.
+        /// <para>
+        /// Every guarantee <see cref="ResolveMove" /> makes holds here unchanged, because both run the same
+        /// charge-and-apply body: the re-entrancy latch, the refund on every way out, and the rule that an
+        /// illegal move is rejected before it can cost anything. A Deploy is priced at the card's whole authored
+        /// Energy cost, which is what the ledger derives from <see cref="MoveType.Deploy" />.
+        /// </para>
+        /// <para>
+        /// Checks run in a fixed order, so the returned code is predictable when several would fail at once:
+        /// <see cref="MovementResult.ResolverBusy" />, grid availability, command shape, the rules
+        /// <c>MovementValidator.ValidateDeploy</c> enforces, ledger availability, then affordability. The ledger is
+        /// checked after validation rather than beside the grid, so an illegal Deploy on a board with no ledger
+        /// still reports the rule it broke.
+        /// </para>
+        /// </remarks>
+        /// <param name="command">The requested Deploy. Must be built with <c>MoveCommand.ForDeploy</c>.</param>
+        /// <param name="cardId">The card being played, which is what the spawned unit is an instance of.</param>
+        /// <param name="capability">
+        /// The played card's capability. Supplied by the caller because no unit exists yet to look one up by; a
+        /// null one is rejected with <see cref="MovementResult.CapabilityMissing" />.
+        /// </param>
+        /// <returns>Success once the board has been mutated, or the specific reason the command was rejected.</returns>
+        public MovementResult ResolveDeploy(in MoveCommand command, CardId cardId, IMoveCapable capability)
+        {
+            using (_resolveDeployMarker.Auto())
+            {
+                if (_isResolvingMove)
                 {
+                    Debug.LogError(BoardLogMessages.MoveResolveReentered, this);
+                    return MovementResult.ResolverBusy;
+                }
+
+                if (!TryGetHexGrid(out HexGrid grid))
+                {
+                    Debug.LogError(BoardLogMessages.GridPresenterMissing, this);
                     return MovementResult.BoardUnavailable;
                 }
 
-                int unitEnergyCost = capability is IEnergyPriced priced ? priced.EnergyCost : BoardMetrics.DefaultUnitEnergyCost;
-
-                if (!_energyLedger.TryPayForMove(command.PlayerId, command.Type, unitEnergyCost))
+                // ValidateDeploy reads the target and the acting player, never the command's type, so a
+                // mistyped command would otherwise validate as a Deploy and then be priced and resolved as
+                // whatever it actually claims to be. Rejecting it here is what lets the shared body below price
+                // off command.Type and still be guaranteed to charge a Deploy the card's whole cost.
+                if (command.Type != MoveType.Deploy)
                 {
-                    return MovementResult.InsufficientEnergy;
+                    return MovementResult.InvalidCommand;
                 }
 
-                _isResolvingMove = true;
+                MovementResult validation = MovementValidator.ValidateDeploy(grid, _activeUnits, command, capability);
 
-                // Cleared only once the move is committed, so the refund below covers every way out of the block
-                // — each early return and any exception that escapes it — rather than resting on the callee
-                // catching its own. The ledger re-derives the price from the same arguments, so the board never
-                // remembers an amount it is not allowed to compute; net change over a failed move is zero.
-                bool isChargeOutstanding = true;
-
-                try
+                if (validation != MovementResult.Success)
                 {
-                    MovementResult resolution = ApplyValidatedMove(grid, command, capability);
-
-                    if (resolution != MovementResult.Success)
-                    {
-                        return resolution;
-                    }
-
-                    isChargeOutstanding = false;
-
-                    PublishMoveExecuted(command);
-                }
-                finally
-                {
-                    if (isChargeOutstanding)
-                    {
-                        _energyLedger.RefundMove(command.PlayerId, command.Type, unitEnergyCost);
-                    }
-
-                    _isResolvingMove = false;
+                    return validation;
                 }
 
-                return MovementResult.Success;
+                return ChargeAndApply(grid, command, cardId, capability);
             }
+        }
+
+        // The half both entry points share, entered only once the command is known to be legal. Kept in one
+        // place so the Energy charge, the refund that reverses it, and the re-entrancy latch cannot drift apart
+        // between a Deploy and the two moves a unit already on the board can make.
+        private MovementResult ChargeAndApply(HexGrid grid, in MoveCommand command, CardId cardId, IMoveCapable capability)
+        {
+            if (_energyLedger == null)
+            {
+                return MovementResult.BoardUnavailable;
+            }
+
+            int unitEnergyCost = capability is IEnergyPriced priced ? priced.EnergyCost : BoardMetrics.DefaultUnitEnergyCost;
+
+            if (!_energyLedger.TryPayForMove(command.PlayerId, command.Type, unitEnergyCost))
+            {
+                return MovementResult.InsufficientEnergy;
+            }
+
+            _isResolvingMove = true;
+
+            // Cleared only once the move is committed, so the refund below covers every way out of the block
+            // — each early return and any exception that escapes it — rather than resting on the callee
+            // catching its own. The ledger re-derives the price from the same arguments, so the board never
+            // remembers an amount it is not allowed to compute; net change over a failed move is zero.
+            bool isChargeOutstanding = true;
+
+            try
+            {
+                MovementResult resolution = ApplyValidatedMove(grid, command, cardId, capability);
+
+                if (resolution != MovementResult.Success)
+                {
+                    return resolution;
+                }
+
+                isChargeOutstanding = false;
+
+                PublishMoveExecuted(command);
+            }
+            finally
+            {
+                if (isChargeOutstanding)
+                {
+                    _energyLedger.RefundMove(command.PlayerId, command.Type, unitEnergyCost);
+                }
+
+                _isResolvingMove = false;
+            }
+
+            return MovementResult.Success;
         }
 
         private MovementResult ValidateMove(HexGrid grid, in MoveCommand command, IMoveCapable capability)
@@ -298,14 +383,14 @@ namespace GooGalaxy.Runtime.Board.Presenters
             };
         }
 
-        private MovementResult ApplyValidatedMove(HexGrid grid, in MoveCommand command, IMoveCapable capability)
+        private MovementResult ApplyValidatedMove(HexGrid grid, in MoveCommand command, CardId cardId, IMoveCapable capability)
         {
             MovementResult resolution;
             GridUnit spawnedUnit;
 
             try
             {
-                resolution = MovementResolver.Resolve(grid, _activeUnits, _unitSpawner, command, capability, _affectedCoordinates, out spawnedUnit);
+                resolution = MovementResolver.Resolve(grid, _activeUnits, _unitSpawner, command, cardId, capability, _affectedCoordinates, out spawnedUnit);
             }
             catch (Exception exception)
             {
@@ -363,7 +448,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         }
 
         // PERF: latched until the spawner is replaced, so a broken one cannot allocate a formatted message and a
-        // stack trace on every Clone the player attempts.
+        // stack trace on every Deploy or Clone the player attempts.
         private void LogSpawnFailure(in MoveCommand command, Exception exception)
         {
             if (_hasLoggedSpawnFailure)

@@ -38,7 +38,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private const int AcidCrawlerUnitId = 3;
         private const int BioPhalanxUnitId = 4;
         private const int BioPhalanxAttackerUnitId = 5;
-        private const int VolatileMassUnitId = 6;
+        private const int VolatileMassAnchorUnitId = 6;
         private const int VolatileMassVictimUnitId = 7;
         private const int CryoVictimUnitId = 8;
 
@@ -65,6 +65,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         // of the card's radius-2 reach, which is the whole point of putting it there. At distance one it would be
         // converted by a radius-1 card too and the assertion would stop testing the expanded radius.
         private static readonly HexCoordinates _volatileMassDeployHex = new(0, -3);
+        private static readonly HexCoordinates _volatileMassAnchorCoords = new(1, -3);
         private static readonly HexCoordinates _volatileMassJumpTarget = new(0, -5);
         private static readonly HexCoordinates _volatileMassVictimCoords = new(0, -7);
 
@@ -89,6 +90,7 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         private FuseController _fuseController;
         private EnergyPresenter _energyPresenter;
         private FakeUnitSpawner _spawner;
+        private int _volatileMassUnitId;
 
         [SetUp]
         public void SetUp()
@@ -275,17 +277,17 @@ namespace GooGalaxy.Tests.PlayMode.Cards
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator RaiseLandingResolved_VolatileMassDeploy_LeavesTheActingUnitOnTheBoard()
+        public IEnumerator ResolveDeploy_VolatileMass_LeavesTheActingUnitOnTheBoard()
         {
             // GIVEN
-            yield return ArrangeVolatileMassOnBoardCo();
+            yield return ArrangeVolatileMassPrerequisitesCo();
 
             // WHEN
-            RaiseVolatileMassDeployLanding();
+            DeployVolatileMass();
 
             // THEN
             Assert.That(
-                _unitPresenter.ActiveUnits.ContainsKey(VolatileMassUnitId),
+                _unitPresenter.ActiveUnits.ContainsKey(_volatileMassUnitId),
                 Is.True,
                 "Volatile Mass's deploy landing should have left the unit on the board rather than removing it."
             );
@@ -293,17 +295,17 @@ namespace GooGalaxy.Tests.PlayMode.Cards
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator RaiseLandingResolved_VolatileMassDeploy_ArmsTheFuse()
+        public IEnumerator ResolveDeploy_VolatileMass_ArmsTheFuse()
         {
             // GIVEN
-            yield return ArrangeVolatileMassOnBoardCo();
+            yield return ArrangeVolatileMassPrerequisitesCo();
 
             // WHEN
-            RaiseVolatileMassDeployLanding();
+            DeployVolatileMass();
 
             // THEN
             Assert.That(
-                _unitPresenter.ActiveUnits[VolatileMassUnitId].HasFuse,
+                _unitPresenter.ActiveUnits[_volatileMassUnitId].HasFuse,
                 Is.True,
                 "Volatile Mass's deploy landing should have armed its fuse instead of destroying the unit immediately."
             );
@@ -314,15 +316,15 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         public IEnumerator ResolveMove_VolatileMassJumpAfterDeploy_RemovesTheActingUnit()
         {
             // GIVEN
-            yield return ArrangeVolatileMassOnBoardCo();
-            RaiseVolatileMassDeployLanding();
+            yield return ArrangeVolatileMassPrerequisitesCo();
+            DeployVolatileMass();
 
             // WHEN
             ResolveVolatileMassJump();
 
             // THEN
             Assert.That(
-                _unitPresenter.ActiveUnits.ContainsKey(VolatileMassUnitId),
+                _unitPresenter.ActiveUnits.ContainsKey(_volatileMassUnitId),
                 Is.False,
                 "Volatile Mass's fuse detonation should have removed the acting unit."
             );
@@ -333,9 +335,9 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         public IEnumerator ResolveMove_VolatileMassJumpAfterDeploy_FlipsTheVictimTwoRingsOut()
         {
             // GIVEN
-            yield return ArrangeVolatileMassOnBoardCo();
+            yield return ArrangeVolatileMassPrerequisitesCo();
             GridUnit victim = _unitPresenter.ActiveUnits[VolatileMassVictimUnitId];
-            RaiseVolatileMassDeployLanding();
+            DeployVolatileMass();
 
             // WHEN
             ResolveVolatileMassJump();
@@ -349,8 +351,8 @@ namespace GooGalaxy.Tests.PlayMode.Cards
         public IEnumerator ResolveMove_VolatileMassJumpAfterDeploy_ChargesTheFlatJumpCost()
         {
             // GIVEN
-            yield return ArrangeVolatileMassOnBoardCo();
-            RaiseVolatileMassDeployLanding();
+            yield return ArrangeVolatileMassPrerequisitesCo();
+            DeployVolatileMass();
             float energyBeforeJump = _energyPresenter.GetEnergy(PlayerTwoId);
 
             // WHEN
@@ -465,11 +467,13 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             RegisterUnit(AcidCrawlerUnitId, PlayerOneId, _acidCrawlerSource, ResolveDefinition("acid_crawler"));
         }
 
-        private IEnumerator ArrangeVolatileMassOnBoardCo()
+        private IEnumerator ArrangeVolatileMassPrerequisitesCo()
         {
             yield return ActivateBoardCo();
 
-            RegisterUnit(VolatileMassUnitId, PlayerTwoId, _volatileMassDeployHex, ResolveDefinition("volatile_mass"));
+            // The anchor is what makes the deploy below legal: ValidateDeploy requires a hex adjacent to the
+            // target to already hold a unit the deploying player owns.
+            RegisterUnit(VolatileMassAnchorUnitId, PlayerTwoId, _volatileMassAnchorCoords, ResolveDefinition("subject_alpha"));
             RegisterUnit(VolatileMassVictimUnitId, PlayerOneId, _volatileMassVictimCoords, ResolveDefinition("subject_alpha"));
         }
 
@@ -480,20 +484,20 @@ namespace GooGalaxy.Tests.PlayMode.Cards
             RegisterUnit(CryoVictimUnitId, PlayerOneId, _cryoAdjacentOne, ResolveDefinition("subject_alpha"));
         }
 
-        // TODO (GOOM-9): drive this through ResolveMove once MoveType.Deploy has a resolver. Published directly
-        // for now — this is the exact event ConversionController raises for a landing, and the fuse impact never
-        // reads the conversions payload.
-        private void RaiseVolatileMassDeployLanding()
+        private void DeployVolatileMass()
         {
-            MatchEvents.RaiseLandingResolved(
-                new MoveCommand(MoveType.Deploy, _volatileMassDeployHex, _volatileMassDeployHex, PlayerTwoId, VolatileMassUnitId),
-                default
-            );
+            CardDefinition volatileMass = ResolveDefinition("volatile_mass");
+            var command = MoveCommand.ForDeploy(_volatileMassDeployHex, PlayerTwoId);
+            MovementResult result = _unitPresenter.ResolveDeploy(in command, new CardId("volatile_mass"), volatileMass);
+
+            Assert.That(result, Is.EqualTo(MovementResult.Success), "Test setup expects Volatile Mass to deploy legally next to its anchor unit.");
+
+            _volatileMassUnitId = GetCell(_volatileMassDeployHex).OccupantUnitId;
         }
 
         private void ResolveVolatileMassJump()
         {
-            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassDeployHex, _volatileMassJumpTarget, PlayerTwoId, VolatileMassUnitId));
+            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _volatileMassDeployHex, _volatileMassJumpTarget, PlayerTwoId, _volatileMassUnitId));
         }
 
         private void ResolveCryoStasisOnCluster()

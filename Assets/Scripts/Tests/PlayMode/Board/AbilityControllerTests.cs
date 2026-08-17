@@ -108,6 +108,9 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private static readonly HexCoordinates _fuseJumpSource = new(-2, 0);
         private static readonly HexCoordinates _fuseJumpTarget = new(0, 0);
 
+        private static readonly HexCoordinates _deployAnchorCoords = new(-2, 0);
+        private static readonly HexCoordinates _deployTargetCoords = new(-1, 0);
+
         private readonly List<string> _eventOrder = new();
 
         private GameObject _boardGO;
@@ -1279,6 +1282,32 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             // THEN
             Assert.That(_unitPresenter.ActiveUnits.ContainsKey(actingUnit.UnitId), Is.False);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveDeploy_LegalDeploy_ResolvesTheDeployedCardsLandingImpact()
+        {
+            // GIVEN — regression guard: HandleLandingResolved used to resolve landing effects off command.UnitId,
+            // which a Deploy never carries, so no impact — ArmFuse, SpawnHazard, ApplyStatus, SelfDestruct alike —
+            // ever ran for a deployed card. This pins the general case with ApplyStatus, independent of the fuse
+            // path RosterIntegrationTests.ResolveDeploy_VolatileMass_ArmsTheFuse already guards.
+            yield return ActivateBoardCo();
+
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _deployAnchorCoords, new FakeCapability { CanJump = true });
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
+            var command = MoveCommand.ForDeploy(_deployTargetCoords, ActingPlayerId);
+
+            // WHEN
+            _unitPresenter.ResolveDeploy(in command, new CardId(SourceCardIdValue), capability);
+
+            // THEN
+            HexCell landingCell = GetCell(_deployTargetCoords);
+            Assert.That(landingCell.IsOccupied, Is.True);
+            Assert.That(_unitPresenter.ActiveUnits[landingCell.OccupantUnitId].HasStatus(StatusType.Rooted), Is.True);
         }
 
         private static List<HexCoordinates> CryoStasisTargets()

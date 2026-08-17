@@ -15,6 +15,7 @@
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",
     "GooGalaxy.Runtime.Core",
+    "GooGalaxy.Runtime.Deck",
     "VContainer",
     "UnityEngine.TestRunner"
   ],

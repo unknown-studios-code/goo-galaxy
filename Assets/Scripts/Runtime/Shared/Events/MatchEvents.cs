@@ -125,6 +125,21 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </remarks>
         public static event Action<int, int> FuseExpired;
 
+        /// <summary>
+        /// Raised whenever a player's hand changes — dealt at match start, and rotated once the board has
+        /// accepted a play — carrying the player id, the cards now in hand, and the card that will fill the next
+        /// freed slot.
+        /// </summary>
+        /// <remarks>
+        /// The hand list is the deck's own storage, not a per-dispatch buffer: the reference stays valid for the
+        /// deck's lifetime, and its contents are rewritten in place by every later rotation of that player's hand.
+        /// A subscriber that retains it is therefore reading live state rather than the hand it was handed — copy
+        /// the entries it needs instead. Read it with an indexed <c>for</c> loop; <c>foreach</c> allocates an
+        /// enumerator here at every static type, because a <c>ReadOnlyCollection</c> has no struct enumerator to
+        /// bind to.
+        /// </remarks>
+        public static event Action<int, IReadOnlyList<CardId>, CardId> HandChanged;
+
         /// <summary>Publishes <see cref="MatchStarted"/>.</summary>
         /// <param name="config">The configuration the match runs with.</param>
         public static void RaiseMatchStarted(MatchConfiguration config)
@@ -240,6 +255,18 @@ namespace GooGalaxy.Runtime.Shared.Events
             FuseExpired?.Invoke(unitId, playerId);
         }
 
+        /// <summary>Publishes <see cref="HandChanged"/>. Called once the hand already holds what this reports.</summary>
+        /// <param name="playerId">The player whose hand changed.</param>
+        /// <param name="hand">
+        /// The cards now in hand. The publisher's own storage, rewritten in place on every later change, so
+        /// subscribers copy the entries they intend to keep rather than retaining the list.
+        /// </param>
+        /// <param name="nextCard">The card queued for the next freed slot.</param>
+        public static void RaiseHandChanged(int playerId, IReadOnlyList<CardId> hand, CardId nextCard)
+        {
+            HandChanged?.Invoke(playerId, hand, nextCard);
+        }
+
         /// <summary>
         /// Drops every subscriber. Runs automatically on subsystem registration because domain reload is
         /// disabled, and is called by tests to isolate fixtures from one another.
@@ -258,6 +285,7 @@ namespace GooGalaxy.Runtime.Shared.Events
             AbilityResolved = null;
             FuseArmed = null;
             FuseExpired = null;
+            HandChanged = null;
         }
     }
 }
