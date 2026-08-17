@@ -113,7 +113,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
+            MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
 
             // THEN
             Assert.That(spawnedUnit, Is.SameAs(_units[FirstSpawnedUnitId]));
@@ -127,7 +127,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
+            MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
 
             // THEN
             Assert.That(spawnedUnit.CardId, Is.EqualTo(sourceUnit.CardId));
@@ -142,7 +142,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
+            MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
 
             // THEN
             Assert.That(spawnedUnit.Position, Is.EqualTo(_adjacentCoords));
@@ -174,7 +174,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
+            MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
 
             // THEN
             Assert.That(spawnedUnit.ActiveStatuses, Is.Empty);
@@ -276,10 +276,103 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Jump, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
+            MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
 
             // THEN
             Assert.That(spawnedUnit, Is.Null);
+        }
+
+        [Test]
+        public void Resolve_Deploy_ReturnsSuccess()
+        {
+            // GIVEN
+
+            // WHEN
+            MovementResult result = ResolveDeploy(_adjacentCoords, new CardId(SourceCardIdValue), out _);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
+        public void Resolve_Deploy_SpawnsRegistersAndOccupiesTheTarget()
+        {
+            // GIVEN
+
+            // WHEN
+            ResolveDeploy(_adjacentCoords, new CardId(SourceCardIdValue), out GridUnit spawnedUnit);
+
+            // THEN
+            Assert.That(GetCell(_adjacentCoords).OccupantUnitId, Is.EqualTo(FirstSpawnedUnitId));
+            Assert.That(_units[FirstSpawnedUnitId], Is.SameAs(spawnedUnit));
+            Assert.That(spawnedUnit.Position, Is.EqualTo(_adjacentCoords));
+        }
+
+        [Test]
+        public void Resolve_Deploy_WritesExactlyOneAffectedCoordinate()
+        {
+            // GIVEN — load-bearing: the Volatile Mass fuse arms on a landing that vacated no hex, so the count
+            // matters as much as the content.
+
+            // WHEN
+            ResolveDeploy(_adjacentCoords, new CardId(SourceCardIdValue), out _);
+
+            // THEN
+            Assert.That(_affectedCoordinates, Has.Count.EqualTo(1));
+            Assert.That(_affectedCoordinates[0], Is.EqualTo(_adjacentCoords));
+        }
+
+        [Test]
+        public void Resolve_Deploy_SpawnedUnitCarriesThePlayedCardId()
+        {
+            // GIVEN
+            var playedCardId = new CardId(SourceCardIdValue);
+
+            // WHEN
+            ResolveDeploy(_adjacentCoords, playedCardId, out GridUnit spawnedUnit);
+
+            // THEN
+            Assert.That(spawnedUnit.CardId, Is.EqualTo(playedCardId));
+        }
+
+        [Test]
+        public void Resolve_DeployWithNullSpawner_ReturnsSpawnFailedAndLeavesTheBoardUntouched()
+        {
+            // GIVEN
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementResolver.Resolve(
+                _grid,
+                _units,
+                null,
+                command,
+                new CardId(SourceCardIdValue),
+                _capability,
+                _affectedCoordinates,
+                out _
+            );
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.SpawnFailed));
+            Assert.That(GetCell(_adjacentCoords).OccupantUnitId, Is.EqualTo(HexCell.NoOccupant));
+            Assert.That(_units, Is.Empty);
+        }
+
+        [Test]
+        public void Resolve_DeployWithSpawnerReturningDuplicateUnitId_ReturnsSpawnFailedAndLeavesTheIncumbentUnitUntouched()
+        {
+            // GIVEN
+            GridUnit incumbentUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            _spawner.ForcedUnitId = ActingUnitId;
+
+            // WHEN
+            MovementResult result = ResolveDeploy(_adjacentCoords, new CardId(SourceCardIdValue), out _);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.SpawnFailed));
+            Assert.That(_units[ActingUnitId], Is.SameAs(incumbentUnit));
+            Assert.That(GetCell(_adjacentCoords).OccupantUnitId, Is.EqualTo(HexCell.NoOccupant));
         }
 
         [Test]
@@ -338,7 +431,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            void resolveCall() => MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, null, out _);
+            void resolveCall() => MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, null, out _);
 
             // THEN
             Assert.Throws<ArgumentNullException>(resolveCall);
@@ -445,21 +538,6 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
-        public void Resolve_DeployMoveType_ThrowsArgumentException()
-        {
-            // GIVEN
-            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
-
-            var command = new MoveCommand(MoveType.Deploy, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
-
-            // WHEN
-            void resolveCall() => Resolve(command);
-
-            // THEN
-            Assert.Throws<ArgumentException>(resolveCall);
-        }
-
-        [Test]
         public void Resolve_CloneWithAnAuthoredDistanceOfThree_SpawnsTheUnitThreeHexesAway()
         {
             // GIVEN
@@ -468,7 +546,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _threeHexCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
+            MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out GridUnit spawnedUnit);
 
             // THEN
             Assert.That(spawnedUnit.Position, Is.EqualTo(_threeHexCoords));
@@ -519,7 +597,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
 
             // WHEN
-            MovementResult result = MovementResolver.Resolve(_grid, _units, null, command, _capability, _affectedCoordinates, out _);
+            MovementResult result = MovementResolver.Resolve(_grid, _units, null, command, CardId.Empty, _capability, _affectedCoordinates, out _);
 
             // THEN
             Assert.That(result, Is.EqualTo(MovementResult.SpawnFailed));
@@ -646,7 +724,14 @@ namespace GooGalaxy.Tests.EditMode.Board
 
         private MovementResult Resolve(in MoveCommand command)
         {
-            return MovementResolver.Resolve(_grid, _units, _spawner, command, _capability, _affectedCoordinates, out _);
+            return MovementResolver.Resolve(_grid, _units, _spawner, command, CardId.Empty, _capability, _affectedCoordinates, out _);
+        }
+
+        private MovementResult ResolveDeploy(HexCoordinates target, CardId cardId, out GridUnit spawnedUnit)
+        {
+            var command = MoveCommand.ForDeploy(target, ActingPlayerId);
+
+            return MovementResolver.Resolve(_grid, _units, _spawner, command, cardId, _capability, _affectedCoordinates, out spawnedUnit);
         }
 
         private void AssertBoardUnchangedAfterFailedClone()

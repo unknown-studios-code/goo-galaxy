@@ -177,8 +177,7 @@ namespace GooGalaxy.Tests.EditMode.Shared
             MatchEvents.RaiseLandingResolved(command, default);
 
             // THEN
-            Assert.That(receivedCommand.Source, Is.EqualTo(command.Source));
-            Assert.That(receivedCommand.Target, Is.EqualTo(command.Target));
+            Assert.That(receivedCommand, Is.EqualTo(command));
         }
 
         [Test]
@@ -201,7 +200,6 @@ namespace GooGalaxy.Tests.EditMode.Shared
         public void RaiseLandingResolved_NoSubscribers_DoesNotThrow()
         {
             // GIVEN
-            // no subscriber registered
 
             // WHEN / THEN
             Assert.DoesNotThrow(() => MatchEvents.RaiseLandingResolved(default, default));
@@ -248,7 +246,6 @@ namespace GooGalaxy.Tests.EditMode.Shared
         public void RaiseAbilityResolved_NoSubscribers_DoesNotThrow()
         {
             // GIVEN
-            // no subscriber registered
 
             // WHEN / THEN
             Assert.DoesNotThrow(() => MatchEvents.RaiseAbilityResolved(1, default));
@@ -267,6 +264,53 @@ namespace GooGalaxy.Tests.EditMode.Shared
 
             // THEN
             Assert.That(hasFired, Is.False, "AbilityResolved should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseHandChanged_WithSubscriber_DeliversThePlayerIdHandAndNextCard()
+        {
+            // GIVEN
+            int receivedPlayerId = -1;
+            IReadOnlyList<CardId> receivedHand = null;
+            CardId receivedNextCard = default;
+            MatchEvents.HandChanged += (playerId, hand, nextCard) =>
+            {
+                receivedPlayerId = playerId;
+                receivedHand = hand;
+                receivedNextCard = nextCard;
+            };
+            IReadOnlyList<CardId> hand = new List<CardId> { new("subject_alpha"), new("acid_crawler") };
+            var nextCard = new CardId("bio_phalanx");
+
+            // WHEN
+            MatchEvents.RaiseHandChanged(3, hand, nextCard);
+
+            // THEN
+            Assert.That((receivedPlayerId, receivedHand, receivedNextCard), Is.EqualTo((3, hand, nextCard)));
+        }
+
+        [Test]
+        public void RaiseHandChanged_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseHandChanged(1, Array.Empty<CardId>(), default));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsHandChanged_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.HandChanged += (_, _, _) => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseHandChanged(1, Array.Empty<CardId>(), default);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "HandChanged should have no subscribers after ResetEvents.");
         }
 
         [Test]

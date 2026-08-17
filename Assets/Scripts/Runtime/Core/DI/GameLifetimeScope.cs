@@ -2,6 +2,8 @@ using GooGalaxy.Runtime.Board.Controllers;
 using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Board.Views;
 using GooGalaxy.Runtime.Cards.Presenters;
+using GooGalaxy.Runtime.Deck.Controllers;
+using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using VContainer;
@@ -30,6 +32,8 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<GridPresenter>().AsSelf();
             builder.RegisterComponentInHierarchy<UnitPresenter>().AsSelf();
             builder.RegisterComponentInHierarchy<CardPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<DeckPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<DeployController>().AsSelf();
             builder.RegisterComponentInHierarchy<EnergyPresenter>().AsSelf().As<IEnergyLedger>();
             builder.RegisterComponentInHierarchy<ConversionController>().AsSelf();
             builder.RegisterComponentInHierarchy<FuseController>().AsSelf();

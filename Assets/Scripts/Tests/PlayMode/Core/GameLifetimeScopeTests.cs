@@ -4,7 +4,13 @@ using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Board.Views;
+using GooGalaxy.Runtime.Cards.Data;
+using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Core.DI;
+using GooGalaxy.Runtime.Deck.Controllers;
+using GooGalaxy.Runtime.Deck.Data;
+using GooGalaxy.Runtime.Deck.Models;
+using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Models;
 using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Shared.Commands;
@@ -15,7 +21,7 @@ using NUnit.Framework;
 using UnityEngine;
 using VContainer;
 
-namespace GooGalaxy.Tests.PlayMode
+namespace GooGalaxy.Tests.PlayMode.Core
 {
     [TestFixture]
     public class GameLifetimeScopeTests
@@ -36,7 +42,9 @@ namespace GooGalaxy.Tests.PlayMode
         private GameObject _unitPrefabGO;
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
+        private KitDataSO _kit;
         private readonly List<GameObject> _autoScaffoldedGOs = new();
+        private readonly List<CardDataSO> _kitCards = new();
 
         [TearDown]
         public void TearDown()
@@ -70,6 +78,21 @@ namespace GooGalaxy.Tests.PlayMode
             }
 
             _autoScaffoldedGOs.Clear();
+
+            if (_kit != null)
+            {
+                Object.DestroyImmediate(_kit);
+            }
+
+            foreach (CardDataSO card in _kitCards)
+            {
+                if (card != null)
+                {
+                    Object.DestroyImmediate(card);
+                }
+            }
+
+            _kitCards.Clear();
 
             if (_scopeGO != null)
             {
@@ -179,6 +202,45 @@ namespace GooGalaxy.Tests.PlayMode
             );
         }
 
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesDeckPresenterAndDeployController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<DeckPresenter>(), Is.Not.Null);
+            Assert.That(_scope.Container.Resolve<DeployController>(), Is.Not.Null);
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_InjectsARealDeckPresenterIntoTheDeployController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+            DeployController deployController = _scope.Container.Resolve<DeployController>();
+
+            // WHEN
+            CardPlayResult result = deployController.TryPlayCard(ActingPlayerId, 0, new[] { _origin });
+
+            // THEN
+            Assert.That(
+                result,
+                Is.EqualTo(CardPlayResult.UnknownPlayer),
+                "BoardUnavailable would mean DeckPresenter itself was never injected; UnknownPlayer proves the container wired the "
+                    + "scene's real, kitted DeckPresenter into DeployController.Construct alongside the other four dependencies "
+                    + "BuildContainer already had to auto-scaffold for the container to build at all."
+            );
+        }
+
         private void CreateScope()
         {
             _scopeGO = new GameObject("LifetimeScopeTest");
@@ -212,9 +274,31 @@ namespace GooGalaxy.Tests.PlayMode
             _unitPrefabGO.SetActive(false);
             presenterGO.AddComponent<UnitView>().SetViewConfiguration(_unitPrefabGO, null, null, null, CellVisualSize);
 
+            // A kitted DeckPresenter here, rather than an auto-scaffolded bare one, is what keeps BuildContainer
+            // free of DeckLogMessages.KitDataMissing on every build.
+            presenterGO.AddComponent<DeckPresenter>().SetKit(BuildKit(), DeckState.DefaultHandSize);
+
             presenterGO.SetActive(true);
 
             return presenterGO;
+        }
+
+        private KitDataSO BuildKit()
+        {
+            var cards = new CardDataSO[DeckState.GetMinimumKitSize(DeckState.DefaultHandSize)];
+
+            for (int i = 0; i < cards.Length; i++)
+            {
+                CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
+                card.SetAuthoredData($"kit_card_{i}", $"kit_card_{i}", "Test description.", CardType.Troop, 1, false, false, false, false, 1, null);
+                _kitCards.Add(card);
+                cards[i] = card;
+            }
+
+            _kit = ScriptableObject.CreateInstance<KitDataSO>();
+            _kit.SetAuthoredCards(cards);
+
+            return _kit;
         }
 
         // Creates an EnergyPresenter scene GameObject so GameLifetimeScope's

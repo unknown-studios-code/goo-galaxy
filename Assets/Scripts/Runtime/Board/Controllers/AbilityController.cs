@@ -96,7 +96,6 @@ namespace GooGalaxy.Runtime.Board.Controllers
         // may not exist yet. Caching what was visible at Construct would pin a null for the rest of the match.
         private FuseResolver Fuses => _fuseController != null ? _fuseController.Fuses : null;
 
-        /// <summary>Supplies the board and the unit registry every impact is resolved against.</summary>
         /// <remarks>
         /// The status resolver is built here rather than in <c>Awake</c> because it binds to the registry's value
         /// collection, and injection is the first point at which that registry is known. The collection stays
@@ -108,9 +107,6 @@ namespace GooGalaxy.Runtime.Board.Controllers
         /// must be that one instance.
         /// </para>
         /// </remarks>
-        /// <param name="gridPresenter">The board whose cells impacts are placed on.</param>
-        /// <param name="unitPresenter">The registry the affected units are looked up in.</param>
-        /// <param name="fuseController">The owner of the match's single fuse system, and its ticker.</param>
         [Inject]
         public void Construct(GridPresenter gridPresenter, UnitPresenter unitPresenter, FuseController fuseController)
         {
@@ -318,8 +314,9 @@ namespace GooGalaxy.Runtime.Board.Controllers
                 return;
             }
 
-            // The unit standing on the landing hex is the acting one, which is not always the commanded unit:
-            // a Clone leaves the commanded unit on its source and puts a brand-new unit on the target.
+            // The unit standing on the landing hex is the acting one, which is not always the commanded unit: a
+            // Clone leaves the commanded unit on its source and puts a new one on the target, and a Deploy
+            // carries no unit id at all. See MoveCommand.UnitId.
             bool hasLanded = grid.TryGetCell(command.Target, out HexCell landingCell) && landingCell.IsOccupied;
 
             _isResolvingAbilities = true;
@@ -338,7 +335,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
                 // An empty or off-grid landing hex means nothing actually landed, so no impact may resolve —
                 // but the deployment still happened, so its action windows still close. Passing no impacts
                 // rather than returning early is what keeps step 6 unconditional.
-                ResolveDeployment(grid, context, hasLanded ? GetLandingEffects(command.UnitId) : null);
+                ResolveDeployment(grid, context, hasLanded ? GetLandingEffects(landingCell.OccupantUnitId) : null);
             }
             finally
             {

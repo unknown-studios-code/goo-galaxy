@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using GooGalaxy.Runtime.Board.Controllers;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Board.Utils;
@@ -9,6 +8,9 @@ using GooGalaxy.Runtime.Board.Views;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Cards.Presenters;
+using GooGalaxy.Runtime.Deck.Controllers;
+using GooGalaxy.Runtime.Deck.Models;
+using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
@@ -22,14 +24,16 @@ namespace GooGalaxy.Playtest
 {
     /// <summary>
     /// Throwaway harness that makes the board playable by hand: it seeds the GDD's opening position, wires the
-    /// Clone spawner, turns pointer taps into move commands, spends energy for the card being played, and calls
-    /// the match on Domination. Not a game mode — there is no deck or cycle, no turn timer, and no match clock,
-    /// and the two sides are driven hot-seat through an active-player switch rather than by turn order.
+    /// Clone spawner, deals both players a hand through <c>DeckPresenter</c>, and turns pointer taps into board
+    /// moves and <c>DeployController.TryPlayCard</c> calls. Not a game mode — there is no turn timer and no
+    /// match clock, and the two sides are driven hot-seat through an active-player switch rather than by turn
+    /// order.
     /// </summary>
     /// <remarks>
-    /// This exists because nothing yet drives the board: no system calls <c>UnitPresenter.ResolveMove</c>, none
-    /// registers the starting units, and no <c>IUnitSpawner</c> ships in runtime code, which makes a Clone
-    /// fail with <c>SpawnFailed</c>. Delete this whole assembly once the real match bootstrap lands.
+    /// This exists because nothing yet drives the board on its own: no system calls
+    /// <c>UnitPresenter.ResolveMove</c> or <c>DeployController.TryPlayCard</c> from player input, none registers
+    /// the starting units, and no <c>IUnitSpawner</c> ships in runtime code, which makes a Clone fail with
+    /// <c>SpawnFailed</c>. Delete this whole assembly once the real match bootstrap lands.
     /// <para>
     /// Its log text is deliberately exempt from the "log messages live as consts in a centralized class" rule.
     /// That rule exists so a message can be found, asserted on by a test, and kept stable across the releases
@@ -48,6 +52,7 @@ namespace GooGalaxy.Playtest
         private const int MaxPickResults = 4;
         private const int PlayerOneId = 1;
         private const int PlayerTwoId = 2;
+        private const int TroopTargetCount = 1;
 
         // The widest cluster any authored Protocol picks. Only a capacity hint.
         private const int MaxSpellTargets = BoardMetrics.MaxSpellClusterSize;
@@ -66,10 +71,14 @@ namespace GooGalaxy.Playtest
         [SerializeField]
         private StartingUnit[] _startingUnits = Array.Empty<StartingUnit>();
 
-        [Header("Hand")]
-        [Tooltip("Card ids offered in the hand, in display order. Each must exist on the CardPresenter roster.")]
+        [Header("Match")]
+        [Tooltip(
+            "Seed for the deterministic deck shuffle. The same seed reproduces the same hand-cycle order for "
+                + "both players every time a match starts — that is the point of it, and it is what makes a bug "
+                + "in a specific opening hand reproducible."
+        )]
         [SerializeField]
-        private string[] _handCardIds = Array.Empty<string>();
+        private int _matchSeed;
 
         [Header("Aiming")]
         [Tooltip("Distance from a hex center to its corner vertex, in world units. Must match GridView and UnitView or the preview snaps to wrong hexes.")]
@@ -95,7 +104,7 @@ namespace GooGalaxy.Playtest
         private readonly List<Collider2D> _pickResults = new(MaxPickResults);
         private readonly List<int> _unitIdBuffer = new();
         private readonly List<PlaytestHudView.HandCard> _hand = new();
-        private readonly Dictionary<string, int> _cardCosts = new();
+        private readonly Dictionary<int, int> _cardCosts = new();
 
         // One capability per hand card, built with the hand. The type is stateless — a single readonly card
         // reference — so a fresh instance per cast and per card-driven Clone bought nothing but garbage.
@@ -104,6 +113,9 @@ namespace GooGalaxy.Playtest
         private readonly List<HexCoordinates> _spellTargets = new(MaxSpellTargets);
         private readonly List<HexCoordinates> _previewBuffer = new(MaxSpellTargets);
         private readonly List<HexCell> _neighborBuffer = new(BoardMetrics.NeighborsPerCell);
+
+        // A troop deploy always names exactly one hex, filled fresh from the click that committed it.
+        private readonly List<HexCoordinates> _troopTargetBuffer = new(TroopTargetCount);
         private readonly StringBuilder _statusReport = new();
 
         private ContactFilter2D _contactFilter;
@@ -114,13 +126,15 @@ namespace GooGalaxy.Playtest
         private GridView _gridView;
         private UnitView _unitView;
         private EnergyPresenter _energyPresenter;
-        private AbilityController _abilityController;
+        private DeckPresenter _deckPresenter;
+        private DeployController _deployController;
         private PlaytestHudView _hudView;
         private Camera _camera;
         private PlaytestUnitSpawner _spawner;
         private bool _isMatchOver;
         private int _activePlayerId = PlayerOneId;
-        private string _selectedCardId;
+        private int _selectedSlotIndex = -1;
+        private PlaytestHudView.HandCard? _nextHandCard;
         private int _selectedUnitId = -1;
         private HexCoordinates _selectedCoordinates;
         private bool _hasSelection;
@@ -133,7 +147,8 @@ namespace GooGalaxy.Playtest
 
         // ICardData is an interface, so a null test on _selectedSpellCard is a plain reference compare that
         // never calls UnityEngine.Object's destroyed-object overload — this bool is the real "is a Protocol
-        // selected" test everywhere the field would otherwise be null-checked.
+        // selected" test everywhere the field would otherwise be null-checked. A selected troop card never
+        // sets it: a troop is committed through the ordinary unit-move click, not the spell-aim preview.
         private bool _isSpellSelected;
         private int _selectedSpellClusterSize;
         private Vector2 _lastPreviewPointerPosition;
@@ -154,7 +169,8 @@ namespace GooGalaxy.Playtest
             GridView gridView,
             UnitView unitView,
             EnergyPresenter energyPresenter,
-            AbilityController abilityController,
+            DeckPresenter deckPresenter,
+            DeployController deployController,
             PlaytestHudView hudView
         )
         {
@@ -164,7 +180,8 @@ namespace GooGalaxy.Playtest
             _gridView = gridView;
             _unitView = unitView;
             _energyPresenter = energyPresenter;
-            _abilityController = abilityController;
+            _deckPresenter = deckPresenter;
+            _deployController = deployController;
             _hudView = hudView;
         }
 
@@ -187,6 +204,7 @@ namespace GooGalaxy.Playtest
         {
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
+            MatchEvents.HandChanged += HandleHandChanged;
 
             if (_hudView != null)
             {
@@ -200,9 +218,13 @@ namespace GooGalaxy.Playtest
 
         protected void Start()
         {
-            if (_unitPresenter == null || _cardPresenter == null || _gridPresenter == null)
+            if (_unitPresenter == null || _cardPresenter == null || _gridPresenter == null || _deckPresenter == null || _deployController == null)
             {
-                Debug.LogError("PlaytestBootstrap: GridPresenter, UnitPresenter, and CardPresenter must all be assigned.", this);
+                Debug.LogError(
+                    "PlaytestBootstrap: GridPresenter, UnitPresenter, CardPresenter, DeckPresenter, and DeployController must all be assigned.",
+                    this
+                );
+
                 return;
             }
 
@@ -263,6 +285,7 @@ namespace GooGalaxy.Playtest
         {
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
+            MatchEvents.HandChanged -= HandleHandChanged;
 
             if (_hudView != null)
             {
@@ -281,13 +304,16 @@ namespace GooGalaxy.Playtest
         public void StartMatch()
         {
             // Public and reachable from the Reset button, so it cannot lean on Start's guard having run.
-            if (_unitPresenter == null || _cardPresenter == null || _gridPresenter == null)
+            if (_unitPresenter == null || _cardPresenter == null || _gridPresenter == null || _deckPresenter == null || _deployController == null)
             {
-                Debug.LogError("PlaytestBootstrap: cannot start a match without GridPresenter, UnitPresenter, and CardPresenter.", this);
+                Debug.LogError(
+                    "PlaytestBootstrap: cannot start a match without GridPresenter, UnitPresenter, CardPresenter, DeckPresenter, and DeployController.",
+                    this
+                );
+
                 return;
             }
 
-            BuildHand();
             ClearAllUnits();
 
             // A new spawner rather than a reset one: clone ids restart from the same base every match, so a
@@ -307,8 +333,15 @@ namespace GooGalaxy.Playtest
                 _energyPresenter.InitializeMatch();
             }
 
+            // Raised before dealing, so DeckPresenter captures the seed every shuffle this match derives from.
+            MatchEvents.RaiseMatchStarted(new MatchConfiguration(_matchSeed));
+            _deckPresenter.InitializePlayer(PlayerOneId);
+            _deckPresenter.InitializePlayer(PlayerTwoId);
+
+            BuildHand();
+
             _isMatchOver = false;
-            _selectedCardId = null;
+            _selectedSlotIndex = -1;
             _selectedSpellCard = null;
             _isSpellSelected = false;
             _selectedSpellClusterSize = 0;
@@ -318,8 +351,8 @@ namespace GooGalaxy.Playtest
             if (_hudView != null)
             {
                 _hudView.ClearResult();
-                _hudView.SetHand(_hand);
-                _hudView.SetSelectedCard(null);
+                _hudView.SetHand(_hand, _nextHandCard);
+                _hudView.SetSelectedCard(_selectedSlotIndex);
                 _hudView.SetActivePlayer(_activePlayerId);
             }
 
@@ -347,31 +380,63 @@ namespace GooGalaxy.Playtest
             MatchEvents.RaiseGridInitialized(grid);
         }
 
-        // Rebuilt per match so a change to the roster or the id list is picked up by Reset without a domain reload.
+        // Rebuilt whenever the active player's hand can have changed: dealt at match start, rotated once a play
+        // succeeds, and swapped whenever the active player toggles hot-seat. Every slot gets an entry even when
+        // its card fails to resolve, so _hand always mirrors the deck's slot order and a slot index can index
+        // straight into it — see HandCard.SlotIndex and CacheSelectedSpell.
         private void BuildHand()
         {
             _hand.Clear();
             _cardCosts.Clear();
             _cardCapabilities.Clear();
+            _nextHandCard = null;
 
-            for (int i = 0; i < _handCardIds.Length; i++)
+            if (_deckPresenter == null || !_deckPresenter.TryGetHand(_activePlayerId, out IReadOnlyList<CardId> hand))
             {
-                string cardId = _handCardIds[i];
+                return;
+            }
 
-                if (!_cardPresenter.TryGetCard(new CardId(cardId), out ICardData card))
+            for (int i = 0; i < hand.Count; i++)
+            {
+                CardId cardId = hand[i];
+
+                if (!_cardPresenter.TryGetCard(cardId, out ICardData card))
                 {
-                    Debug.LogError($"PlaytestBootstrap: hand card '{cardId}' is not on the CardPresenter roster.", this);
+                    Debug.LogError($"PlaytestBootstrap: hand slot {i} references card '{cardId.Value}', which is not on the CardPresenter roster.", this);
+                    _hand.Add(new PlaytestHudView.HandCard(cardId.Value, cardId.Value, 0, i));
                     continue;
                 }
 
-                _hand.Add(new PlaytestHudView.HandCard(cardId, card.DisplayName, card.EnergyCost));
-                _cardCosts[cardId] = card.EnergyCost;
-                _cardCapabilities[cardId] = new PlaytestMoveCapability(card);
+                _hand.Add(new PlaytestHudView.HandCard(cardId.Value, card.DisplayName, card.EnergyCost, i));
+                _cardCosts[i] = card.EnergyCost;
+                _cardCapabilities[cardId.Value] = new PlaytestMoveCapability(card);
+            }
+
+            if (_deckPresenter.TryGetNextCard(_activePlayerId, out CardId nextCardId) && _cardPresenter.TryGetCard(nextCardId, out ICardData nextCard))
+            {
+                _nextHandCard = new PlaytestHudView.HandCard(nextCardId.Value, nextCard.DisplayName, nextCard.EnergyCost, hand.Count);
             }
         }
 
-        // The hand covers every card a cast or a card-driven Clone can name, so the fallback only builds an
-        // instance for a starting unit whose card was never dealt.
+        // The deck is the source of truth for both players' hands at once, so a HandChanged for the other
+        // player is expected traffic rather than an error — it just is not what this HUD instance shows.
+        private void HandleHandChanged(int playerId, IReadOnlyList<CardId> hand, CardId nextCard)
+        {
+            if (playerId != _activePlayerId)
+            {
+                return;
+            }
+
+            BuildHand();
+
+            if (_hudView != null)
+            {
+                _hudView.SetHand(_hand, _nextHandCard);
+            }
+        }
+
+        // Reuses the capability built for a hand card when a starting unit happens to carry the same one, so
+        // the fallback only allocates for a starting unit whose card was never dealt.
         private PlaytestMoveCapability ResolveMoveCapability(ICardData card)
         {
             if (_cardCapabilities.TryGetValue(card.CardId.Value, out PlaytestMoveCapability capability))
@@ -601,6 +666,19 @@ namespace GooGalaxy.Playtest
 
         private void HandleCellClicked(HexCoordinates coordinates)
         {
+            // The GDD's second selection path: a troop card commits straight onto an empty hex, with no unit
+            // picked up first. The board owns the placement rule — the target must be adjacent to a sector this
+            // player already controls — so routing through a selected unit would silently narrow the legal set
+            // to that one unit's neighbours and hide the rule this harness exists to exercise.
+            if (_selectedSlotIndex >= 0 && !_isSpellSelected && IsCellVacant(coordinates))
+            {
+                _troopTargetBuffer.Clear();
+                _troopTargetBuffer.Add(coordinates);
+                PlayCard(_selectedSlotIndex, _troopTargetBuffer);
+
+                return;
+            }
+
             if (!_hasSelection)
             {
                 TrySelectUnitAt(coordinates);
@@ -914,7 +992,7 @@ namespace GooGalaxy.Playtest
                 return;
             }
 
-            CastSpell(card);
+            PlayCard(_selectedSlotIndex, _spellTargets);
         }
 
         private Vector3 ProjectToBoard(HexCoordinates coordinates)
@@ -922,39 +1000,28 @@ namespace GooGalaxy.Playtest
             return HexMathUtils.ProjectToWorldSpace(coordinates, _cellVisualSize);
         }
 
-        // Step 1 of the GDD chain is "validation and payment", and payment lands last here for the same reason
-        // CompleteCardPlay defers it on a move: a rejected deployment must cost nothing. The aim survives every
-        // rejection, so a mistimed tap never throws away the hexes the player already picked.
-        private void CastSpell(ICardData card)
+        // The single entry point for committing whichever card is selected, troop or Protocol alike, through
+        // DeployController.TryPlayCard: the board charges a troop's Energy, the controller charges and refunds
+        // a Protocol's, and the hand rotates only on Success. A rejected play is logged and leaves the pick in
+        // place, so a mistimed commit — a bad target, insufficient Energy — costs the player nothing.
+        private void PlayCard(int slotIndex, IReadOnlyList<HexCoordinates> targets)
         {
-            if (_abilityController == null)
+            if (_deployController == null)
             {
-                Debug.LogError("PlaytestBootstrap: no AbilityController assigned — Protocols cannot be cast.", this);
+                Debug.LogError("PlaytestBootstrap: no DeployController assigned — cards cannot be played.", this);
                 return;
             }
 
-            if (_energyPresenter != null && _energyPresenter.GetEnergy(_activePlayerId) < card.EnergyCost)
-            {
-                Debug.Log($"PlaytestBootstrap: P{_activePlayerId} cannot afford {card.DisplayName} ({card.EnergyCost} energy). Targets kept.", this);
-                return;
-            }
+            CardPlayResult result = _deployController.TryPlayCard(_activePlayerId, slotIndex, targets);
 
-            var command = new SpellCommand(_activePlayerId, card.CardId, _spellTargets);
-            SpellResult result = _abilityController.ResolveSpell(command, ResolveMoveCapability(card));
+            Debug.Log($"PlaytestBootstrap: P{_activePlayerId} played hand slot {slotIndex} on {targets.Count} hex(es) → {result}.", this);
 
-            Debug.Log($"PlaytestBootstrap: P{_activePlayerId} cast {card.DisplayName} on {_spellTargets.Count} hexes → {result}.", this);
-
-            if (result != SpellResult.Success)
+            if (result != CardPlayResult.Success)
             {
                 return;
             }
 
-            if (_energyPresenter != null)
-            {
-                _energyPresenter.TrySpendEnergy(_activePlayerId, card.EnergyCost);
-            }
-
-            SelectCard(null);
+            SelectCard(-1);
             ClearSpellAim();
 
             LogActiveStatuses();
@@ -988,6 +1055,14 @@ namespace GooGalaxy.Playtest
             }
 
             _spellTargets.Clear();
+        }
+
+        private bool IsCellVacant(HexCoordinates coordinates)
+        {
+            return _gridPresenter != null
+                && _gridPresenter.HexGrid != null
+                && _gridPresenter.HexGrid.TryGetCell(coordinates, out HexCell cell)
+                && !cell.IsOccupied;
         }
 
         private void TrySelectUnitAt(HexCoordinates coordinates)
@@ -1037,17 +1112,10 @@ namespace GooGalaxy.Playtest
 
             MoveType moveType = distance == CloneRange ? MoveType.Clone : MoveType.Jump;
 
-            if (!TryBeginCardPlay(moveType, out ICardData playedCard))
-            {
-                return;
-            }
-
             var command = new MoveCommand(moveType, _selectedCoordinates, target, unit.PlayerId, _selectedUnitId);
             MovementResult result = _unitPresenter.ResolveMove(command);
 
             Debug.Log($"PlaytestBootstrap: {moveType} from {_selectedCoordinates} to {target} → {result}.", this);
-
-            CompleteCardPlay(playedCard, result);
 
             if (result == MovementResult.Success)
             {
@@ -1061,110 +1129,47 @@ namespace GooGalaxy.Playtest
             ClearSelection();
         }
 
-        /// <summary>
-        /// Prepares a card-driven Clone: checks the card is playable and tells the spawner what to build.
-        /// Energy is only spent once the move resolves, so an illegal move never costs anything.
-        /// </summary>
-        /// <returns>False when the play is rejected and the move must not be attempted.</returns>
-        private bool TryBeginCardPlay(MoveType moveType, out ICardData playedCard)
+        private void HandleCardSelected(int slotIndex)
         {
-            playedCard = null;
-
-            if (string.IsNullOrEmpty(_selectedCardId))
-            {
-                return true;
-            }
-
-            // A Jump relocates an existing unit and creates nothing, so there is no identity for a card to
-            // decide. Rather than silently charging for it, the card is ignored and the plain move goes through.
-            if (moveType != MoveType.Clone)
-            {
-                Debug.Log("PlaytestBootstrap: cards apply to Clone only — the Jump resolves without spending the card.", this);
-                return true;
-            }
-
-            if (!_cardPresenter.TryGetCard(new CardId(_selectedCardId), out playedCard))
-            {
-                Debug.LogError($"PlaytestBootstrap: card '{_selectedCardId}' is not on the CardPresenter roster.", this);
-                return false;
-            }
-
-            if (_energyPresenter != null && _energyPresenter.GetEnergy(_activePlayerId) < playedCard.EnergyCost)
-            {
-                Debug.Log($"PlaytestBootstrap: P{_activePlayerId} cannot afford {playedCard.DisplayName} ({playedCard.EnergyCost} energy).", this);
-                playedCard = null;
-                return false;
-            }
-
-            _spawner.PendingCardId = playedCard.CardId;
-
-            return true;
+            SelectCard(slotIndex);
         }
 
-        // Charges for the card and gives the spawned unit the card's own capability. UnitPresenter copies the
-        // source unit's capability onto a clone, which would let a cloned Volatile Mass keep cloning.
-        private void CompleteCardPlay(ICardData playedCard, MovementResult result)
-        {
-            _spawner.PendingCardId = default;
-
-            if (playedCard == null)
-            {
-                return;
-            }
-
-            if (result != MovementResult.Success)
-            {
-                return;
-            }
-
-            if (_energyPresenter != null)
-            {
-                _energyPresenter.TrySpendEnergy(_activePlayerId, playedCard.EnergyCost);
-            }
-
-            if (_unitPresenter.ActiveUnits.TryGetValue(_spawner.LastSpawnedUnitId, out GridUnit spawnedUnit))
-            {
-                _unitPresenter.RegisterUnit(spawnedUnit, ResolveMoveCapability(playedCard));
-            }
-
-            // The card has been spent, so the pick is over. A rejected move keeps its card selected instead, so
-            // a mistimed tap does not cost the player the choice they already made.
-            SelectCard(null);
-        }
-
-        private void HandleCardSelected(string cardId)
-        {
-            SelectCard(cardId);
-        }
-
-        private void SelectCard(string cardId)
+        private void SelectCard(int slotIndex)
         {
             // Changing the pick abandons whatever cluster was half-built for the previous one, since the target
             // count and radius belong to that card's impact rather than to the board.
-            if (_selectedCardId != cardId)
+            if (_selectedSlotIndex != slotIndex)
             {
                 ClearSpellAim();
             }
 
-            _selectedCardId = cardId;
-            CacheSelectedSpell(cardId);
+            _selectedSlotIndex = slotIndex;
+            CacheSelectedSpell(slotIndex);
 
             if (_hudView != null)
             {
-                _hudView.SetSelectedCard(cardId);
+                _hudView.SetSelectedCard(slotIndex);
             }
         }
 
         // The roster probe happens once per pick rather than once per frame: Update would otherwise build a
         // CardId, hash its string, and probe the card dictionary on every frame of the match — including the
-        // common one where no card is picked and nothing was pressed, where nobody reads the answer.
-        private void CacheSelectedSpell(string cardId)
+        // common one where no card is picked and nothing was pressed, where nobody reads the answer. Indexes
+        // straight into _hand rather than searching it by id, because the slot is what TryPlayCard names.
+        private void CacheSelectedSpell(int slotIndex)
         {
             _selectedSpellCard = null;
             _isSpellSelected = false;
             _selectedSpellClusterSize = 0;
 
-            if (string.IsNullOrEmpty(cardId) || !_cardPresenter.TryGetCard(new CardId(cardId), out ICardData card) || card.Type != CardType.Spell)
+            if (slotIndex < 0 || slotIndex >= _hand.Count)
+            {
+                return;
+            }
+
+            string cardId = _hand[slotIndex].CardId;
+
+            if (!_cardPresenter.TryGetCard(new CardId(cardId), out ICardData card) || card.Type != CardType.Spell)
             {
                 return;
             }
@@ -1187,8 +1192,15 @@ namespace GooGalaxy.Playtest
             ClearSelection();
             ClearSpellAim();
 
+            // Each player has their own hand, dealt independently, so a slot index meaningful in the old hand
+            // may name an entirely different card — or nothing — in the new one. The pick is dropped with it,
+            // and the HUD is rebuilt for whoever is active now rather than continuing to show the last hand.
+            SelectCard(-1);
+            BuildHand();
+
             if (_hudView != null)
             {
+                _hudView.SetHand(_hand, _nextHandCard);
                 _hudView.SetActivePlayer(_activePlayerId);
             }
 

@@ -101,6 +101,16 @@ namespace GooGalaxy.Runtime.Board.Controllers
             }
 
             _hasLoggedBoardUnavailable = false;
+
+            // The acting unit is the landing hex's occupant, never `command.UnitId` — see MoveCommand.UnitId.
+            // Reading the radius off the command would miss the registry on every Deploy and silently fall back
+            // to the default: a deployed Volatile Mass, authored at radius 2, would under-convert with no error
+            // and a green suite.
+            int conversionRadius =
+                grid.TryGetCell(command.Target, out HexCell landingCell) && landingCell.IsOccupied
+                    ? GetConversionRadius(landingCell.OccupantUnitId)
+                    : BoardMetrics.DefaultConversionRadius;
+
             _isResolvingConversions = true;
 
             try
@@ -114,7 +124,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
                         _unitPresenter.ActiveUnits,
                         affectedCoordinates,
                         command.PlayerId,
-                        GetConversionRadius(command.UnitId),
+                        conversionRadius,
                         _areaBuffer,
                         _attemptedUnitIds,
                         _convertedUnitIds,

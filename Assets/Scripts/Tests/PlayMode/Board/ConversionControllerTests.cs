@@ -36,6 +36,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private static readonly HexCoordinates _adjacentCoords = new(1, 0);
         private static readonly HexCoordinates _distantCoords = new(3, 0);
         private static readonly HexCoordinates _secondAdjacentCoords = new(4, 0);
+        private static readonly HexCoordinates _radiusTwoVictimCoords = new(2, 0);
+        private static readonly HexCoordinates _cloneSourceCoords = new(-4, 0);
 
         private readonly List<int> _capturedConvertedIds = new();
         private readonly List<int> _capturedArmorStrippedIds = new();
@@ -149,6 +151,51 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // THEN
             Assert.That(_capturedArmorStrippedIds, Does.Contain(armoredEnemy.UnitId));
             Assert.That(_capturedConvertedIds, Is.Empty);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleMoveExecuted_DeployedUnitAuthoredAtConversionRadiusTwo_ConvertsAtRadiusTwo()
+        {
+            // GIVEN — regression for the defect this task fixed: GetConversionRadius used to read command.UnitId,
+            // which a Deploy never carries, and silently fell back to radius 1.
+            yield return ActivateBoard();
+
+            var radiusTwoCapability = new FakeRadiusTwoCapability();
+            Assert.That(
+                _unitPresenter.RegisterUnit(new GridUnit(ActingUnitId, ActingPlayerId, new CardId("volatile_mass"), _origin), radiusTwoCapability),
+                Is.True
+            );
+            GridUnit victim = RegisterUnitAt(EnemyUnitId, RivalPlayerId, _radiusTwoVictimCoords);
+            var command = MoveCommand.ForDeploy(_origin, ActingPlayerId);
+
+            // WHEN
+            MatchEvents.RaiseMoveExecuted(command, new List<HexCoordinates> { _origin });
+
+            // THEN
+            Assert.That(victim.PlayerId, Is.EqualTo(ActingPlayerId));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator HandleMoveExecuted_ClonedUnitAuthoredAtConversionRadiusTwo_ConvertsAtRadiusTwoFromTheCopy()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            var radiusTwoCapability = new FakeRadiusTwoCapability();
+            Assert.That(
+                _unitPresenter.RegisterUnit(new GridUnit(SecondActingUnitId, ActingPlayerId, new CardId("volatile_mass"), _origin), radiusTwoCapability),
+                Is.True
+            );
+            GridUnit victim = RegisterUnitAt(EnemyUnitId, RivalPlayerId, _radiusTwoVictimCoords);
+            var command = new MoveCommand(MoveType.Clone, _cloneSourceCoords, _origin, ActingPlayerId, ActingUnitId);
+
+            // WHEN
+            MatchEvents.RaiseMoveExecuted(command, new List<HexCoordinates> { _origin });
+
+            // THEN
+            Assert.That(victim.PlayerId, Is.EqualTo(ActingPlayerId));
         }
 
         [UnityTest]
@@ -330,6 +377,21 @@ namespace GooGalaxy.Tests.PlayMode.Board
             public int CloneDistance => BoardMetrics.DefaultCloneDistance;
 
             public int JumpDistance => BoardMetrics.DefaultJumpDistance;
+        }
+
+        private sealed class FakeRadiusTwoCapability : IMoveCapable, IConversionCapable
+        {
+            public bool CanClone => true;
+
+            public bool CanJump => true;
+
+            public bool CanIgnoreHazards => false;
+
+            public int CloneDistance => BoardMetrics.DefaultCloneDistance;
+
+            public int JumpDistance => BoardMetrics.DefaultJumpDistance;
+
+            public int ConversionRadius => 2;
         }
 
         // Permissive on purpose: this fixture exercises conversion and ability resolution, never Energy pricing,

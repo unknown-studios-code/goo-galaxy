@@ -26,7 +26,7 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const string MoveNotValidatedFormat =
             "MovementResolver received an unvalidated {0} command from {1} to {2}. Run MovementValidator and only resolve a Success result.";
 
-        public const string UnitSpawnFailedFormat = "Unit spawner failed to produce a clone for player {0} at {1}. The board was left unchanged.";
+        public const string UnitSpawnFailedFormat = "Unit spawner failed to produce a unit for player {0} at {1}. The board was left unchanged.";
 
         public const string MoveResolveReentered =
             "MovementResolver was re-entered from a MoveExecuted subscriber. Queue follow-up moves instead of resolving them during event dispatch.";

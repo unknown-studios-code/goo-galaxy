@@ -129,11 +129,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         [Test]
         public void NoActingUnit_EqualsHexCellNoOccupant()
         {
-            // GIVEN
-
-            // WHEN — "no unit here" and "no unit acting" must read as the same sentinel.
-
-            // THEN
+            // THEN — "no unit here" and "no unit acting" must read as the same sentinel.
             Assert.That(AbilityContext.NoActingUnit, Is.EqualTo(HexCell.NoOccupant));
         }
     }

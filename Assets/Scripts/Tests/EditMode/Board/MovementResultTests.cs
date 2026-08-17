@@ -41,5 +41,17 @@ namespace GooGalaxy.Tests.EditMode.Board
             // THEN
             Assert.That((int)result, Is.EqualTo(14));
         }
+
+        [Test]
+        public void NotAdjacentToOwnedTerritory_Value_Equals15()
+        {
+            // GIVEN
+
+            // WHEN
+            const MovementResult result = MovementResult.NotAdjacentToOwnedTerritory;
+
+            // THEN
+            Assert.That((int)result, Is.EqualTo(15));
+        }
     }
 }

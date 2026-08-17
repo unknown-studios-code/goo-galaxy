@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Commands;
@@ -7,20 +8,25 @@ using GooGalaxy.Runtime.Shared.Types;
 namespace GooGalaxy.Runtime.Board.Services
 {
     /// <summary>
-    /// Stateless legality checks for Clone and Jump moves.
+    /// Stateless legality checks for Deploy, Clone and Jump moves.
     /// Deterministic and allocation-free: the same board state and command always produce the same
     /// result code, and no collection, string, or boxed value is created on any path.
     /// </summary>
     /// <remarks>
-    /// The commanded unit is resolved from <c>MoveCommand.UnitId</c> against the supplied registry and
-    /// cross-checked against the source cell's occupant, so the grid and the registry can never drift
-    /// unnoticed. Callers must supply a non-null grid and registry.
+    /// For a Clone and a Jump the commanded unit is resolved from <c>MoveCommand.UnitId</c> against the supplied
+    /// registry and cross-checked against the source cell's occupant, so the grid and the registry can never
+    /// drift unnoticed. Callers must supply a non-null grid and registry.
     /// Checks run in a fixed order so the returned code is predictable when several rules are broken at once:
     /// source presence, unit identity, ownership, status, capability, range, target passability, target vacancy,
     /// target hazard. The hazard check is last because it is the only target rule that depends on the moving
     /// unit rather than on the board alone — the same reason ownership and capability sit after source presence.
     /// A cell that is both occupied and hazardous therefore reports <c>TargetOccupied</c>, the reason that holds
     /// for every unit.
+    /// <para>
+    /// A Deploy reads none of those source rules — see <see cref="ValidateDeploy" /> for its own order. It still
+    /// carries a source: <c>MoveCommand.ForDeploy</c> sets it equal to the target, so the shared range check
+    /// measures zero and passes.
+    /// </para>
     /// </remarks>
     public static class MovementValidator
     {
@@ -55,11 +61,66 @@ namespace GooGalaxy.Runtime.Board.Services
         }
 
         /// <summary>
+        /// Validates a Deploy: a brand-new unit of the played card's type placed on an empty hex next to
+        /// territory the acting player already holds.
+        /// </summary>
+        /// <remarks>
+        /// There is no range check and <c>MoveCommand.Source</c> is never read — a Deploy has no source unit to
+        /// measure from, which is also why no ownership, status, or identity rule applies. The card's own
+        /// capability is required all the same, because it is what decides whether the target's hazard bars it.
+        /// <para>
+        /// Checks run in a fixed order, so the returned code is predictable when several rules are broken at
+        /// once: capability presence, target passability, target vacancy, target hazard, then adjacency to owned
+        /// territory. Adjacency is last for the same reason the hazard check is last on the other two paths — it
+        /// is the only rule here that depends on the acting <i>player</i> rather than on the board alone, so a
+        /// hex that is both occupied and outside the player's territory reports <c>TargetOccupied</c>, the
+        /// reason that holds for every player.
+        /// </para>
+        /// <para>
+        /// Allocation-free, and contractually so: adjacency walks the six directions over a span and reads the
+        /// grid one cell at a time, rather than gathering neighbours into a buffer this stateless class has
+        /// nowhere to keep.
+        /// </para>
+        /// </remarks>
+        /// <param name="grid">The board being played on.</param>
+        /// <param name="units">The registry of live units, keyed by unit id.</param>
+        /// <param name="command">The requested Deploy, built with <c>MoveCommand.ForDeploy</c>.</param>
+        /// <param name="capability">The played card's capability. A null one is rejected outright.</param>
+        /// <returns>Success, or the first rule the command violates.</returns>
+        public static MovementResult ValidateDeploy(HexGrid grid, IReadOnlyDictionary<int, GridUnit> units, in MoveCommand command, IMoveCapable capability)
+        {
+            if (capability == null)
+            {
+                return MovementResult.CapabilityMissing;
+            }
+
+            if (!grid.TryGetCell(command.Target, out HexCell targetCell) || targetCell.IsBlocked)
+            {
+                return MovementResult.TargetBlocked;
+            }
+
+            if (targetCell.IsOccupied)
+            {
+                return MovementResult.TargetOccupied;
+            }
+
+            if (targetCell.HasHazard && !capability.CanIgnoreHazards)
+            {
+                return MovementResult.TargetHazardous;
+            }
+
+            if (!IsAdjacentToOwnedUnit(grid, units, command.Target, command.PlayerId))
+            {
+                return MovementResult.NotAdjacentToOwnedTerritory;
+            }
+
+            return MovementResult.Success;
+        }
+
+        /// <remarks>
         /// Validates every rule that depends only on the board: source presence, unit identity, range, and
         /// target passability and vacancy. Ownership, capability, and the target hazard rule are excluded
         /// because they describe the commanding player and its unit rather than the board.
-        /// </summary>
-        /// <remarks>
         /// Shared with <see cref="MovementResolver"/> so its pre-mutation guards cannot drift away from the
         /// rules enforced here.
         /// <para>
@@ -70,16 +131,16 @@ namespace GooGalaxy.Runtime.Board.Services
         /// hazardous target, because <see cref="ValidateClone"/> and <see cref="ValidateJump"/> already
         /// rejected it, so nothing is lost by leaving the check out.
         /// </para>
+        /// <para>
+        /// A Deploy skips the source rules entirely and leaves <paramref name="sourceCell" /> and
+        /// <paramref name="sourceUnit" /> null, because it acts with no source unit: demanding an occupied
+        /// source holding <c>command.UnitId</c> would reject every legal Deploy. The range check still runs and
+        /// still passes — <c>MoveCommand.ForDeploy</c> sets the source equal to the target, which measures zero,
+        /// and <see cref="GetRequiredDistance" /> answers zero for a type that authors no distance. Its adjacency
+        /// to owned territory is left out for the same reason as the hazard rule above: it depends on the acting
+        /// player rather than on the board, and <see cref="ValidateDeploy" /> has already enforced it.
+        /// </para>
         /// </remarks>
-        /// <param name="grid">The board being played on.</param>
-        /// <param name="units">The registry of live units, keyed by unit id.</param>
-        /// <param name="command">The requested move.</param>
-        /// <param name="moveType">The move type selecting which authored distance the command must match.</param>
-        /// <param name="capability">The commanded unit's movement capability, read for its authored distances only.</param>
-        /// <param name="sourceCell">The source cell, set when the result is Success.</param>
-        /// <param name="sourceUnit">The commanded unit, set when the result is Success.</param>
-        /// <param name="targetCell">The target cell, set when the result is Success.</param>
-        /// <returns>Success, or the first board rule the command violates.</returns>
         internal static MovementResult ValidateBoardState(
             HexGrid grid,
             IReadOnlyDictionary<int, GridUnit> units,
@@ -92,11 +153,17 @@ namespace GooGalaxy.Runtime.Board.Services
         )
         {
             targetCell = null;
-            MovementResult sourceResult = ValidateSource(grid, units, command, out sourceCell, out sourceUnit);
+            sourceCell = null;
+            sourceUnit = null;
 
-            if (sourceResult != MovementResult.Success)
+            if (moveType != MoveType.Deploy)
             {
-                return sourceResult;
+                MovementResult sourceResult = ValidateSource(grid, units, command, out sourceCell, out sourceUnit);
+
+                if (sourceResult != MovementResult.Success)
+                {
+                    return sourceResult;
+                }
             }
 
             return ValidateTarget(grid, command, GetRequiredDistance(capability, moveType), capability: null, out targetCell);
@@ -189,6 +256,29 @@ namespace GooGalaxy.Runtime.Board.Services
             }
 
             return MovementResult.Success;
+        }
+
+        // PERF: walks the six directions over the shared span and probes the grid one coordinate at a time,
+        // rather than calling HexGrid.GetNeighbors — that needs a List<HexCell> buffer, and a stateless class
+        // has nowhere to keep one without allocating a fresh list on every validated Deploy.
+        private static bool IsAdjacentToOwnedUnit(HexGrid grid, IReadOnlyDictionary<int, GridUnit> units, HexCoordinates target, int playerId)
+        {
+            ReadOnlySpan<HexCoordinates> directions = HexDirection.All;
+
+            for (int i = 0; i < directions.Length; i++)
+            {
+                if (!grid.TryGetCell(target.GetNeighbor(directions[i]), out HexCell neighborCell) || !neighborCell.IsOccupied)
+                {
+                    continue;
+                }
+
+                if (units.TryGetValue(neighborCell.OccupantUnitId, out GridUnit neighborUnit) && neighborUnit.PlayerId == playerId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsMovePermitted(IMoveCapable capability, MoveType moveType)

@@ -701,6 +701,148 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        public void ValidateDeploy_TargetAdjacentToOwnedUnit_ReturnsSuccess()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
+        public void ValidateDeploy_NullCapability_ReturnsCapabilityMissing()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, null);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.CapabilityMissing));
+        }
+
+        [Test]
+        public void ValidateDeploy_TargetOffGrid_ReturnsTargetBlocked()
+        {
+            // GIVEN
+            var command = MoveCommand.ForDeploy(_outsideGridCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetBlocked));
+        }
+
+        [Test]
+        public void ValidateDeploy_TargetCellBlocked_ReturnsTargetBlocked()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            BlockCell(_adjacentCoords);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetBlocked));
+        }
+
+        [Test]
+        public void ValidateDeploy_TargetOccupied_ReturnsTargetOccupied()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            PlaceUnit(RivalUnitId, RivalPlayerId, _adjacentCoords);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetOccupied));
+        }
+
+        [Test]
+        public void ValidateDeploy_TargetHazardous_ReturnsTargetHazardous()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_adjacentCoords);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetHazardous));
+        }
+
+        [Test]
+        public void ValidateDeploy_HazardousTargetWithHazardIgnoringCapability_ReturnsSuccess()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            SetHazard(_adjacentCoords);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _hazardIgnoringCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.Success));
+        }
+
+        [Test]
+        public void ValidateDeploy_NoAdjacentUnits_ReturnsNotAdjacentToOwnedTerritory()
+        {
+            // GIVEN
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.NotAdjacentToOwnedTerritory));
+        }
+
+        [Test]
+        public void ValidateDeploy_OnlyAdjacentUnitIsEnemy_ReturnsNotAdjacentToOwnedTerritory()
+        {
+            // GIVEN
+            PlaceUnit(RivalUnitId, RivalPlayerId, _origin);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.NotAdjacentToOwnedTerritory));
+        }
+
+        [Test]
+        public void ValidateDeploy_TargetOccupiedAndNotAdjacentToOwnedTerritory_ReturnsTargetOccupied()
+        {
+            // GIVEN — the reason that holds for every player, reported ahead of a rule that depends on who is asking.
+            PlaceUnit(RivalUnitId, RivalPlayerId, _adjacentCoords);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+
+            // WHEN
+            MovementResult result = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+
+            // THEN
+            Assert.That(result, Is.EqualTo(MovementResult.TargetOccupied));
+        }
+
+        [Test]
         public void ValidateBoardState_HazardousTarget_ReturnsSuccessBecauseTheHazardRuleIsCapabilityRelative()
         {
             // GIVEN — pinned per the documented invariant: ValidateBoardState skips the hazard rule so a legal
@@ -738,6 +880,29 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "ValidateClone allocated memory on a hot path!");
+        }
+
+        [Test]
+        [Category("Allocation")]
+        public void ValidateDeploy_RepeatedCalls_AllocatesNoManagedMemory()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
+            _ = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability); // Warm-up to exclude JIT allocation.
+
+            // WHEN
+            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                _ = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+            }
+
+            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
+
+            // THEN
+            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "ValidateDeploy allocated memory on a hot path!");
         }
 
         private GridUnit PlaceUnit(int unitId, int playerId, HexCoordinates position)
