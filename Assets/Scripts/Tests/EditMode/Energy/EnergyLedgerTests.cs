@@ -8,9 +8,10 @@ using UnityEngine;
 
 namespace GooGalaxy.Tests.EditMode.Energy
 {
-    // Exercises the pure balance arithmetic of EnergyPresenter through the IEnergyLedger surface the board depends
-    // on. TryPayForMove and RefundMove mutate the balance synchronously and publish nothing themselves — publication
-    // is deferred to Update, which needs a frame and therefore cannot be driven from EditMode. That behavior lives in
+    // Exercises the pure balance arithmetic of EnergyPresenter through the IEnergyLedger and IDiscardLedger
+    // surfaces the board and the deck depend on. TryPayForMove/RefundMove and TryPayForDiscard/RefundDiscard all
+    // mutate the balance synchronously and publish nothing themselves — publication is deferred to Update, which
+    // needs a frame and therefore cannot be driven from EditMode. That behavior lives in
     // GooGalaxy.Tests.PlayMode.Energy.EnergyPresenterTests instead, which already owns this presenter's other
     // frame-dependent behavior (regeneration, overtime).
     [TestFixture]
@@ -24,6 +25,7 @@ namespace GooGalaxy.Tests.EditMode.Energy
         private GameObject _go;
         private EnergyPresenter _presenter;
         private IEnergyLedger _ledger;
+        private IDiscardLedger _discardLedger;
 
         [SetUp]
         public void SetUp()
@@ -31,6 +33,7 @@ namespace GooGalaxy.Tests.EditMode.Energy
             _go = new GameObject("EnergyLedger_Test");
             _presenter = _go.AddComponent<EnergyPresenter>();
             _ledger = _presenter;
+            _discardLedger = _presenter;
         }
 
         [TearDown]
@@ -79,7 +82,6 @@ namespace GooGalaxy.Tests.EditMode.Energy
         public void TryPayForMove_UnknownPlayer_ReturnsFalse()
         {
             // GIVEN
-            // no player was ever initialized on this ledger
 
             // WHEN
             bool paid = _ledger.TryPayForMove(UnknownPlayerId, MoveType.Jump, 1);
@@ -156,7 +158,6 @@ namespace GooGalaxy.Tests.EditMode.Energy
         public void RefundMove_UnknownPlayer_LeavesNoStateBehind()
         {
             // GIVEN
-            // no player was ever initialized on this ledger
 
             // WHEN
             _ledger.RefundMove(UnknownPlayerId, MoveType.Clone, 4);
@@ -194,6 +195,140 @@ namespace GooGalaxy.Tests.EditMode.Energy
             // THEN
             Assert.That(canAfford, Is.True);
             Assert.That(_presenter.GetEnergy(PlayerId), Is.EqualTo(2.5f).Within(Tolerance));
+        }
+
+        [Test]
+        public void TryPayForDiscard_Affordable_DeductsExactlyTheDiscardEnergyCost()
+        {
+            // GIVEN
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0.5f));
+
+            // WHEN
+            _discardLedger.TryPayForDiscard(PlayerId);
+
+            // THEN
+            Assert.That(_presenter.GetEnergy(PlayerId), Is.EqualTo(9.5f).Within(Tolerance));
+        }
+
+        [Test]
+        public void TryPayForDiscard_Unaffordable_ReturnsFalseAndLeavesTheBalanceUntouched()
+        {
+            // GIVEN — IDiscardLedger states the untouched balance as an invariant of a false return, so the
+            // balance is asserted here rather than only the boolean.
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 0.49f, 0.5f, 0.5f, 0.5f));
+
+            // WHEN
+            bool wasPaid = _discardLedger.TryPayForDiscard(PlayerId);
+
+            // THEN
+            Assert.That(wasPaid, Is.False);
+            Assert.That(_presenter.GetEnergy(PlayerId), Is.EqualTo(0.49f).Within(Tolerance));
+        }
+
+        [Test]
+        public void TryPayForDiscard_UnknownPlayer_ReturnsFalse()
+        {
+            // GIVEN
+
+            // WHEN
+            bool wasPaid = _discardLedger.TryPayForDiscard(UnknownPlayerId);
+
+            // THEN
+            Assert.That(wasPaid, Is.False);
+        }
+
+        [Test]
+        public void RefundDiscard_AfterAPaidDiscard_RestoresTheBalance()
+        {
+            // GIVEN
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0.5f));
+            _discardLedger.TryPayForDiscard(PlayerId);
+
+            // WHEN
+            _discardLedger.RefundDiscard(PlayerId);
+
+            // THEN
+            Assert.That(_presenter.GetEnergy(PlayerId), Is.EqualTo(10f).Within(Tolerance));
+        }
+
+        [Test]
+        public void RefundDiscard_ZeroCostCharge_WithdrawsThePendingSpend()
+        {
+            // GIVEN — mirrors RefundMove_ZeroCostCharge_WithdrawsThePendingSpend: TryPayForDiscard marks a spend
+            // pending even for a free discard, so the withdrawal in RefundDiscard must be unconditional too.
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0f));
+            _discardLedger.TryPayForDiscard(PlayerId);
+
+            // WHEN
+            _discardLedger.RefundDiscard(PlayerId);
+
+            // THEN
+            Assert.That(_presenter.GetState(PlayerId).PendingSpendCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RefundDiscard_CalledTwiceForOneCharge_ClampsPendingSpendCountAtZero()
+        {
+            // GIVEN — a second RefundDiscard for the same charge violates IDiscardLedger's documented call order
+            // (only legal once, immediately after the TryPayForDiscard it reverses); this pins only that
+            // PendingSpendCount clamps at zero instead of going negative. The resulting over-credited balance is
+            // outside the contract and is deliberately not asserted here.
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0.5f));
+            _discardLedger.TryPayForDiscard(PlayerId);
+            _discardLedger.RefundDiscard(PlayerId);
+
+            // WHEN
+            _discardLedger.RefundDiscard(PlayerId);
+
+            // THEN
+            Assert.That(_presenter.GetState(PlayerId).PendingSpendCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void RefundDiscard_UnknownPlayer_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => _discardLedger.RefundDiscard(UnknownPlayerId));
+        }
+
+        [Test]
+        public void CanAffordDiscard_BalanceExactlyAtTheCost_ReturnsTrue()
+        {
+            // GIVEN
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 0.5f, 0.5f, 0.5f, 0.5f));
+
+            // WHEN
+            bool canAfford = _discardLedger.CanAffordDiscard(PlayerId);
+
+            // THEN
+            Assert.That(canAfford, Is.True);
+        }
+
+        [Test]
+        public void CanAffordDiscard_BalanceJustBelowTheCost_ReturnsFalse()
+        {
+            // GIVEN
+            _presenter.InitializePlayer(PlayerId, new EnergyConfig(10f, 0f, 0.49f, 0.5f, 0.5f, 0.5f));
+
+            // WHEN
+            bool canAfford = _discardLedger.CanAffordDiscard(PlayerId);
+
+            // THEN
+            Assert.That(canAfford, Is.False);
+        }
+
+        [Test]
+        public void CanAffordDiscard_UnknownPlayer_ReturnsFalse()
+        {
+            // GIVEN
+
+            // WHEN
+            bool canAfford = _discardLedger.CanAffordDiscard(UnknownPlayerId);
+
+            // THEN
+            Assert.That(canAfford, Is.False);
         }
     }
 }

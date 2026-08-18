@@ -152,7 +152,7 @@ namespace GooGalaxy.Runtime.Deck.Models
         /// </summary>
         /// <remarks>
         /// The deck's single mutation, deliberately named for what it does to the cycle rather than for playing a
-        /// card: discarding a card (GOOM-10, Sample Purge) rotates the same way and reuses this exact primitive,
+        /// card: discarding a card (GOOM-10) rotates the same way and reuses this exact primitive,
         /// so nothing here may assume the card was played. Whether the rotation is allowed to happen at all is
         /// the caller's decision — <c>DeployController</c> only advances once the board has accepted the play.
         /// <para>

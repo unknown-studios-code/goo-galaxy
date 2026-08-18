@@ -154,6 +154,10 @@ namespace GooGalaxy.Runtime.Deck.Presenters
         /// <param name="slotIndex">The zero-based hand slot to read.</param>
         /// <param name="card">The card in that slot, or a default id when the player or the slot is unknown.</param>
         /// <returns>True when the player has a deck and the index names one of its hand slots.</returns>
+        /// <remarks>
+        /// Answers false both for an unknown player and for an out-of-range slot; a caller that has to tell the
+        /// two apart asks <see cref="TryGetHand" /> first.
+        /// </remarks>
         public bool TryGetSlot(int playerId, int slotIndex, out CardId card)
         {
             if (!_playerDecks.TryGetValue(playerId, out DeckState deck))
@@ -177,9 +181,11 @@ namespace GooGalaxy.Runtime.Deck.Presenters
         }
 
         /// <remarks>
-        /// Called only once the board has accepted the play, which is what makes the cycle advance a consequence
-        /// of a resolved action rather than of an attempted one. Publishes <c>MatchEvents.HandChanged</c> with
-        /// the rotated hand; nothing is published when the rotation is refused.
+        /// Called only once the action consuming the slot has been accepted — a play the board resolved
+        /// (<c>DeployController.TryPlayCard</c>) or a discard the ledger has already charged
+        /// (<c>CardDiscardController.TryDiscardCard</c>) — which is what makes the cycle advance a consequence of
+        /// a resolved action rather than of an attempted one. Publishes <c>MatchEvents.HandChanged</c> with the
+        /// rotated hand; nothing is published when the rotation is refused.
         /// </remarks>
         internal bool TryAdvanceSlot(int playerId, int slotIndex, out CardId played)
         {

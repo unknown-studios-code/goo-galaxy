@@ -12,6 +12,7 @@ using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.Shared.Utils;
 using UnityEngine;
 using VContainer;
 
@@ -52,6 +53,17 @@ namespace GooGalaxy.Runtime.Deck.Controllers
         private UnitPresenter _unitPresenter;
         private AbilityController _abilityController;
         private IEnergyLedger _energyLedger;
+        private bool _isResolving;
+
+        /// <remarks>
+        /// True from the moment <see cref="TryPlayCard"/> clears its dependency and re-entrancy checks until it
+        /// returns, on every path including a rejection. Exists so a discard raised from an event subscriber
+        /// cannot rotate the hand mid-play: <see cref="TryPlayCard"/> reads the slot at the top of its body and
+        /// advances that same index at the bottom, and a rotation landing in between would advance a slot whose
+        /// card is no longer the one that was played, cycling an extra card out of the hand. Assembly-internal
+        /// because the only other reader is <c>CardDiscardController</c>, in this same assembly.
+        /// </remarks>
+        internal bool IsResolving => _isResolving;
 
         /// <remarks>
         /// The ledger is held as the <c>Runtime.Shared</c> interface, so playing a card creates no dependency on
@@ -112,7 +124,10 @@ namespace GooGalaxy.Runtime.Deck.Controllers
         /// </para>
         /// <para>
         /// Checks run in a fixed order, so the returned code is predictable when several would fail at once: the
-        /// player, then the slot, then the card, then the target count, then whatever the board decides.
+        /// injected deck, then re-entrancy, then the player, then the slot, then the card, then the target count,
+        /// then whatever the board decides. A play attempted from inside another play's event dispatch is
+        /// rejected with <see cref="CardPlayResult.ResolverBusy" /> ahead of all but the first — see
+        /// <see cref="IsResolving" />.
         /// </para>
         /// <para>
         /// Sits on the input path, once per player action, and allocates nothing after the first play of each
@@ -134,39 +149,56 @@ namespace GooGalaxy.Runtime.Deck.Controllers
                 return CardPlayResult.BoardUnavailable;
             }
 
-            // Asked before the slot, and only for the player's existence, so an unknown player and an unknown
-            // slot stay distinguishable: TryGetSlot alone answers false for both.
-            if (!_deckPresenter.TryGetHand(playerId, out _))
+            // Checked, not merely raised: a nested play from an event subscriber would otherwise clear this flag
+            // in its own finally while the outer play still sits between its slot read and its rotation, and a
+            // discard resolved in that window would rotate the hand out from under it.
+            if (_isResolving)
             {
-                return CardPlayResult.UnknownPlayer;
+                return CardPlayResult.ResolverBusy;
             }
 
-            if (!_deckPresenter.TryGetSlot(playerId, slotIndex, out CardId cardId))
+            _isResolving = true;
+
+            try
             {
-                return CardPlayResult.SlotOutOfRange;
-            }
+                // Asked before the slot, and only for the player's existence, so an unknown player and an unknown
+                // slot stay distinguishable: TryGetSlot alone answers false for both.
+                if (!_deckPresenter.TryGetHand(playerId, out _))
+                {
+                    return CardPlayResult.UnknownPlayer;
+                }
 
-            if (_cardPresenter == null || !_cardPresenter.TryGetCard(cardId, out ICardData card))
+                if (!_deckPresenter.TryGetSlot(playerId, slotIndex, out CardId cardId))
+                {
+                    return CardPlayResult.SlotOutOfRange;
+                }
+
+                if (_cardPresenter == null || !_cardPresenter.TryGetCard(cardId, out ICardData card))
+                {
+                    return CardPlayResult.CardNotFound;
+                }
+
+                // Troop is every branch but Spell, because CardType.Troop is zero and is therefore what an asset
+                // whose type was never authored deserializes to. A troop play is fully validated by the board, so a
+                // mis-authored card is rejected on the rules rather than on a type the HUD cannot see.
+                CardPlayResult result = card.Type == CardType.Spell ? PlaySpell(playerId, cardId, card, targets) : PlayTroop(playerId, cardId, card, targets);
+
+                if (result != CardPlayResult.Success)
+                {
+                    return result;
+                }
+
+                if (!_deckPresenter.TryAdvanceSlot(playerId, slotIndex, out _))
+                {
+                    return CardPlayResult.BoardUnavailable;
+                }
+
+                return CardPlayResult.Success;
+            }
+            finally
             {
-                return CardPlayResult.CardNotFound;
+                _isResolving = false;
             }
-
-            // Troop is every branch but Spell, because CardType.Troop is zero and is therefore what an asset
-            // whose type was never authored deserializes to. A troop play is fully validated by the board, so a
-            // mis-authored card is rejected on the rules rather than on a type the HUD cannot see.
-            CardPlayResult result = card.Type == CardType.Spell ? PlaySpell(playerId, cardId, card, targets) : PlayTroop(playerId, cardId, card, targets);
-
-            if (result != CardPlayResult.Success)
-            {
-                return result;
-            }
-
-            if (!_deckPresenter.TryAdvanceSlot(playerId, slotIndex, out _))
-            {
-                return CardPlayResult.BoardUnavailable;
-            }
-
-            return CardPlayResult.Success;
         }
 
         // The whole of the board-to-HUD translation, kept in one place so the grouping is auditable against the
@@ -230,7 +262,7 @@ namespace GooGalaxy.Runtime.Deck.Controllers
                 return CardPlayResult.InvalidTargetCount;
             }
 
-            if (_abilityController == null || _energyLedger == null)
+            if (_abilityController == null || UnityReference.IsUnavailable(_energyLedger))
             {
                 return CardPlayResult.BoardUnavailable;
             }

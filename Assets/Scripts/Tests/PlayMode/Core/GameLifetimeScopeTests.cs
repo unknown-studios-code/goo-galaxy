@@ -35,6 +35,9 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _jumpTarget = new(2, 0);
 
+        private readonly List<GameObject> _autoScaffoldedGOs = new();
+        private readonly List<CardDataSO> _kitCards = new();
+
         private GameObject _scopeGO;
         private GameObject _presenterGO;
         private GameObject _energyPresenterGO;
@@ -43,8 +46,6 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
         private KitDataSO _kit;
-        private readonly List<GameObject> _autoScaffoldedGOs = new();
-        private readonly List<CardDataSO> _kitCards = new();
 
         [TearDown]
         public void TearDown()
@@ -129,6 +130,22 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
             // THEN
             Assert.That(_scope.Container.Resolve<IEnergyLedger>(), Is.SameAs(_energyPresenter));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesTheSceneEnergyPresenterAsIDiscardLedger()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            _energyPresenterGO = CreateEnergyPresenter();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<IDiscardLedger>(), Is.SameAs(_energyPresenter));
         }
 
         [Test]
@@ -220,6 +237,45 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
         [Test]
         [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesCardDiscardController()
+        {
+            // GIVEN — CardDiscardController carries no scene requirements of its own, so a missing one is
+            // expected to be auto-scaffolded by BuildContainer rather than fail this fixture.
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<CardDiscardController>(), Is.Not.Null);
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_InjectsARealDeckPresenterIntoTheCardDiscardController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+            CardDiscardController discardController = _scope.Container.Resolve<CardDiscardController>();
+
+            // WHEN
+            CardDiscardResult result = discardController.TryDiscardCard(ActingPlayerId, 0);
+
+            // THEN
+            Assert.That(
+                result,
+                Is.EqualTo(CardDiscardResult.UnknownPlayer),
+                "DeckUnavailable would mean a dependency was never injected; UnknownPlayer only proves CardDiscardController.Construct "
+                    + "received a non-null DeckPresenter, IDiscardLedger and DeployController — a bare auto-scaffolded DeckPresenter "
+                    + "returns UnknownPlayer too, so this does not prove the scene's real, kitted one was wired in."
+            );
+        }
+
+        [Test]
+        [Timeout(10000)]
         public void Configure_WithPresentersInScene_InjectsARealDeckPresenterIntoTheDeployController()
         {
             // GIVEN
@@ -235,9 +291,10 @@ namespace GooGalaxy.Tests.PlayMode.Core
             Assert.That(
                 result,
                 Is.EqualTo(CardPlayResult.UnknownPlayer),
-                "BoardUnavailable would mean DeckPresenter itself was never injected; UnknownPlayer proves the container wired the "
-                    + "scene's real, kitted DeckPresenter into DeployController.Construct alongside the other four dependencies "
-                    + "BuildContainer already had to auto-scaffold for the container to build at all."
+                "BoardUnavailable would mean a dependency was never injected; UnknownPlayer only proves DeployController.Construct "
+                    + "received a non-null DeckPresenter alongside the other four dependencies BuildContainer already had to "
+                    + "auto-scaffold for the container to build at all — a bare auto-scaffolded DeckPresenter returns UnknownPlayer "
+                    + "too, so this does not prove the scene's real, kitted one was wired in."
             );
         }
 

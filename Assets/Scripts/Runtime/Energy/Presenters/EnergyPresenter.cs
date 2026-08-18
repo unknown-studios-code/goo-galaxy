@@ -13,11 +13,12 @@ namespace GooGalaxy.Runtime.Energy.Presenters
     /// Presenter that orchestrates the real-time energy systems of active players in a match.
     /// </summary>
     /// <remarks>
-    /// It is also the board's <see cref="IEnergyLedger"/>: the board reports the action and what the acting unit
-    /// is worth, and the price is resolved here against that player's own configuration, since the two players
-    /// are configured independently.
+    /// It is also the board's <see cref="IEnergyLedger"/> and the deck's <see cref="IDiscardLedger"/>. No caller
+    /// computes a price: a move reports which action and what the acting unit is worth, a discard reports only
+    /// who is acting, and both prices are resolved here against that player's own configuration, since the two
+    /// players are configured independently.
     /// </remarks>
-    public class EnergyPresenter : MonoBehaviour, IEnergyLedger
+    public class EnergyPresenter : MonoBehaviour, IEnergyLedger, IDiscardLedger
     {
         // PERF: the smallest balance change worth broadcasting. Regeneration moves roughly 0.006 per frame at the
         // authored rate, so a per-frame epsilon suppresses nothing and every frame reaches every subscriber. This
@@ -119,7 +120,6 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             return result;
         }
 
-        /// <inheritdoc />
         public bool CanAffordMove(int playerId, MoveType moveType, int unitEnergyCost)
         {
             if (!_playerStates.TryGetValue(playerId, out EnergyState state))
@@ -130,7 +130,6 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             return EnergyValidator.CanAfford(state.CurrentEnergy, MoveCostResolver.GetCost(moveType, unitEnergyCost, state.Config));
         }
 
-        /// <inheritdoc />
         public bool TryPayForMove(int playerId, MoveType moveType, int unitEnergyCost)
         {
             if (!_playerStates.TryGetValue(playerId, out EnergyState state))
@@ -157,7 +156,6 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             return true;
         }
 
-        /// <inheritdoc />
         public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost)
         {
             if (!_playerStates.TryGetValue(playerId, out EnergyState state))
@@ -173,6 +171,61 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             state.CancelPendingSpend();
 
             float cost = MoveCostResolver.GetCost(moveType, unitEnergyCost, state.Config);
+
+            if (cost <= 0f)
+            {
+                return;
+            }
+
+            state.SetEnergy(state.CurrentEnergy + cost);
+        }
+
+        public bool CanAffordDiscard(int playerId)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return false;
+            }
+
+            return EnergyValidator.CanAfford(state.CurrentEnergy, state.Config.DiscardEnergyCost);
+        }
+
+        public bool TryPayForDiscard(int playerId)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return false;
+            }
+
+            float cost = state.Config.DiscardEnergyCost;
+            float energy = state.CurrentEnergy;
+
+            // Deliberately silent, for the same reason TryPayForMove is: a rejection announced here would make an
+            // unaffordable discard distinguishable from one that was never attempted, and a charge that is later
+            // refunded must net to no change. Both the balance change and the spend are flushed from Update.
+            if (EnergyValidator.TrySpend(ref energy, cost) != SpendResult.Success)
+            {
+                return false;
+            }
+
+            state.SetEnergy(energy);
+            state.MarkSpendPending();
+
+            return true;
+        }
+
+        public void RefundDiscard(int playerId)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return;
+            }
+
+            // Withdrawn before the amount is even known, and on no condition — see RefundMove for why the two
+            // must cancel on the same predicate rather than one gated on the cost.
+            state.CancelPendingSpend();
+
+            float cost = state.Config.DiscardEnergyCost;
 
             if (cost <= 0f)
             {

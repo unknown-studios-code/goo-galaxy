@@ -126,9 +126,9 @@ namespace GooGalaxy.Runtime.Shared.Events
         public static event Action<int, int> FuseExpired;
 
         /// <summary>
-        /// Raised whenever a player's hand changes — dealt at match start, and rotated once the board has
-        /// accepted a play — carrying the player id, the cards now in hand, and the card that will fill the next
-        /// freed slot.
+        /// Raised whenever a player's hand changes — dealt at match start, and rotated whenever a slot is
+        /// consumed, by a play the board accepted or by a discard — carrying the player id, the cards now in
+        /// hand, and the card that will fill the next freed slot.
         /// </summary>
         /// <remarks>
         /// The hand list is the deck's own storage, not a per-dispatch buffer: the reference stays valid for the
@@ -139,6 +139,18 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// bind to.
         /// </remarks>
         public static event Action<int, IReadOnlyList<CardId>, CardId> HandChanged;
+
+        /// <summary>
+        /// Raised after a card has been discarded from hand, carrying the player id, the card that left the
+        /// hand, and the slot index it left.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="HandChanged"/> is necessarily raised first, from inside the rotation that discarding
+        /// reuses, so by the time this arrives the hand already holds the replacement — which is exactly why
+        /// this payload carries the outgoing card itself rather than expecting a subscriber to still find it in
+        /// the hand. The payload is value types only, so there is nothing for a subscriber to copy.
+        /// </remarks>
+        public static event Action<int, CardId, int> CardDiscarded;
 
         /// <summary>Publishes <see cref="MatchStarted"/>.</summary>
         /// <param name="config">The configuration the match runs with.</param>
@@ -268,6 +280,18 @@ namespace GooGalaxy.Runtime.Shared.Events
         }
 
         /// <summary>
+        /// Publishes <see cref="CardDiscarded"/>. Called only after the hand has already rotated, once
+        /// <see cref="HandChanged"/> has been raised for the same discard.
+        /// </summary>
+        /// <param name="playerId">The player who discarded the card.</param>
+        /// <param name="discardedCard">The card that left the hand.</param>
+        /// <param name="slotIndex">The zero-based hand slot it left.</param>
+        public static void RaiseCardDiscarded(int playerId, CardId discardedCard, int slotIndex)
+        {
+            CardDiscarded?.Invoke(playerId, discardedCard, slotIndex);
+        }
+
+        /// <summary>
         /// Drops every subscriber. Runs automatically on subsystem registration because domain reload is
         /// disabled, and is called by tests to isolate fixtures from one another.
         /// </summary>
@@ -286,6 +310,7 @@ namespace GooGalaxy.Runtime.Shared.Events
             FuseArmed = null;
             FuseExpired = null;
             HandChanged = null;
+            CardDiscarded = null;
         }
     }
 }

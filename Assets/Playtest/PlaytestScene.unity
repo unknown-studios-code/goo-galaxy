@@ -140,6 +140,7 @@ GameObject:
   - component: {fileID: 652506898}
   - component: {fileID: 652506899}
   - component: {fileID: 652506900}
+  - component: {fileID: 652506901}
   m_Layer: 0
   m_Name: Board
   m_TagString: Untagged
@@ -180,12 +181,7 @@ MonoBehaviour:
     PlayerId: 2
     Q: -4
     R: 0
-  _handCardIds:
-  - subject_alpha
-  - acid_crawler
-  - bio_phalanx
-  - volatile_mass
-  - cryo_stasis
+  _matchSeed: 0
   _cellVisualSize: 1
   _cellLayerMask:
     serializedVersion: 2
@@ -281,14 +277,14 @@ MonoBehaviour:
     <StartingEnergy>k__BackingField: 5
     <CloneCostMultiplier>k__BackingField: 0.5
     <JumpEnergyCost>k__BackingField: 0.5
-    <SamplePurgeEnergyCost>k__BackingField: 0.5
+    <DiscardEnergyCost>k__BackingField: 0.5
   _playerTwoConfig:
     <MaxEnergy>k__BackingField: 10
     <RegenRate>k__BackingField: 0.35714287
     <StartingEnergy>k__BackingField: 5
     <CloneCostMultiplier>k__BackingField: 0.5
     <JumpEnergyCost>k__BackingField: 0.5
-    <SamplePurgeEnergyCost>k__BackingField: 0.5
+    <DiscardEnergyCost>k__BackingField: 0.5
 --- !u!114 &652506895
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -371,6 +367,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ef7f4453376c8641b0fe13bb52ab8b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GooGalaxy.Runtime.Deck::GooGalaxy.Runtime.Deck.Controllers.DeployController
+--- !u!114 &652506901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 652506887}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b1efbe859315b441b55241453ea2ee5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Deck::GooGalaxy.Runtime.Deck.Controllers.CardDiscardController
 --- !u!1 &1244279057
 GameObject:
   m_ObjectHideFlags: 0
