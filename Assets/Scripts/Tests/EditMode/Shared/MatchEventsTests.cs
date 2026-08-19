@@ -12,13 +12,13 @@ namespace GooGalaxy.Tests.EditMode.Shared
     public class MatchEventsTests
     {
         private bool _hasMatchStartedFired;
-        private int _phaseChangedValue;
+        private MatchPhase _phaseChangedValue;
 
         [SetUp]
         public void SetUp()
         {
             _hasMatchStartedFired = false;
-            _phaseChangedValue = -1;
+            _phaseChangedValue = MatchPhase.None;
             MatchEvents.ResetEvents();
         }
 
@@ -29,16 +29,27 @@ namespace GooGalaxy.Tests.EditMode.Shared
         }
 
         [Test]
-        public void RaiseGamePhaseChanged_WithSubscriber_DeliversThePhase()
+        public void RaiseMatchStarted_MultipleSubscribers_AllReceiveEvent()
         {
             // GIVEN
-            MatchEvents.GamePhaseChanged += HandlePhaseChanged;
+            int callCount = 0;
+            MatchEvents.MatchStarted += _ => callCount++;
+            MatchEvents.MatchStarted += _ => callCount++;
 
             // WHEN
-            MatchEvents.RaiseGamePhaseChanged(42);
+            MatchEvents.RaiseMatchStarted(new MatchConfiguration());
 
             // THEN
-            Assert.That(_phaseChangedValue, Is.EqualTo(42));
+            Assert.That(callCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RaiseMatchStarted_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseMatchStarted(new MatchConfiguration()));
         }
 
         [Test]
@@ -53,20 +64,6 @@ namespace GooGalaxy.Tests.EditMode.Shared
 
             // THEN
             Assert.That(_hasMatchStartedFired, Is.False);
-        }
-
-        [Test]
-        public void ResetEvents_WithActiveSubscribers_StopsGamePhaseChangedFromFiring()
-        {
-            // GIVEN
-            MatchEvents.GamePhaseChanged += HandlePhaseChanged;
-
-            // WHEN
-            MatchEvents.ResetEvents();
-            MatchEvents.RaiseGamePhaseChanged(99);
-
-            // THEN
-            Assert.That(_phaseChangedValue, Is.EqualTo(-1));
         }
 
         [Test]
@@ -85,6 +82,15 @@ namespace GooGalaxy.Tests.EditMode.Shared
         }
 
         [Test]
+        public void RaiseGridInitialized_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseGridInitialized(new FakeHexGrid()));
+        }
+
+        [Test]
         public void ResetEvents_ClearsGridInitialized_Subscriber()
         {
             // GIVEN
@@ -97,6 +103,135 @@ namespace GooGalaxy.Tests.EditMode.Shared
 
             // THEN
             Assert.That(hasFired, Is.False, "GridInitialized should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseMatchPhaseChanged_WithSubscriber_DeliversThePhase()
+        {
+            // GIVEN
+            MatchEvents.MatchPhaseChanged += HandlePhaseChanged;
+
+            // WHEN
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
+
+            // THEN
+            Assert.That(_phaseChangedValue, Is.EqualTo(MatchPhase.Standard));
+        }
+
+        [Test]
+        public void RaiseMatchPhaseChanged_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard));
+        }
+
+        [Test]
+        public void ResetEvents_WithActiveSubscribers_StopsMatchPhaseChangedFromFiring()
+        {
+            // GIVEN
+            MatchEvents.MatchPhaseChanged += HandlePhaseChanged;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
+
+            // THEN
+            Assert.That(_phaseChangedValue, Is.EqualTo(MatchPhase.None));
+        }
+
+        [Test]
+        public void RaiseMatchClockTicked_WithSubscriber_DeliversTheRemainingSeconds()
+        {
+            // GIVEN
+            int receivedRemainingSeconds = -1;
+            MatchEvents.MatchClockTicked += remaining => receivedRemainingSeconds = remaining;
+
+            // WHEN
+            MatchEvents.RaiseMatchClockTicked(2);
+
+            // THEN
+            Assert.That(receivedRemainingSeconds, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsMatchClockTicked_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.MatchClockTicked += _ => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseMatchClockTicked(2);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "MatchClockTicked should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseScoreChanged_WithSubscriber_DeliversThePlayerIdAndUnitCount()
+        {
+            // GIVEN
+            int receivedPlayerId = -1;
+            int receivedUnitCount = -1;
+            MatchEvents.ScoreChanged += (playerId, unitCount) =>
+            {
+                receivedPlayerId = playerId;
+                receivedUnitCount = unitCount;
+            };
+
+            // WHEN
+            MatchEvents.RaiseScoreChanged(1, 3);
+
+            // THEN
+            Assert.That((receivedPlayerId, receivedUnitCount), Is.EqualTo((1, 3)));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsScoreChanged_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.ScoreChanged += (_, _) => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseScoreChanged(1, 3);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "ScoreChanged should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseMatchEnded_WithSubscriber_DeliversTheOutcome()
+        {
+            // GIVEN
+            MatchOutcome receivedOutcome = default;
+            MatchEvents.MatchEnded += outcome => receivedOutcome = outcome;
+            var outcome = new MatchOutcome(1, MatchEndReason.TimeLimit);
+
+            // WHEN
+            MatchEvents.RaiseMatchEnded(outcome);
+
+            // THEN
+            Assert.That(receivedOutcome, Is.EqualTo(outcome));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsMatchEnded_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.MatchEnded += _ => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseMatchEnded(MatchOutcome.Drawn);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "MatchEnded should have no subscribers after ResetEvents.");
         }
 
         [Test]
@@ -115,6 +250,15 @@ namespace GooGalaxy.Tests.EditMode.Shared
         }
 
         [Test]
+        public void RaiseConversionResolved_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseConversionResolved(1, default));
+        }
+
+        [Test]
         public void ResetEvents_ClearsConversionResolved_Subscriber()
         {
             // GIVEN
@@ -127,42 +271,6 @@ namespace GooGalaxy.Tests.EditMode.Shared
 
             // THEN
             Assert.That(hasFired, Is.False, "ConversionResolved should have no subscribers after ResetEvents.");
-        }
-
-        [Test]
-        public void RaiseConversionResolved_NoSubscribers_DoesNotThrow()
-        {
-            // GIVEN
-
-            // WHEN / THEN
-            Assert.DoesNotThrow(() => MatchEvents.RaiseConversionResolved(1, default));
-        }
-
-        [Test]
-        public void RaiseMatchStarted_NoSubscribers_DoesNotThrow()
-        {
-            // GIVEN
-
-            // WHEN / THEN
-            Assert.DoesNotThrow(() => MatchEvents.RaiseMatchStarted(new MatchConfiguration()));
-        }
-
-        [Test]
-        public void RaiseGridInitialized_NoSubscribers_DoesNotThrow()
-        {
-            // GIVEN
-
-            // WHEN / THEN
-            Assert.DoesNotThrow(() => MatchEvents.RaiseGridInitialized(new FakeHexGrid()));
-        }
-
-        [Test]
-        public void RaiseGamePhaseChanged_NoSubscribers_DoesNotThrow()
-        {
-            // GIVEN
-
-            // WHEN / THEN
-            Assert.DoesNotThrow(() => MatchEvents.RaiseGamePhaseChanged(1));
         }
 
         [Test]
@@ -359,27 +467,12 @@ namespace GooGalaxy.Tests.EditMode.Shared
             Assert.That(hasFired, Is.False, "CardDiscarded should have no subscribers after ResetEvents.");
         }
 
-        [Test]
-        public void RaiseMatchStarted_MultipleSubscribers_AllReceiveEvent()
-        {
-            // GIVEN
-            int callCount = 0;
-            MatchEvents.MatchStarted += _ => callCount++;
-            MatchEvents.MatchStarted += _ => callCount++;
-
-            // WHEN
-            MatchEvents.RaiseMatchStarted(new MatchConfiguration());
-
-            // THEN
-            Assert.That(callCount, Is.EqualTo(2));
-        }
-
         private void HandleMatchStarted(MatchConfiguration config)
         {
             _hasMatchStartedFired = true;
         }
 
-        private void HandlePhaseChanged(int phase)
+        private void HandlePhaseChanged(MatchPhase phase)
         {
             _phaseChangedValue = phase;
         }

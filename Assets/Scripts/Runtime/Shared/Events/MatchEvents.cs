@@ -25,10 +25,86 @@ namespace GooGalaxy.Runtime.Shared.Events
         public static event Action<IHexGrid> GridInitialized;
 
         /// <summary>
-        /// Raised when the match enters a new phase. The payload is the phase identifier; it becomes a
-        /// dedicated enum once the match-flow system owns the phase sequence.
+        /// Raised when the match enters a new phase, carrying the phase just entered.
         /// </summary>
-        public static event Action<int> GamePhaseChanged;
+        /// <remarks>
+        /// Raised only for a transition the orchestrator's own table accepts, so the sequence a subscriber sees
+        /// is the legal one and never skips a phase or repeats the phase it is already in. It is published
+        /// <b>after</b> the orchestrator has entered the phase, so a subscriber that asks the orchestrator what
+        /// phase it is in receives the value this payload carries.
+        /// <para>
+        /// <see cref="MatchPhase.Standard" /> is the only phase in which a card can be played or discarded, and
+        /// the deploy and discard controllers gate on exactly that. A subscriber caching the phase to make its
+        /// own decision must handle <see cref="MatchPhase.None" />, which is what an abandoned start publishes.
+        /// </para>
+        /// </remarks>
+        public static event Action<MatchPhase> MatchPhaseChanged;
+
+        /// <summary>
+        /// Raised as the current phase's clock counts down, carrying the seconds left in it.
+        /// </summary>
+        /// <remarks>
+        /// Raised at most once per second, not once per frame: the publisher only dispatches when the
+        /// whole-second floor of the remaining time changes, and the payload is that floor — which is why it is
+        /// an <c>int</c>. A subscriber rendering a countdown therefore formats the value it is handed and never
+        /// has to round it.
+        /// <para>
+        /// The clock is scaled match time, so a paused match stops publishing rather than continuing to count.
+        /// Both the pre-match countdown and normal play publish through this — the phase says which one is
+        /// running, and this event does not repeat it.
+        /// </para>
+        /// <para>
+        /// Only normal play has a sub-second form to fall back on — see <c>MatchController.RemainingSeconds</c>,
+        /// which owns that trap.
+        /// </para>
+        /// </remarks>
+        public static event Action<int> MatchClockTicked;
+
+        /// <summary>
+        /// Raised when a player's live unit count changes, carrying the player id and their new count.
+        /// </summary>
+        /// <remarks>
+        /// Raised only when that player's count actually moved. A deployment that converts nothing publishes
+        /// nothing, and a recount that lands on the number already cached is silent — so a subscriber may treat
+        /// every dispatch as a real change and never has to compare against what it last saw.
+        /// <para>
+        /// Unit count <i>is</i> the match score, which is what makes this the seam the domination rule hangs
+        /// on: a count reaching zero is a player with nothing left on the board, and GOOM-12 ends the match on
+        /// exactly that without needing a second pass over the registry.
+        /// </para>
+        /// <para>
+        /// A publish that <i>follows a board resolution</i> — a landing, a Protocol impact, or a fuse expiring —
+        /// is deferred to the <b>end</b> of the frame it resolved on, never made from inside its dispatch, so a
+        /// subscriber reads a settled board and, unlike the resolution events on this bus, is not running inside
+        /// the resolution. <c>MatchController.OnEnable</c> enforces that and states why.
+        /// </para>
+        /// <para>
+        /// The two publishes no board resolution produced are made inline instead, and need no deferral: the
+        /// opening score, published while the match is still starting and before anything can move it, and the
+        /// recount taken when the clock runs out, which is what decides the winner and must read the board as it
+        /// stands at that instant.
+        /// </para>
+        /// <para>
+        /// <b>Ticks stop at the end of the match.</b> The deferred pass is gated on the match still running, so
+        /// a fuse expiring or an ability resolving after <see cref="MatchPhase.Ended" /> publishes nothing, and
+        /// the last counts a subscriber sees are the ones the outcome on <see cref="MatchEnded" /> was decided
+        /// from. A results screen bound to this cannot be moved after the outcome is final.
+        /// </para>
+        /// <para>
+        /// The payload is value types only, so there is nothing for a subscriber to copy.
+        /// </para>
+        /// </remarks>
+        public static event Action<int, int> ScoreChanged;
+
+        /// <summary>
+        /// Raised once the match is over, carrying who won and what ended it.
+        /// </summary>
+        /// <remarks>
+        /// Published after the phase has already reached <see cref="MatchPhase.Ended" />, so a subscriber
+        /// reading the orchestrator sees the state this event describes. Raised at most once per match; a
+        /// rematch publishes its own. See <see cref="MatchOutcome" /> for how a draw is represented.
+        /// </remarks>
+        public static event Action<MatchOutcome> MatchEnded;
 
         /// <summary>Raised whenever a player's energy total changes, carrying the player id and the new total.</summary>
         public static event Action<int, float> EnergyChanged;
@@ -166,11 +242,44 @@ namespace GooGalaxy.Runtime.Shared.Events
             GridInitialized?.Invoke(grid);
         }
 
-        /// <summary>Publishes <see cref="GamePhaseChanged"/>.</summary>
-        /// <param name="phase">The identifier of the phase just entered.</param>
-        public static void RaiseGamePhaseChanged(int phase)
+        /// <summary>
+        /// Publishes <see cref="MatchPhaseChanged"/>. Called only once the orchestrator has entered the phase.
+        /// </summary>
+        /// <param name="phase">The phase just entered.</param>
+        public static void RaiseMatchPhaseChanged(MatchPhase phase)
         {
-            GamePhaseChanged?.Invoke(phase);
+            MatchPhaseChanged?.Invoke(phase);
+        }
+
+        /// <summary>
+        /// Publishes <see cref="MatchClockTicked"/>. Called only when the whole-second floor of the remaining
+        /// time has changed, never once per frame.
+        /// </summary>
+        /// <param name="remainingSeconds">Whole seconds left in the current phase, clamped at zero.</param>
+        public static void RaiseMatchClockTicked(int remainingSeconds)
+        {
+            MatchClockTicked?.Invoke(remainingSeconds);
+        }
+
+        /// <summary>
+        /// Publishes <see cref="ScoreChanged"/>. Called only for a player whose count actually moved, once the
+        /// new count is the one the registry holds.
+        /// </summary>
+        /// <param name="playerId">The player whose count changed.</param>
+        /// <param name="unitCount">The number of live units that player now holds.</param>
+        public static void RaiseScoreChanged(int playerId, int unitCount)
+        {
+            ScoreChanged?.Invoke(playerId, unitCount);
+        }
+
+        /// <summary>
+        /// Publishes <see cref="MatchEnded"/>. Called only once the match has already reached
+        /// <see cref="MatchPhase.Ended"/>.
+        /// </summary>
+        /// <param name="outcome">Who won and what ended the match.</param>
+        public static void RaiseMatchEnded(MatchOutcome outcome)
+        {
+            MatchEnded?.Invoke(outcome);
         }
 
         /// <summary>Publishes <see cref="EnergyChanged"/>.</summary>
@@ -300,7 +409,10 @@ namespace GooGalaxy.Runtime.Shared.Events
         {
             MatchStarted = null;
             GridInitialized = null;
-            GamePhaseChanged = null;
+            MatchPhaseChanged = null;
+            MatchClockTicked = null;
+            ScoreChanged = null;
+            MatchEnded = null;
             EnergyChanged = null;
             EnergySpent = null;
             MoveExecuted = null;

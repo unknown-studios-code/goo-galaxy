@@ -281,6 +281,13 @@ namespace GooGalaxy.Runtime.Board.Views
 
         protected void OnEnable()
         {
+            // The opening board's only render. The starting units are seeded straight into the registry before
+            // MatchStarted goes out, and no move, conversion or ability event ever describes them, so without
+            // this seam the opening position stays invisible until the first deployment moves something. It is
+            // the same shape GridView uses for GridInitialized, and it is what keeps Runtime.Match — which holds
+            // no views — from having to know a view exists.
+            MatchEvents.MatchStarted += HandleMatchStarted;
+
             MatchEvents.MoveExecuted += HandleMoveExecuted;
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
@@ -325,6 +332,7 @@ namespace GooGalaxy.Runtime.Board.Views
 
         protected void OnDisable()
         {
+            MatchEvents.MatchStarted -= HandleMatchStarted;
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
@@ -361,8 +369,9 @@ namespace GooGalaxy.Runtime.Board.Views
 
         /// <summary>
         /// Rebuilds every unit visual from the registry: creates one for each live unit, refreshes its position
-        /// and tint, and releases any visual whose unit is gone. Call it once the starting units are registered,
-        /// and again after any bulk change the move and conversion events did not describe.
+        /// and tint, and releases any visual whose unit is gone. The view runs it itself on match start and on
+        /// re-enable, so call it directly only after a bulk change the move and conversion events did not
+        /// describe.
         /// </summary>
         /// <remarks>
         /// A whole-board pass. It reads the registry through <c>ActiveUnitValues</c> so the rebuild loop binds the
@@ -517,110 +526,6 @@ namespace GooGalaxy.Runtime.Board.Views
         {
             _playerOneColor = playerOneColor;
             _playerTwoColor = playerTwoColor;
-        }
-
-        private void HandleMoveExecuted(MoveCommand command, IReadOnlyList<HexCoordinates> affectedCoordinates)
-        {
-            if (_unitPresenter == null || _unitPool == null || !TryGetHexGrid(out HexGrid grid))
-            {
-                Debug.LogError(BoardLogMessages.UnitViewBoardUnavailable, this);
-                return;
-            }
-
-            IReadOnlyDictionary<int, GridUnit> activeUnits = _unitPresenter.ActiveUnits;
-
-            for (int i = 0; i < affectedCoordinates.Count; i++)
-            {
-                HexCoordinates coordinates = affectedCoordinates[i];
-
-                // A Jump's source is empty by now and needs no release: the unit that left it keeps the same id,
-                // so the target below repositions that very instance.
-                if (!grid.TryGetCell(coordinates, out HexCell cell) || !cell.IsOccupied)
-                {
-                    continue;
-                }
-
-                if (activeUnits.TryGetValue(cell.OccupantUnitId, out GridUnit unit) && unit != null)
-                {
-                    ShowUnit(unit.UnitId, coordinates, unit.PlayerId, unit.CardId);
-                }
-            }
-
-            PlayEffect(_deployEffectPool, command.Target);
-
-            // Covers the deployment that carries no impact at all: a plain Clone still spawns a unit that may
-            // need a shield, and still closes the action window that expires someone else's Frozen.
-            _areStatusOverlaysDirty = true;
-        }
-
-        private void HandleConversionResolved(int actingPlayerId, ConversionResult result)
-        {
-            using (_conversionFeedbackMarker.Auto())
-            {
-                if (_unitPresenter == null || _unitPool == null)
-                {
-                    Debug.LogError(BoardLogMessages.UnitViewBoardUnavailable, this);
-                    return;
-                }
-
-                // Per GDD 06 the two outcomes must never look alike: a flip is the "melt and reform" into the new
-                // owner's color, while a broken shell is only the Armored white-shell overlay coming off.
-                ApplyConversionFeedback(result.ConvertedUnitIds, _conversionEffectPool, shouldRefreshOwnerTint: true);
-                ApplyConversionFeedback(result.ArmorStrippedUnitIds, _armorBreakEffectPool, shouldRefreshOwnerTint: false);
-            }
-
-            // Belt and braces, and knowingly so: in production this event is only ever raised from inside a
-            // MoveExecuted dispatch that already set the flag, and the LateUpdate deferral makes the order of
-            // those two subscribers irrelevant. It stays because ConversionResolved is a public bus event that
-            // carries the one fact an overlay depends on — armor spent — and nothing enforces that a future
-            // publisher raises it nested inside a move. Setting a boolean twice costs nothing.
-            _areStatusOverlaysDirty = true;
-        }
-
-        // Released from the id alone, deliberately without a registry lookup: AbilityController publishes this
-        // event before its step 6 cleanup runs, so a self-destructed unit is still alive and still registered
-        // right now. Gating on the registry would find it and skip nothing, then the cleanup would drop it and
-        // strand its pooled visual for the rest of the match — and every stranded instance permanently shrinks
-        // a pool whose max size is the whole board.
-        private void HandleAbilityResolved(int actingPlayerId, AbilityResult result)
-        {
-            // Flagged before the early return: an impact that applied a status changed no unit's existence, so
-            // the destroyed list is empty and the overlays are the only thing that moved.
-            _areStatusOverlaysDirty = true;
-
-            IReadOnlyList<int> destroyedUnitIds = result.DestroyedUnitIds;
-
-            if (destroyedUnitIds == null)
-            {
-                return;
-            }
-
-            // Indexed rather than foreach: the payload is handed over as an interface, which boxes its backing
-            // enumerator once per landing per subscriber.
-            for (int i = 0; i < destroyedUnitIds.Count; i++)
-            {
-                ReleaseUnitVisual(destroyedUnitIds[i]);
-            }
-        }
-
-        // Arming always happens inside a deployment, which has already flagged the overlays — so this is not
-        // strictly load-bearing today. It stays because the flag is what makes the fuse readable at all, and
-        // nothing enforces that a future publisher arms one from inside a deployment. Setting a boolean twice
-        // costs nothing.
-        private void HandleFuseArmed(int unitId, int playerId, float remainingSeconds)
-        {
-            _areStatusOverlaysDirty = true;
-        }
-
-        // Released from the id alone and without a registry lookup, for the opposite reason to
-        // HandleAbilityResolved: FuseController raises this *after* it has unregistered the unit, so a lookup
-        // finds nothing and the registry pass in RefreshStatusOverlays can never reach it either. The id is the
-        // only handle left, and a visual not released here stays checked out for the rest of the match —
-        // permanently shrinking a pool whose max size is the whole board.
-        private void HandleFuseExpired(int unitId, int playerId)
-        {
-            ReleaseUnitVisual(unitId);
-            _areStatusOverlaysDirty = true;
         }
 
         // Ownership is read back from the unit rather than from the acting player id, so this is correct whether
@@ -938,6 +843,128 @@ namespace GooGalaxy.Runtime.Board.Views
             grid = _gridPresenter != null ? _gridPresenter.HexGrid : null;
 
             return grid != null;
+        }
+
+        // One full-board pass at setup, never a reconciliation loop: the registry is settled by the time this
+        // arrives — the initializer seeds the opening position before it announces the match — so a single sync
+        // renders it, and every later change comes through the resolution events above. A rematch is the same
+        // pass, and it also releases the visuals of the previous match's units, which SyncUnitVisuals sweeps.
+        private void HandleMatchStarted(MatchConfiguration configuration)
+        {
+            // The same guard OnEnable makes, and silent for the same reason: a view the container has not
+            // reached yet cannot render anything, and a bootstrap that raises this before injection is not the
+            // wiring fault SyncUnitVisuals would log it as.
+            if (_unitPresenter == null || _unitPool == null)
+            {
+                _areStatusOverlaysDirty = true;
+                return;
+            }
+
+            SyncUnitVisuals();
+        }
+
+        private void HandleMoveExecuted(MoveCommand command, IReadOnlyList<HexCoordinates> affectedCoordinates)
+        {
+            if (_unitPresenter == null || _unitPool == null || !TryGetHexGrid(out HexGrid grid))
+            {
+                Debug.LogError(BoardLogMessages.UnitViewBoardUnavailable, this);
+                return;
+            }
+
+            IReadOnlyDictionary<int, GridUnit> activeUnits = _unitPresenter.ActiveUnits;
+
+            for (int i = 0; i < affectedCoordinates.Count; i++)
+            {
+                HexCoordinates coordinates = affectedCoordinates[i];
+
+                // A Jump's source is empty by now and needs no release: the unit that left it keeps the same id,
+                // so the target below repositions that very instance.
+                if (!grid.TryGetCell(coordinates, out HexCell cell) || !cell.IsOccupied)
+                {
+                    continue;
+                }
+
+                if (activeUnits.TryGetValue(cell.OccupantUnitId, out GridUnit unit) && unit != null)
+                {
+                    ShowUnit(unit.UnitId, coordinates, unit.PlayerId, unit.CardId);
+                }
+            }
+
+            PlayEffect(_deployEffectPool, command.Target);
+
+            // Covers the deployment that carries no impact at all: a plain Clone still spawns a unit that may
+            // need a shield, and still closes the action window that expires someone else's Frozen.
+            _areStatusOverlaysDirty = true;
+        }
+
+        private void HandleConversionResolved(int actingPlayerId, ConversionResult result)
+        {
+            using (_conversionFeedbackMarker.Auto())
+            {
+                if (_unitPresenter == null || _unitPool == null)
+                {
+                    Debug.LogError(BoardLogMessages.UnitViewBoardUnavailable, this);
+                    return;
+                }
+
+                // Per GDD 06 the two outcomes must never look alike: a flip is the "melt and reform" into the new
+                // owner's color, while a broken shell is only the Armored white-shell overlay coming off.
+                ApplyConversionFeedback(result.ConvertedUnitIds, _conversionEffectPool, shouldRefreshOwnerTint: true);
+                ApplyConversionFeedback(result.ArmorStrippedUnitIds, _armorBreakEffectPool, shouldRefreshOwnerTint: false);
+            }
+
+            // Belt and braces, and knowingly so: in production this event is only ever raised from inside a
+            // MoveExecuted dispatch that already set the flag, and the LateUpdate deferral makes the order of
+            // those two subscribers irrelevant. It stays because ConversionResolved is a public bus event that
+            // carries the one fact an overlay depends on — armor spent — and nothing enforces that a future
+            // publisher raises it nested inside a move. Setting a boolean twice costs nothing.
+            _areStatusOverlaysDirty = true;
+        }
+
+        // Released from the id alone, deliberately without a registry lookup: AbilityController publishes this
+        // event before its step 6 cleanup runs, so a self-destructed unit is still alive and still registered
+        // right now. Gating on the registry would find it and skip nothing, then the cleanup would drop it and
+        // strand its pooled visual for the rest of the match — and every stranded instance permanently shrinks
+        // a pool whose max size is the whole board.
+        private void HandleAbilityResolved(int actingPlayerId, AbilityResult result)
+        {
+            // Flagged before the early return: an impact that applied a status changed no unit's existence, so
+            // the destroyed list is empty and the overlays are the only thing that moved.
+            _areStatusOverlaysDirty = true;
+
+            IReadOnlyList<int> destroyedUnitIds = result.DestroyedUnitIds;
+
+            if (destroyedUnitIds == null)
+            {
+                return;
+            }
+
+            // Indexed rather than foreach: the payload is handed over as an interface, which boxes its backing
+            // enumerator once per landing per subscriber.
+            for (int i = 0; i < destroyedUnitIds.Count; i++)
+            {
+                ReleaseUnitVisual(destroyedUnitIds[i]);
+            }
+        }
+
+        // Arming always happens inside a deployment, which has already flagged the overlays — so this is not
+        // strictly load-bearing today. It stays because the flag is what makes the fuse readable at all, and
+        // nothing enforces that a future publisher arms one from inside a deployment. Setting a boolean twice
+        // costs nothing.
+        private void HandleFuseArmed(int unitId, int playerId, float remainingSeconds)
+        {
+            _areStatusOverlaysDirty = true;
+        }
+
+        // Released from the id alone and without a registry lookup, for the opposite reason to
+        // HandleAbilityResolved: FuseController raises this *after* it has unregistered the unit, so a lookup
+        // finds nothing and the registry pass in RefreshStatusOverlays can never reach it either. The id is the
+        // only handle left, and a visual not released here stays checked out for the rest of the match —
+        // permanently shrinking a pool whose max size is the whole board.
+        private void HandleFuseExpired(int unitId, int playerId)
+        {
+            ReleaseUnitVisual(unitId);
+            _areStatusOverlaysDirty = true;
         }
 
         // Placeholder body tint for one card, matched by id. Authored in the Inspector.

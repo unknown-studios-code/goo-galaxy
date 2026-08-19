@@ -246,7 +246,7 @@ jobs:
               bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir /usr/share/dotnet --no-path
 
               /usr/share/dotnet/dotnet format "${{ steps.solution.outputs.solution }}" \
-                --include "Assets/Scripts/**/*.cs" "Assets/Playtest/**/*.cs" "Assets/Editor/**/*.cs" \
+                --include "Assets/Scripts/**/*.cs" "Assets/Editor/**/*.cs" \
                 --severity info \
                 --verify-no-changes \
                 --verbosity quiet

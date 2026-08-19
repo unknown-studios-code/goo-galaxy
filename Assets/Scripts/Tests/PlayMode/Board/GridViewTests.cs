@@ -82,9 +82,12 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             var positions = new HashSet<Vector3>();
 
-            // WHEN
+            // WHEN — GridPresenter.Awake builds the grid silently; MatchInitializer is what publishes
+            // GridInitialized, from the Start-time setup sequence MatchController drives, so this simulates that
+            // hand-off directly.
             viewGO.SetActive(true);
             presenterGO.SetActive(true);
+            MatchEvents.RaiseGridInitialized(presenter.HexGrid);
 
             yield return null;
 
@@ -123,9 +126,12 @@ namespace GooGalaxy.Tests.PlayMode.Board
             viewGO.SetActive(false);
             GridView view = viewGO.AddComponent<GridView>();
 
-            // WHEN — the view is never given a cell prefab
+            // WHEN — the view is never given a cell prefab. GridPresenter.Awake builds silently, so the event
+            // that would trigger GridView's own missing-prefab log has to be raised the way MatchInitializer
+            // does from the setup sequence MatchController drives.
             viewGO.SetActive(true);
             presenterGO.SetActive(true);
+            MatchEvents.RaiseGridInitialized(presenter.HexGrid);
             yield return null;
 
             // THEN
@@ -158,6 +164,65 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // THEN
             Assert.That(view.CellViews.Count, Is.EqualTo(61));
             Assert.That(view.transform.childCount, Is.EqualTo(61), "The previous cell instances must be destroyed, not stacked.");
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator CellViews_WhenTheSameGridInstanceIsAnnouncedAgain_AreTheVeryInstancesTheFirstBuildMade()
+        {
+            // GIVEN — a rematch re-announces the board GridPresenter built in Awake, which is the same HexGrid
+            // instance: rebuilding it would destroy and re-instantiate all 61 prefabs for a board that did not
+            // change.
+            GridView view = BuildBoard(out GridPresenter presenter);
+            MatchEvents.RaiseGridInitialized(presenter.HexGrid);
+            yield return null;
+
+            CellView originCell = view.CellViews[new HexCoordinates(0, 0)];
+
+            // WHEN
+            MatchEvents.RaiseGridInitialized(presenter.HexGrid);
+            yield return null;
+
+            // THEN
+            Assert.That(view.CellViews[new HexCoordinates(0, 0)], Is.SameAs(originCell));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator CellViews_WhenTheSameGridInstanceIsAnnouncedAgain_LoseTheHighlightTheLastMatchLeft()
+        {
+            // GIVEN
+            GridView view = BuildBoard(out GridPresenter presenter);
+            MatchEvents.RaiseGridInitialized(presenter.HexGrid);
+            yield return null;
+
+            CellView originCell = view.CellViews[new HexCoordinates(0, 0)];
+            originCell.SetHighlightState(true);
+
+            // WHEN
+            MatchEvents.RaiseGridInitialized(presenter.HexGrid);
+            yield return null;
+
+            // THEN
+            Assert.That(originCell.IsHighlighted, Is.False);
+        }
+
+        private GridView BuildBoard(out GridPresenter presenter)
+        {
+            var presenterGO = new GameObject("GridPresenter_Test");
+            presenterGO.SetActive(false);
+            presenter = presenterGO.AddComponent<GridPresenter>();
+            presenter.SetGridLayout(_gridLayout);
+
+            var viewGO = new GameObject("GridView_Test");
+            viewGO.SetActive(false);
+            GridView view = viewGO.AddComponent<GridView>();
+            view.SetViewConfiguration(_cellPrefab, cellVisualSize: 1.0f);
+
+            viewGO.SetActive(true);
+            presenterGO.SetActive(true);
+
+            return view;
         }
     }
 }

@@ -17,6 +17,7 @@
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",
     "GooGalaxy.Runtime.Deck",
+    "GooGalaxy.Runtime.Match",
     "UnityEngine.TestRunner"
   ],
   "versionDefines": [],

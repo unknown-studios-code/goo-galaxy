@@ -16,19 +16,17 @@ namespace GooGalaxy.Runtime.Board.Controllers
     /// at a 0.46 aspect the board is far wider relative to the viewport than it is tall, so the horizontal fit
     /// decides the size and the vertical axis ends up with slack.
     /// <para>
-    /// <c>GridPresenter</c> raises <c>GridInitialized</c> from <c>Awake</c>, so a subscriber that registers in
-    /// its own <c>OnEnable</c> is deaf on a scene load unless it initializes first. The negative execution
-    /// order below is what guarantees that; a board built later still re-frames through
-    /// <see cref="FitToBoard(int)" />.
+    /// <c>GridPresenter</c> builds the grid in <c>Awake</c> and deliberately announces nothing;
+    /// <c>MatchInitializer</c> publishes <c>GridInitialized</c> from the <c>Start</c>-time setup sequence
+    /// <c>MatchController</c> drives, after every <c>OnEnable</c> in the scene has run. So an ordinary
+    /// <c>OnEnable</c> subscription is enough and this type needs no execution order of its own. A board built
+    /// later still re-frames through <see cref="FitToBoard(int)" />.
     /// </para>
     /// </remarks>
-    [DefaultExecutionOrder(SubscribeBeforeGridOrder)]
     [RequireComponent(typeof(Camera))]
     [DisallowMultipleComponent]
     public class BoardCameraController : MonoBehaviour
     {
-        private const int SubscribeBeforeGridOrder = -100;
-
         private static readonly float _sqrt3 = Mathf.Sqrt(3f);
 
         [Tooltip(

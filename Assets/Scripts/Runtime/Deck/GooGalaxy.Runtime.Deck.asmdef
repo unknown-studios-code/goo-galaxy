@@ -8,7 +8,6 @@
   "references": [
     "GooGalaxy.Runtime.Shared",
     "GooGalaxy.Runtime.Cards",
-    "GooGalaxy.Runtime.Board",
     "VContainer"
   ],
   "versionDefines": [],

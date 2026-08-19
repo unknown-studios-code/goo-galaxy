@@ -30,5 +30,30 @@ namespace GooGalaxy.Tests.EditMode.Shared
             // THEN
             Assert.That(config.Seed, Is.EqualTo(seed));
         }
+
+        [Test]
+        public void Constructor_WithSeedOnly_LeavesPlayerIdsUnassigned()
+        {
+            // GIVEN — DeckPresenterTests and DeckShufflerTests build a re-shuffle from this exact overload, so
+            // the seed-only form must keep leaving the player ids unset rather than inventing one.
+
+            // WHEN
+            var config = new MatchConfiguration(seed: 7);
+
+            // THEN
+            Assert.That((config.PlayerOneId, config.PlayerTwoId), Is.EqualTo((MatchConfiguration.UnassignedPlayerId, MatchConfiguration.UnassignedPlayerId)));
+        }
+
+        [Test]
+        public void Constructor_WithSeedOnly_LeavesEveryDurationAtZero()
+        {
+            // GIVEN
+
+            // WHEN
+            var config = new MatchConfiguration(seed: 7);
+
+            // THEN
+            Assert.That((config.StandardDurationSeconds, config.CountdownSeconds, config.OvertimeDurationSeconds), Is.EqualTo((0f, 0f, 0f)));
+        }
     }
 }

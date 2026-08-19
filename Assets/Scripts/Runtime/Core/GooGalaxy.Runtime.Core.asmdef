@@ -12,6 +12,7 @@
     "GooGalaxy.Runtime.Cards",
     "GooGalaxy.Runtime.Deck",
     "GooGalaxy.Runtime.Energy",
+    "GooGalaxy.Runtime.Match",
     "VContainer"
   ],
   "versionDefines": [],
