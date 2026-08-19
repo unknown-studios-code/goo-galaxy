@@ -13,7 +13,14 @@ namespace GooGalaxy.Runtime.Energy.Models
 
         private const float DefaultJumpEnergyCost = 0.5f;
 
-        private const float DefaultSamplePurgeEnergyCost = 0.5f;
+        private const float DefaultDiscardEnergyCost = 0.5f;
+
+        // The authorable band for a discard, enforced in the Inspector rather than only described in the tooltip.
+        // It bounds what a designer can dial in; it does not bind the constructors, which tests drive past both
+        // ends on purpose to exercise the free-discard and unaffordable-discard paths.
+        private const float MinDiscardEnergyCost = 0.25f;
+
+        private const float MaxDiscardEnergyCost = 1f;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EnergyConfig"/> struct, priced at the default action costs.
@@ -22,7 +29,7 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// <param name="regenRate">The base regeneration rate per second.</param>
         /// <param name="startingEnergy">The initial starting energy.</param>
         public EnergyConfig(float maxEnergy, float regenRate, float startingEnergy)
-            : this(maxEnergy, regenRate, startingEnergy, DefaultCloneCostMultiplier, DefaultJumpEnergyCost, DefaultSamplePurgeEnergyCost) { }
+            : this(maxEnergy, regenRate, startingEnergy, DefaultCloneCostMultiplier, DefaultJumpEnergyCost, DefaultDiscardEnergyCost) { }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EnergyConfig"/> struct.
@@ -32,22 +39,15 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// <param name="startingEnergy">The initial starting energy.</param>
         /// <param name="cloneCostMultiplier">The fraction of a copied unit's authored energy cost a Clone charges.</param>
         /// <param name="jumpEnergyCost">The flat energy cost of a Jump.</param>
-        /// <param name="samplePurgeEnergyCost">The energy cost of discarding a card from hand.</param>
-        public EnergyConfig(
-            float maxEnergy,
-            float regenRate,
-            float startingEnergy,
-            float cloneCostMultiplier,
-            float jumpEnergyCost,
-            float samplePurgeEnergyCost
-        )
+        /// <param name="discardEnergyCost">The energy cost of discarding a card from hand.</param>
+        public EnergyConfig(float maxEnergy, float regenRate, float startingEnergy, float cloneCostMultiplier, float jumpEnergyCost, float discardEnergyCost)
         {
             MaxEnergy = maxEnergy;
             RegenRate = regenRate;
             StartingEnergy = startingEnergy;
             CloneCostMultiplier = cloneCostMultiplier;
             JumpEnergyCost = jumpEnergyCost;
-            SamplePurgeEnergyCost = samplePurgeEnergyCost;
+            DiscardEnergyCost = discardEnergyCost;
         }
 
         /// <summary>
@@ -93,10 +93,12 @@ namespace GooGalaxy.Runtime.Energy.Models
         /// The energy charged per card discarded, independent of that card's own authored cost.
         /// </summary>
         [field: Tooltip(
-            "Energy charged to discard one card from the hand, whatever that card costs. 0.5 keeps a purge cheaper than any Clone; "
-                + "above roughly 1 a purge costs more than playing the card and the hand stops cycling."
+            "Energy charged to discard one card from the hand, whatever that card costs. 0.5 keeps a discard cheaper than any "
+                + "Clone; below about 0.25 a player cycles the whole Kit for near-nothing and the hand stops constraining anything, "
+                + "and above roughly 1 a discard costs more than playing the card and the hand stops cycling at all."
         )]
+        [field: Range(MinDiscardEnergyCost, MaxDiscardEnergyCost)]
         [field: SerializeField]
-        public float SamplePurgeEnergyCost { get; private set; }
+        public float DiscardEnergyCost { get; private set; }
     }
 }

@@ -314,6 +314,52 @@ namespace GooGalaxy.Tests.EditMode.Shared
         }
 
         [Test]
+        public void RaiseCardDiscarded_WithSubscriber_DeliversThePlayerIdCardAndSlot()
+        {
+            // GIVEN
+            int receivedPlayerId = -1;
+            CardId receivedCard = default;
+            int receivedSlotIndex = -1;
+            MatchEvents.CardDiscarded += (playerId, card, slotIndex) =>
+            {
+                receivedPlayerId = playerId;
+                receivedCard = card;
+                receivedSlotIndex = slotIndex;
+            };
+            var discardedCard = new CardId("acid_crawler");
+
+            // WHEN
+            MatchEvents.RaiseCardDiscarded(2, discardedCard, 3);
+
+            // THEN
+            Assert.That((receivedPlayerId, receivedCard, receivedSlotIndex), Is.EqualTo((2, discardedCard, 3)));
+        }
+
+        [Test]
+        public void RaiseCardDiscarded_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseCardDiscarded(1, default, 0));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsCardDiscarded_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.CardDiscarded += (_, _, _) => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseCardDiscarded(1, default, 0);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "CardDiscarded should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
         public void RaiseMatchStarted_MultipleSubscribers_AllReceiveEvent()
         {
             // GIVEN

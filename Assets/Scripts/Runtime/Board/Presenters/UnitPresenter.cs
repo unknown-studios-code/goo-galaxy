@@ -9,6 +9,7 @@ using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.Shared.Utils;
 using Unity.Profiling;
 using UnityEngine;
 using VContainer;
@@ -327,7 +328,7 @@ namespace GooGalaxy.Runtime.Board.Presenters
         // between a Deploy and the two moves a unit already on the board can make.
         private MovementResult ChargeAndApply(HexGrid grid, in MoveCommand command, CardId cardId, IMoveCapable capability)
         {
-            if (_energyLedger == null)
+            if (UnityReference.IsUnavailable(_energyLedger))
             {
                 return MovementResult.BoardUnavailable;
             }

@@ -141,17 +141,17 @@ public void ValidateClone_TargetOccupied_ReturnsTargetBlocked()
 
 ## 5. Quick Reference & Decision Matrix
 
-| Code Element                                 | Documentation                      | Rationale                                             |
-| :------------------------------------------- | :--------------------------------- | :---------------------------------------------------- |
-| Interface / abstract member                  | `/// <summary>` + params/returns   | The contract is the only thing an implementer sees    |
-| Public member crossing an `.asmdef` boundary | `/// <summary>`                    | Consumers cannot read the body from another assembly  |
-| Generic utility or extension method          | `/// <summary>`                    | Reused far from its definition                        |
-| Implementation of a documented interface     | `<inheritdoc />`                   | One source of truth for the contract                  |
-| Invariant, ownership, allocation guarantee   | `/// <remarks>`                    | Cannot be expressed in the signature                  |
-| Internal member carrying such an invariant   | `/// <remarks>` only               | Accessibility does not make an invariant visible      |
-| Private helper, override, lifecycle callback | **None**                           | Short, self-named methods carry it                    |
-| Serialized field a designer tunes            | `[Tooltip]` (+ `[Range]`)          | Units, safe bounds, and consequence, in the Inspector |
-| Serialized wiring reference                  | **None**                           | Name and type already say it                          |
-| Engine bug or performance trade-off          | `// WORKAROUND:` / `// PERF:`      | Invisible in the code, and must be revisitable        |
-| Deferred work                                | `// TODO (GOO<ID>): <intent>`      | Traceable to the tracker, or it never gets done       |
-| Test method                                  | `// GIVEN` / `// WHEN` / `// THEN` | Structure is the documentation                        |
+| Code Element                                 | Documentation                               | Rationale                                                                             |
+| :------------------------------------------- | :------------------------------------------ | :------------------------------------------------------------------------------------ |
+| Interface / abstract member                  | `/// <summary>` + params/returns            | The contract is the only thing an implementer sees                                    |
+| Public member crossing an `.asmdef` boundary | `/// <summary>`                             | Consumers cannot read the body from another assembly                                  |
+| Generic utility or extension method          | `/// <summary>`                             | Reused far from its definition                                                        |
+| Implementation of a documented interface     | **None**, or `<inheritdoc />` + `<remarks>` | The interface already carries the contract; a bare `<inheritdoc />` is noise (Rule 3) |
+| Invariant, ownership, allocation guarantee   | `/// <remarks>`                             | Cannot be expressed in the signature                                                  |
+| Internal member carrying such an invariant   | `/// <remarks>` only                        | Accessibility does not make an invariant visible                                      |
+| Private helper, override, lifecycle callback | **None**                                    | Short, self-named methods carry it                                                    |
+| Serialized field a designer tunes            | `[Tooltip]` (+ `[Range]`)                   | Units, safe bounds, and consequence, in the Inspector                                 |
+| Serialized wiring reference                  | **None**                                    | Name and type already say it                                                          |
+| Engine bug or performance trade-off          | `// WORKAROUND:` / `// PERF:`               | Invisible in the code, and must be revisitable                                        |
+| Deferred work                                | `// TODO (GOO<ID>): <intent>`               | Traceable to the tracker, or it never gets done                                       |
+| Test method                                  | `// GIVEN` / `// WHEN` / `// THEN`          | Structure is the documentation                                                        |

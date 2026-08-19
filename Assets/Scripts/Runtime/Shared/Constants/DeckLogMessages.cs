@@ -41,5 +41,17 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const string DeployEnergyLedgerMissing =
             "DeployController was not injected with an IEnergyLedger, so no Protocol can be paid for and every one is rejected. "
             + "Register EnergyPresenter as IEnergyLedger in GameLifetimeScope and keep an EnergyPresenter in the scene.";
+
+        public const string DiscardDeckPresenterMissing =
+            "CardDiscardController was not injected with a DeckPresenter, so no card can be read from a hand and every discard is rejected. "
+            + "Register both components in GameLifetimeScope and keep them in the scene.";
+
+        public const string DiscardDeployControllerMissing =
+            "CardDiscardController was not injected with a DeployController, so it cannot tell whether a play is mid-resolution and "
+            + "every discard is rejected. Register both components in GameLifetimeScope and keep them in the scene.";
+
+        public const string DiscardLedgerMissing =
+            "CardDiscardController was not injected with an IDiscardLedger, so no discard can be paid for and every one is rejected. "
+            + "Register EnergyPresenter as IDiscardLedger in GameLifetimeScope and keep an EnergyPresenter in the scene.";
     }
 }

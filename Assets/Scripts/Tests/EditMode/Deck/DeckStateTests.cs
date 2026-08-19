@@ -16,6 +16,7 @@ namespace GooGalaxy.Tests.EditMode.Deck
         private static readonly CardId _card3 = new("kit_card_3");
         private static readonly CardId _card4 = new("kit_card_4");
         private static readonly CardId _card5 = new("kit_card_5");
+        private static readonly CardId _card6 = new("kit_card_6");
 
         [Test]
         public void Constructor_KitLargerThanTheHand_FillsTheHandFromTheFrontOfTheKit()
@@ -179,6 +180,22 @@ namespace GooGalaxy.Tests.EditMode.Deck
         }
 
         [Test]
+        public void TryAdvanceSlot_ZeroCycleDepthKit_LeavesHandSizeAndCycleDepthUnchanged()
+        {
+            // GIVEN — the same zero-depth roster the discard path runs against: nothing to draw from means the
+            // rotation must not grow the hand or the cycle, it can only rewrite the one slot in place.
+            CardId[] kit = { _card0, _card1, _card2, _card3, _card4 };
+            var deck = new DeckState(kit, HandSize);
+            (int handSizeBefore, int cycleDepthBefore) = (deck.HandSize, deck.CycleDepth);
+
+            // WHEN
+            deck.TryAdvanceSlot(0, out _);
+
+            // THEN
+            Assert.That((deck.HandSize, deck.CycleDepth), Is.EqualTo((handSizeBefore, cycleDepthBefore)));
+        }
+
+        [Test]
         public void TryAdvanceSlot_RepeatedAcrossAFullCycle_ReturnsToTheOpeningOrder()
         {
             // GIVEN — one card in hand, one in Next, one in the cycle: three plays of the same slot is a full lap.
@@ -194,6 +211,39 @@ namespace GooGalaxy.Tests.EditMode.Deck
 
             // THEN
             Assert.That((deck.Hand[0], deck.Next), Is.EqualTo((openingSlot0, openingNext)));
+        }
+
+        [Test]
+        public void TryAdvanceSlot_RotatedCard_DoesNotReappearBeforeTheRestOfTheCycleIsDrawn()
+        {
+            // GIVEN — a seven-card kit against a hand of four leaves a two-deep cycle behind the rotated card.
+            CardId[] kit = { _card0, _card1, _card2, _card3, _card4, _card5, _card6 };
+            var deck = new DeckState(kit, HandSize);
+            deck.TryAdvanceSlot(0, out CardId rotated);
+
+            // WHEN — exactly as many further rotations as cards were queued behind the rotated one.
+            deck.TryAdvanceSlot(1, out _);
+            deck.TryAdvanceSlot(2, out _);
+
+            // THEN
+            Assert.That(deck.Hand, Has.None.EqualTo(rotated));
+        }
+
+        [Test]
+        public void TryAdvanceSlot_RotatedCard_ReappearsOnceTheRestOfTheCycleIsDrawn()
+        {
+            // GIVEN — the same two-deep cycle as above.
+            CardId[] kit = { _card0, _card1, _card2, _card3, _card4, _card5, _card6 };
+            var deck = new DeckState(kit, HandSize);
+            deck.TryAdvanceSlot(0, out CardId rotated);
+
+            // WHEN — one more rotation than the cycle is deep draws the rotated card back into the hand.
+            deck.TryAdvanceSlot(1, out _);
+            deck.TryAdvanceSlot(2, out _);
+            deck.TryAdvanceSlot(3, out _);
+
+            // THEN
+            Assert.That(deck.Hand, Does.Contain(rotated));
         }
 
         [Test]

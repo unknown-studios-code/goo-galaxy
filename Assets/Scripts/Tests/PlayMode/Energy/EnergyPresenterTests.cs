@@ -12,6 +12,16 @@ namespace GooGalaxy.Tests.PlayMode.Energy
     [TestFixture]
     public class EnergyPresenterTests
     {
+        private const float Tolerance = 0.0001f;
+
+        // Mirrors the private EnergyPresenter.EnergyPublishQuantum: publication trails CurrentEnergy by up to
+        // this much between flushes, so an assertion pinned to the last published value needs this tolerance
+        // rather than the exact one above.
+        private const float EnergyPublishQuantum = 0.05f;
+
+        private readonly WaitForSeconds _waitForHalfSecond = new(0.5f);
+        private readonly WaitForSeconds _waitForThreeTenthsSecond = new(0.3f);
+
         private GameObject _go;
         private EnergyPresenter _presenter;
 
@@ -23,16 +33,6 @@ namespace GooGalaxy.Tests.PlayMode.Energy
         private int _lastSpentPlayerId;
         private float _lastSpentEnergy;
         private bool _lastSpentSuccess;
-
-        private const float Tolerance = 0.0001f;
-
-        // Mirrors the private EnergyPresenter.EnergyPublishQuantum: publication trails CurrentEnergy by up to
-        // this much between flushes, so an assertion pinned to the last published value needs this tolerance
-        // rather than the exact one above.
-        private const float EnergyPublishQuantum = 0.05f;
-
-        private readonly WaitForSeconds _waitForHalfSecond = new(0.5f);
-        private readonly WaitForSeconds _waitForThreeTenthsSecond = new(0.3f);
 
         [SetUp]
         public void SetUp()
@@ -292,6 +292,65 @@ namespace GooGalaxy.Tests.PlayMode.Energy
 
             // WHEN
             _presenter.TryPayForMove(1, MoveType.Clone, 4);
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(0));
+            Assert.That(_spentCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator TryPayForDiscard_Affordable_FlushesOneEnergyChangedAndOneEnergySpentOnTheNextFrame()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0.5f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForDiscard(1);
+
+            // WHEN
+            yield return null;
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(1));
+            Assert.That(_spentCount, Is.EqualTo(1));
+            Assert.That(_lastSpentSuccess, Is.True);
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator TryPayForDiscardThenRefundDiscard_InTheSameFrame_PublishesNothingEver()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0.5f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+            _presenter.TryPayForDiscard(1);
+            _presenter.RefundDiscard(1);
+
+            // WHEN
+            yield return null;
+            yield return null;
+            yield return null;
+
+            // THEN
+            Assert.That(_changedCount, Is.EqualTo(0));
+            Assert.That(_spentCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TryPayForDiscard_Affordable_PublishesNothingOnTheChargedFrame()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10f, 0f, 10f, 0.5f, 0.5f, 0.5f);
+            _presenter.InitializePlayer(1, config);
+            _changedCount = 0;
+            _spentCount = 0;
+
+            // WHEN
+            _presenter.TryPayForDiscard(1);
 
             // THEN
             Assert.That(_changedCount, Is.EqualTo(0));

@@ -415,9 +415,9 @@ namespace GooGalaxy.Tests.PlayMode.Deck
         }
 
         [UnityTest]
-        public IEnumerator TryPlayCard_ProtocolRejectedWithResolverBusy_RefundsTheExactChargeAndLeavesTheReentrantSlotUnchanged()
+        public IEnumerator TryPlayCard_ReentrantFromAbilityResolvedHandler_ReturnsResolverBusyWithoutChargingOrRotating()
         {
-            // GIVEN
+            // GIVEN — the latch is checked, not merely raised; DeployController.TryPlayCard says why.
             yield return ActivateBoard();
 
             DeployController deployController = BuildDeployController(_spellCard);
@@ -428,20 +428,56 @@ namespace GooGalaxy.Tests.PlayMode.Deck
                 reentrantResult = deployController.TryPlayCard(ActingPlayerId, 1, new List<HexCoordinates> { _secondSpellTarget });
 
             MatchEvents.AbilityResolved += handleAbilityResolved;
-            LogAssert.Expect(LogType.Error, BoardLogMessages.SpellResolveReentered);
 
             // WHEN
             CardPlayResult outerResult = deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _spellTarget });
 
+            // THEN — rejected before the deck, the ledger or AbilityController ever see it, so nothing was
+            // charged for the reentrant play and nothing needs refunding.
+            Assert.That((outerResult, reentrantResult), Is.EqualTo((CardPlayResult.Success, CardPlayResult.ResolverBusy)));
+            Assert.That(_ledger.PayCalls.Count, Is.EqualTo(1));
+            Assert.That(_ledger.RefundCalls.Count, Is.EqualTo(0));
+            Assert.That(_handChangedCount - handChangedBaseline, Is.EqualTo(1), "Only the outer, successful play should have advanced its slot.");
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_SpellReentrantFromATroopLandingAbilityDispatch_ReturnsResolverBusyAndRefundsTheExactCharge()
+        {
+            // GIVEN — AbilityController._isResolvingAbilities is also raised by HandleLandingResolved, not only
+            // by ResolveSpell, so a troop landing with an impact reaches the same latch a nested Protocol play
+            // does. ConversionController is added here because AbilityController only reacts to
+            // MatchEvents.LandingResolved, and ConversionController is what raises it once a move executes.
+            _boardGO.AddComponent<ConversionController>().Construct(_gridPresenter, _unitPresenter);
+            yield return ActivateBoard();
+
+            PlaceAnchorUnit();
+            CardDataSO troopWithImpact = CreateCard(
+                "troop_with_impact",
+                CardType.Troop,
+                TroopEnergyCost,
+                new[] { new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, 1, TargetFilter.All, 1) }
+            );
+            _spawned.Add(troopWithImpact);
+            _cardPresenter.SetAuthoredCards(_troopCard, _spellCard, _noImpactSpellCard, troopWithImpact);
+            _cardPresenter.BuildRegistry();
+
+            DeployController troopDeployController = BuildDeployController(troopWithImpact);
+            var reentrantLedger = new FakeEnergyLedger();
+            DeployController reentrantSpellDeployController = BuildDeployController(_spellCard, reentrantLedger);
+
+            CardPlayResult reentrantResult = CardPlayResult.Success;
+            void handleAbilityResolved(int playerId, AbilityResult result) =>
+                reentrantResult = reentrantSpellDeployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _spellTarget });
+            MatchEvents.AbilityResolved += handleAbilityResolved;
+            LogAssert.Expect(LogType.Error, BoardLogMessages.SpellResolveReentered);
+
+            // WHEN
+            CardPlayResult outerResult = troopDeployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
             // THEN
             Assert.That((outerResult, reentrantResult), Is.EqualTo((CardPlayResult.Success, CardPlayResult.ResolverBusy)));
-            Assert.That(_ledger.PayCalls.Count, Is.EqualTo(2));
-            Assert.That(
-                _ledger.RefundCalls[0],
-                Is.EqualTo(_ledger.PayCalls[1]),
-                "The refund must return exactly what the rejected, reentrant play was charged — net zero."
-            );
-            Assert.That(_handChangedCount - handChangedBaseline, Is.EqualTo(1), "Only the outer, successful play should have advanced its slot.");
+            Assert.That(reentrantLedger.PayCalls.Count, Is.EqualTo(1));
+            Assert.That(reentrantLedger.RefundCalls[0], Is.EqualTo(reentrantLedger.PayCalls[0]), "The refund must return exactly what was charged — net zero.");
         }
 
         [UnityTest]
@@ -498,12 +534,17 @@ namespace GooGalaxy.Tests.PlayMode.Deck
 
         private DeployController BuildDeployController(CardDataSO card)
         {
+            return BuildDeployController(card, _ledger);
+        }
+
+        private DeployController BuildDeployController(CardDataSO card, IEnergyLedger ledger)
+        {
             DeckPresenter deckPresenter = BuildDeckPresenter(card, HandSize);
 
             var go = new GameObject("DeployController_Test");
             go.SetActive(false);
             DeployController controller = go.AddComponent<DeployController>();
-            controller.Construct(deckPresenter, _cardPresenter, _unitPresenter, _abilityController, _ledger);
+            controller.Construct(deckPresenter, _cardPresenter, _unitPresenter, _abilityController, ledger);
             go.SetActive(true);
             _spawned.Add(go);
 
