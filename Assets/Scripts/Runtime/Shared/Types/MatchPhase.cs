@@ -9,9 +9,9 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// reordering one silently changes what an older peer reads.
     /// <para>
     /// The full set is declared even though the orchestrator does not reach all of it yet.
-    /// <see cref="Overtime" /> and the <see cref="MatchEndReason.Domination" /> path arrive with GOOM-12, and
-    /// declaring their members now is what keeps that change from renumbering the ones already on the wire.
-    /// A member being declared is therefore not a promise that something transitions into it today.
+    /// <see cref="Results" /> belongs to the post-match screen and nothing transitions into it, so a member
+    /// being declared is not a promise that something enters it today — and declaring it ahead of that screen
+    /// is what will keep its arrival from renumbering the members already on the wire.
     /// </para>
     /// </remarks>
     public enum MatchPhase
@@ -34,20 +34,21 @@ namespace GooGalaxy.Runtime.Shared.Types
         Countdown = 2,
 
         /// <summary>
-        /// Normal play. The only phase in which a card can be played or discarded, and the only one the match
-        /// clock counts down in.
+        /// Normal play, counted down by the match clock. Cards are played and discarded here and in
+        /// <see cref="Overtime" />, and in no other phase.
         /// </summary>
         Standard = 3,
 
         /// <summary>
         /// The instant at the end of <see cref="Standard" /> where the unit counts are compared. A clear lead
-        /// ends the match; a tie is what <see cref="Overtime" /> exists for.
+        /// ends the match; level counts open <see cref="Overtime" />, which is what it exists for.
         /// </summary>
         OvertimeCheck = 4,
 
         /// <summary>
-        /// Sudden death after a tied <see cref="OvertimeCheck" />. Declared but never entered until GOOM-12
-        /// implements it.
+        /// Sudden death after a level <see cref="OvertimeCheck" />. Plays are still accepted and energy
+        /// regenerates at double rate; the first player to hold a unit-count lead unbroken for the authored hold
+        /// wins outright, and the overtime clock running out awards the match to whoever is ahead.
         /// </summary>
         Overtime = 5,
 

@@ -128,8 +128,9 @@ namespace GooGalaxy.Runtime.Match.Controllers
         /// of all but the first two — see <see cref="IsResolving" />.
         /// </para>
         /// <para>
-        /// <b>The phase gate sits ahead of the re-entrancy latch, not behind it.</b> A play made outside
-        /// <see cref="MatchPhase.Standard" /> must not raise the latch at all, since raising and clearing it
+        /// <b>The phase gate sits ahead of the re-entrancy latch, not behind it.</b> A play made in a phase
+        /// that accepts none — anything but <see cref="MatchPhase.Standard" /> and
+        /// <see cref="MatchPhase.Overtime" /> — must not raise the latch at all, since raising and clearing it
         /// around a play that never happens is a window a nested discard could be refused in for no reason. It
         /// also makes <see cref="CardPlayResult.MatchNotInPlay" /> win over
         /// <see cref="CardPlayResult.ResolverBusy" /> when both are true, which is the more useful answer: a
@@ -155,7 +156,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 return CardPlayResult.BoardUnavailable;
             }
 
-            if (_matchController.Phase != MatchPhase.Standard)
+            if (_matchController.Phase is not (MatchPhase.Standard or MatchPhase.Overtime))
             {
                 return CardPlayResult.MatchNotInPlay;
             }

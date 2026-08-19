@@ -20,7 +20,8 @@ namespace GooGalaxy.Tests.EditMode.Match
         [Test]
         public void TryTransition_StandardToEnded_ReturnsTrueAndEntersEnded()
         {
-            // GIVEN — the domination edge GOOM-12 reaches; declared and legal ahead of the system that raises it.
+            // GIVEN — the domination edge, and only that: EndMatch takes it from Standard when LateUpdate finds
+            // one player holding every live unit. A standard-clock expiry leaves Standard for OvertimeCheck first.
             _state.TryTransition(MatchPhase.Loading);
             _state.TryTransition(MatchPhase.Countdown);
             _state.TryTransition(MatchPhase.Standard);

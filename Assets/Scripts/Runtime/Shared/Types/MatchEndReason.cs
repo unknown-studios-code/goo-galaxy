@@ -10,8 +10,8 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// serializes or transmits it yet, which is what made inserting <see cref="None" /> ahead of the others
     /// possible at all.
     /// <para>
-    /// <see cref="Domination" /> and <see cref="Surrender" /> are declared ahead of the systems that raise
-    /// them — the domination check lands with GOOM-12 and a surrender needs a networked session to concede in.
+    /// <see cref="Surrender" /> is the one member no system raises yet: conceding needs a networked session
+    /// to concede in.
     /// </para>
     /// </remarks>
     public enum MatchEndReason
@@ -23,13 +23,15 @@ namespace GooGalaxy.Runtime.Shared.Types
         None = 0,
 
         /// <summary>
-        /// The standard clock ran out and one player held more units than the other.
+        /// A clock ran out with one player ahead on units — the standard clock, the overtime clock, or the hold
+        /// an overtime lead has to survive to win outright.
         /// </summary>
         TimeLimit = 1,
 
         /// <summary>
-        /// One player held every unit on the board, so the match ended the moment the last enemy unit was
-        /// converted or destroyed rather than at the clock. Declared but never raised until GOOM-12.
+        /// One player held every live unit on the board, so the match ended the moment the last enemy unit was
+        /// converted or destroyed rather than at the clock. Both players at zero is <see cref="Draw" /> instead:
+        /// a player holding nothing eliminated nothing, and neither side can deploy back onto an empty board.
         /// </summary>
         Domination = 2,
 

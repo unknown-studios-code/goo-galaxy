@@ -7,8 +7,8 @@ using UnityEngine;
 namespace GooGalaxy.Runtime.Match.Data
 {
     /// <summary>
-    /// The authored shape of a match: how long each timed phase lasts, and the opening position both players
-    /// start from.
+    /// The authored shape of a match: how long each timed phase lasts, how long an overtime lead must be held
+    /// to win outright, and the opening position both players start from.
     /// </summary>
     /// <remarks>
     /// Authored configuration only. The orchestrator copies every value it needs into a
@@ -23,8 +23,9 @@ namespace GooGalaxy.Runtime.Match.Data
     [CreateAssetMenu(fileName = "NewMatchConfig", menuName = "Goo Galaxy/Match/Match Config")]
     public class MatchConfigSO : ScriptableObject
     {
-        // The shortest phase that is still a phase. A duration at or below zero is an authoring mistake rather
-        // than an instant phase, so validation clamps to this instead of accepting it.
+        // The shortest authored interval that is still meaningful — a phase duration, or the overtime lead hold.
+        // A value at or below zero is an authoring mistake rather than an instant one, so validation clamps to
+        // this instead of accepting it.
         private const float MinimumPhaseDurationSeconds = 1f;
 
         private static readonly StartingPlacement[] _noPlacements = Array.Empty<StartingPlacement>();
@@ -44,12 +45,21 @@ namespace GooGalaxy.Runtime.Match.Data
         private float _countdownSeconds = 3f;
 
         [Tooltip(
-            "Seconds of sudden death after a tied comparison. The GDD authors 60 (1:00). Authored now and carried into the match, but unread "
-                + "until GOOM-12 implements overtime — changing it today changes nothing."
+            "Seconds of sudden death after a tied comparison. The GDD authors 60 (1:00). Overtime opens when normal play ends on level unit "
+                + "counts, and whoever is ahead when this runs out wins it."
         )]
         [Min(MinimumPhaseDurationSeconds)]
         [SerializeField]
         private float _overtimeDurationSeconds = 60f;
+
+        [Tooltip(
+            "Seconds a unit-count lead must be held unbroken to win overtime outright. The GDD authors 3, and 1 is the enforced floor. Below "
+                + "about 2 a single conversion settles overtime before the other player can answer it; set it above the overtime duration and "
+                + "the hold can never complete, so the overtime clock decides every match."
+        )]
+        [Min(MinimumPhaseDurationSeconds)]
+        [SerializeField]
+        private float _overtimeLeadHoldSeconds = 3f;
 
         [Header("Starting Position")]
         [Tooltip(
@@ -66,8 +76,11 @@ namespace GooGalaxy.Runtime.Match.Data
         /// <summary>Seconds of pre-match countdown before plays are accepted.</summary>
         public float CountdownSeconds => _countdownSeconds;
 
-        /// <summary>Seconds of sudden death after a tied comparison. Unread until GOOM-12.</summary>
+        /// <summary>Seconds of sudden death after normal play ended on level unit counts.</summary>
         public float OvertimeDurationSeconds => _overtimeDurationSeconds;
+
+        /// <summary>Seconds a unit-count lead must be held unbroken to win overtime outright.</summary>
+        public float OvertimeLeadHoldSeconds => _overtimeLeadHoldSeconds;
 
         /// <summary>
         /// The opening position, in authored order. Never null; an unauthored asset reads as empty.
@@ -95,26 +108,30 @@ namespace GooGalaxy.Runtime.Match.Data
             float standardDurationSeconds,
             float countdownSeconds,
             float overtimeDurationSeconds,
+            float overtimeLeadHoldSeconds,
             params StartingPlacement[] placements
         )
         {
             _standardDurationSeconds = standardDurationSeconds;
             _countdownSeconds = countdownSeconds;
             _overtimeDurationSeconds = overtimeDurationSeconds;
+            _overtimeLeadHoldSeconds = overtimeLeadHoldSeconds;
             _startingPlacements = placements ?? Array.Empty<StartingPlacement>();
         }
 
         /// <remarks>
-        /// Runs on every Inspector edit through <c>OnValidate</c>. Clamps the durations, because a phase of zero
-        /// seconds is a match that cannot be played and the runtime has no better value to substitute; reports
-        /// the empty opening position rather than inventing one, because only a designer knows where the units
-        /// belong.
+        /// Runs on every Inspector edit through <c>OnValidate</c>. Clamps the three phase durations and the
+        /// overtime lead hold on the same floor — a phase of zero seconds is a match that cannot be played, a
+        /// hold of zero settles overtime on the first conversion, and the runtime has no better value to
+        /// substitute for either; reports the empty opening position rather than inventing one, because only a
+        /// designer knows where the units belong.
         /// </remarks>
         internal void ValidateAuthoredData()
         {
             ClampPhaseDuration(ref _standardDurationSeconds, nameof(StandardDurationSeconds));
             ClampPhaseDuration(ref _countdownSeconds, nameof(CountdownSeconds));
             ClampPhaseDuration(ref _overtimeDurationSeconds, nameof(OvertimeDurationSeconds));
+            ClampPhaseDuration(ref _overtimeLeadHoldSeconds, nameof(OvertimeLeadHoldSeconds));
 
             if (StartingPlacements.Count == 0)
             {

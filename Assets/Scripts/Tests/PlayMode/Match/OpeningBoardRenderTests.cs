@@ -186,7 +186,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private MatchConfigSO BuildConfig(params StartingPlacement[] placements)
         {
             MatchConfigSO config = ScriptableObject.CreateInstance<MatchConfigSO>();
-            config.SetAuthoredData(60f, 1f, 1f, placements);
+            config.SetAuthoredData(60f, 1f, 1f, 3f, placements);
             _spawned.Add(config);
 
             return config;
@@ -200,7 +200,13 @@ namespace GooGalaxy.Tests.PlayMode.Match
             go.SetActive(false);
             MatchController controller = go.AddComponent<MatchController>();
             controller.SetMatchConfigForTests(config, matchSeed: 0, isAutoStartEnabled: false);
-            controller.Construct(_initializer, _unitPresenter, BuildBareComponent<DeployController>(), BuildBareComponent<CardDiscardController>());
+            controller.Construct(
+                _initializer,
+                _unitPresenter,
+                BuildBareComponent<DeployController>(),
+                BuildBareComponent<CardDiscardController>(),
+                _energyPresenter
+            );
             go.SetActive(true);
             _spawned.Add(go);
 

@@ -89,14 +89,14 @@ namespace GooGalaxy.Tests.PlayMode.Match
             var initializer = new MatchInitializer(gridPresenter, unitPresenter, cardPresenter, deckPresenter, energyPresenter);
 
             MatchConfigSO matchConfig = ScriptableObject.CreateInstance<MatchConfigSO>();
-            matchConfig.SetAuthoredData(60f, 1f, 1f);
+            matchConfig.SetAuthoredData(60f, 1f, 1f, 3f);
             _spawned.Add(matchConfig);
 
             var matchControllerGO = new GameObject("MatchController_GridInitializationOrder_Test");
             matchControllerGO.SetActive(false);
             MatchController matchController = matchControllerGO.AddComponent<MatchController>();
             matchController.SetMatchConfigForTests(matchConfig, matchSeed: 0, isAutoStartEnabled: false);
-            matchController.Construct(initializer, unitPresenter, BuildBareDeployController(), BuildBareCardDiscardController());
+            matchController.Construct(initializer, unitPresenter, BuildBareDeployController(), BuildBareCardDiscardController(), energyPresenter);
             _spawned.Add(matchControllerGO);
 
             boardGO.SetActive(true);

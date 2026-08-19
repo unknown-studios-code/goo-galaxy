@@ -33,9 +33,10 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// <b>after</b> the orchestrator has entered the phase, so a subscriber that asks the orchestrator what
         /// phase it is in receives the value this payload carries.
         /// <para>
-        /// <see cref="MatchPhase.Standard" /> is the only phase in which a card can be played or discarded, and
-        /// the deploy and discard controllers gate on exactly that. A subscriber caching the phase to make its
-        /// own decision must handle <see cref="MatchPhase.None" />, which is what an abandoned start publishes.
+        /// <see cref="MatchPhase.Standard" /> and <see cref="MatchPhase.Overtime" /> are the only phases in
+        /// which a card can be played or discarded, and the deploy and discard controllers gate on exactly those
+        /// two. A subscriber caching the phase to make its own decision must handle
+        /// <see cref="MatchPhase.None" />, which is what an abandoned start publishes.
         /// </para>
         /// </remarks>
         public static event Action<MatchPhase> MatchPhaseChanged;
@@ -50,12 +51,12 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// has to round it.
         /// <para>
         /// The clock is scaled match time, so a paused match stops publishing rather than continuing to count.
-        /// Both the pre-match countdown and normal play publish through this — the phase says which one is
-        /// running, and this event does not repeat it.
+        /// The pre-match countdown, normal play and overtime all publish through this — the phase says which one
+        /// is running, and this event does not repeat it.
         /// </para>
         /// <para>
-        /// Only normal play has a sub-second form to fall back on — see <c>MatchController.RemainingSeconds</c>,
-        /// which owns that trap.
+        /// Only the two played phases have a sub-second form to fall back on — see
+        /// <c>MatchController.RemainingSeconds</c>, which owns that trap.
         /// </para>
         /// </remarks>
         public static event Action<int> MatchClockTicked;
@@ -69,8 +70,8 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// every dispatch as a real change and never has to compare against what it last saw.
         /// <para>
         /// Unit count <i>is</i> the match score, which is what makes this the seam the domination rule hangs
-        /// on: a count reaching zero is a player with nothing left on the board, and GOOM-12 ends the match on
-        /// exactly that without needing a second pass over the registry.
+        /// on: a count reaching zero is a player with nothing left on the board, and the orchestrator ends the
+        /// match on exactly that without needing a second pass over the registry.
         /// </para>
         /// <para>
         /// A publish that <i>follows a board resolution</i> — a landing, a Protocol impact, or a fuse expiring —
