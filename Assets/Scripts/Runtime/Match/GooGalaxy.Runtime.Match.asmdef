@@ -1,0 +1,21 @@
+{
+  "name": "GooGalaxy.Runtime.Match",
+  "rootNamespace": "GooGalaxy.Runtime.Match",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Cards",
+    "GooGalaxy.Runtime.Deck",
+    "GooGalaxy.Runtime.Energy",
+    "VContainer"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

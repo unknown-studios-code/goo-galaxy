@@ -30,7 +30,7 @@
   ],
   "lint-staged": {
     "*.{json,md,mdc,yml,yaml}": "prettier --write --ignore-path .formatterignore",
-    "Assets/{Scripts,Playtest,Editor}/**/*.cs": [
+    "Assets/{Scripts,Editor}/**/*.cs": [
       "dotnet csharpier format --ignore-path .formatterignore",
       "dotnet format goo-galaxy.slnx --severity info --verbosity quiet --include"
     ]
@@ -41,12 +41,12 @@
   },
   "scripts": {
     "check": "npm run check:csharpier && npm run check:dotnet && npm run check:prettier",
-    "check:csharpier": "dotnet csharpier check Assets/Scripts Assets/Playtest Assets/Editor --ignore-path .formatterignore",
-    "check:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" \"Assets/Playtest/**/*.cs\" \"Assets/Editor/**/*.cs\" --severity info --verify-no-changes --verbosity quiet",
+    "check:csharpier": "dotnet csharpier check Assets/Scripts Assets/Editor --ignore-path .formatterignore",
+    "check:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" \"Assets/Editor/**/*.cs\" --severity info --verify-no-changes --verbosity quiet",
     "check:prettier": "prettier --check \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
     "format": "npm run format:csharpier && npm run format:dotnet && npm run format:prettier",
-    "format:csharpier": "dotnet csharpier format Assets/Scripts Assets/Playtest Assets/Editor --ignore-path .formatterignore",
-    "format:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" \"Assets/Playtest/**/*.cs\" \"Assets/Editor/**/*.cs\" --severity info --verbosity quiet",
+    "format:csharpier": "dotnet csharpier format Assets/Scripts Assets/Editor --ignore-path .formatterignore",
+    "format:dotnet": "dotnet format goo-galaxy.slnx --include \"Assets/Scripts/**/*.cs\" \"Assets/Editor/**/*.cs\" --severity info --verbosity quiet",
     "format:prettier": "prettier --write \"**/*.{json,md,mdc,yml,yaml}\" --ignore-path .formatterignore",
     "prepare": "husky && dotnet tool restore",
     "unity:console": "pwsh -NoProfile -File scripts/unity-console.ps1",

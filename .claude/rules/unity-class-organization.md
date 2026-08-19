@@ -54,7 +54,7 @@ Within fields and methods, order by accessibility: `public` → `internal` → `
 8. Unity lifecycle callbacks, in execution order: `Awake` → `OnEnable` → `Start` → `FixedUpdate` → `Update` → `LateUpdate` → `OnDisable` → `OnDestroy`
 9. Unity physics and trigger callbacks: `OnCollisionEnter/Stay/Exit`, `OnTriggerEnter/Stay/Exit`
 10. Unity editor and application callbacks: `OnValidate`, `Reset`, `OnDrawGizmos`/`OnDrawGizmosSelected`, `OnApplicationPause`, `OnApplicationFocus`, `OnApplicationQuit` — editor-only ones wrapped in `#if UNITY_EDITOR`
-11. Methods (public → internal → protected → private), with event handlers (`Handle*`) kept together
+11. Methods (public → internal → protected → private), with event handlers (`Handle*`) kept together as the **last** block of private methods, immediately before any nested type
 12. Nested types
 
 Do not declare constructors on a MonoBehaviour; Unity owns instantiation. Use `Awake` for self-initialization and `[Inject]` for dependencies.
@@ -69,11 +69,11 @@ Used for event buses, constant tables, and stateless helpers. Order: constants �
 
 ### Rule 5 — Structs and records
 
-Prefer `readonly struct` for value types; implement `IEquatable<T>` and provide `==`/`!=` whenever the type is compared or used as a dictionary key, overriding `Equals` and `GetHashCode` to match. Order: constants → `static readonly` → instance fields → constructors → properties → operators (`==`, `!=`, conversions) → methods → interface implementations (`Equals`, `GetHashCode`, `ToString`) → nested types. Positional records declare their parameters in the header and follow the same order for any additional members.
+Prefer `readonly struct` for value types; implement `IEquatable<T>` and provide `==`/`!=` whenever the type is compared or used as a dictionary key, overriding `Equals` and `GetHashCode` to match. **The one standing exception is a struct Unity's serializer writes into** — an element of a `[SerializeField]` array on a `ScriptableObject` or MonoBehaviour is deserialized in place, which a `readonly struct` cannot accept, so that type carries writable fields and states the reason at its declaration (see `StartingPlacement`). The exception is the serializer, not authoring convenience: a value type nothing serializes stays `readonly`. Order: constants → `static readonly` → instance fields → constructors → properties → operators (`==`, `!=`, conversions) → methods → interface implementations (`Equals`, `GetHashCode`, `ToString`) → nested types. Positional records declare their parameters in the header and follow the same order for any additional members.
 
 ### Rule 6 — Interfaces and enums
 
-Interfaces declare, in order: constants, static members, properties and indexers, events, then methods (instance → static → default implementations). Declare only the capability the consumer needs. Enums list values in a meaningful order — logical sequence or explicit numeric values when they are serialized or sent over the network — with `None = 0` when a neutral value exists.
+Interfaces declare, in order: constants, static members, properties and indexers, events, then methods (instance → static → default implementations). Declare only the capability the consumer needs. Enums list values in a meaningful order — logical sequence or explicit numeric values when they are serialized or sent over the network — with `None = 0` when a neutral value exists. **A result enum has no neutral value**, because every member is a real outcome, so it opens with `Success = 0` and that is not a violation of the clause above (`MatchStartResult`, `CardPlayResult`, `CardDiscardResult`, `MovementResult`, `SpellResult`). Reach for `None = 0` where a default-constructed value would otherwise assert something false — `MatchEndReason` is the case that earns it, since `default(MatchOutcome)` would otherwise read as a real ending.
 
 ### Rule 7 — Generic, abstract, and partial types
 

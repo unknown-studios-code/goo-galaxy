@@ -7,12 +7,14 @@ using GooGalaxy.Runtime.Board.Views;
 using GooGalaxy.Runtime.Cards.Data;
 using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Core.DI;
-using GooGalaxy.Runtime.Deck.Controllers;
 using GooGalaxy.Runtime.Deck.Data;
 using GooGalaxy.Runtime.Deck.Models;
 using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Models;
 using GooGalaxy.Runtime.Energy.Presenters;
+using GooGalaxy.Runtime.Match.Controllers;
+using GooGalaxy.Runtime.Match.Models;
+using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
@@ -45,6 +47,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameObject _unitPrefabGO;
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
+        private DeckPresenter _deckPresenter;
         private KitDataSO _kit;
 
         [TearDown]
@@ -237,6 +240,42 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
         [Test]
         [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesTheSceneDeckPresenterAsICardCycle()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<ICardCycle>(), Is.SameAs(_deckPresenter));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesICardCycleAndDeckPresenterAsOneInstance()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+
+            // WHEN
+            ICardCycle cardCycle = _scope.Container.Resolve<ICardCycle>();
+
+            // THEN
+            Assert.That(
+                cardCycle,
+                Is.SameAs(_scope.Container.Resolve<DeckPresenter>()),
+                "AsSelf() and As<ICardCycle>() must name one component: a second instance would deal a hand the "
+                    + "action resolvers never rotate, and rotate one MatchInitializer never dealt."
+            );
+        }
+
+        [Test]
+        [Timeout(10000)]
         public void Configure_WithPresentersInScene_ResolvesCardDiscardController()
         {
             // GIVEN — CardDiscardController carries no scene requirements of its own, so a missing one is
@@ -255,11 +294,13 @@ namespace GooGalaxy.Tests.PlayMode.Core
         [Timeout(10000)]
         public void Configure_WithPresentersInScene_InjectsARealDeckPresenterIntoTheCardDiscardController()
         {
-            // GIVEN
+            // GIVEN — the phase gate would otherwise win with MatchNotInPlay before the deck is ever read, since
+            // the resolved MatchController defaults to MatchPhase.None with no MatchConfigSO assigned.
             _presenterGO = CreateBoard();
             CreateScope();
             BuildContainer();
             CardDiscardController discardController = _scope.Container.Resolve<CardDiscardController>();
+            _scope.Container.Resolve<MatchController>().SetPhaseForTests(MatchPhase.Standard);
 
             // WHEN
             CardDiscardResult result = discardController.TryDiscardCard(ActingPlayerId, 0);
@@ -278,11 +319,13 @@ namespace GooGalaxy.Tests.PlayMode.Core
         [Timeout(10000)]
         public void Configure_WithPresentersInScene_InjectsARealDeckPresenterIntoTheDeployController()
         {
-            // GIVEN
+            // GIVEN — the phase gate would otherwise win with MatchNotInPlay before the deck is ever read, since
+            // the resolved MatchController defaults to MatchPhase.None with no MatchConfigSO assigned.
             _presenterGO = CreateBoard();
             CreateScope();
             BuildContainer();
             DeployController deployController = _scope.Container.Resolve<DeployController>();
+            _scope.Container.Resolve<MatchController>().SetPhaseForTests(MatchPhase.Standard);
 
             // WHEN
             CardPlayResult result = deployController.TryPlayCard(ActingPlayerId, 0, new[] { _origin });
@@ -296,6 +339,61 @@ namespace GooGalaxy.Tests.PlayMode.Core
                     + "auto-scaffold for the container to build at all — a bare auto-scaffolded DeckPresenter returns UnknownPlayer "
                     + "too, so this does not prove the scene's real, kitted one was wired in."
             );
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesMatchController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<MatchController>(), Is.Not.Null);
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesMatchInitializerAsThePlainClassRegistration()
+        {
+            // GIVEN — MatchInitializer is the project's first non-component registration: a plain class VContainer
+            // constructs from the presenters registered above it, rather than a component it finds in the scene.
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<MatchInitializer>(), Is.Not.Null);
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_InjectsTheMatchControllerIntoTheDeployController()
+        {
+            // GIVEN — MatchController pushes itself into DeployController from its own Construct rather than being
+            // injected into it, because the reverse registration is a dependency cycle VContainer's
+            // TypeAnalyzer.CheckCircularDependency refuses at Build(). A prior attempt registered exactly that
+            // cycle and Build() threw. The cycle throw carries a non-null InvalidType, so BuildContainer's filter
+            // catches it just like a missing component: it scaffolds, retries, throws again, and ends on its
+            // Assert.Fail rather than surfacing the VContainerException. MatchNotInPlay — rather than
+            // BoardUnavailable — is what proves DeployController actually received the pushed reference: its
+            // MatchController defaults to MatchPhase.None with no MatchConfigSO assigned.
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+            DeployController deployController = _scope.Container.Resolve<DeployController>();
+
+            // WHEN
+            CardPlayResult result = deployController.TryPlayCard(ActingPlayerId, 0, new[] { _origin });
+
+            // THEN
+            Assert.That(result, Is.EqualTo(CardPlayResult.MatchNotInPlay));
         }
 
         private void CreateScope()
@@ -333,7 +431,8 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
             // A kitted DeckPresenter here, rather than an auto-scaffolded bare one, is what keeps BuildContainer
             // free of DeckLogMessages.KitDataMissing on every build.
-            presenterGO.AddComponent<DeckPresenter>().SetKit(BuildKit(), DeckState.DefaultHandSize);
+            _deckPresenter = presenterGO.AddComponent<DeckPresenter>();
+            _deckPresenter.SetKit(BuildKit(), DeckState.DefaultHandSize);
 
             presenterGO.SetActive(true);
 

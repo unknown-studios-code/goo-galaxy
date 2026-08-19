@@ -4,6 +4,7 @@ using GooGalaxy.Runtime.Deck.Models;
 using GooGalaxy.Runtime.Deck.Services;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
+using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
@@ -25,7 +26,7 @@ namespace GooGalaxy.Runtime.Deck.Presenters
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
-    public class DeckPresenter : MonoBehaviour
+    public class DeckPresenter : MonoBehaviour, ICardCycle
     {
         // The GDD's Kit is eight slots and a match is two players; both are sizing hints rather than rules, and
         // both buffers grow rather than break if a Kit or a match ever exceeds them.
@@ -112,13 +113,6 @@ namespace GooGalaxy.Runtime.Deck.Presenters
             PublishHandChanged(playerId, deck);
         }
 
-        /// <summary>Reads a player's current hand.</summary>
-        /// <param name="playerId">The player to read.</param>
-        /// <param name="hand">
-        /// The cards in hand, in slot order, or null when the player has no deck. The list belongs to the deck
-        /// and reflects every later rotation; read it with an indexed <c>for</c> loop.
-        /// </param>
-        /// <returns>True when the player has a deck; false when they do not.</returns>
         public bool TryGetHand(int playerId, out IReadOnlyList<CardId> hand)
         {
             if (!_playerDecks.TryGetValue(playerId, out DeckState deck))
@@ -149,15 +143,6 @@ namespace GooGalaxy.Runtime.Deck.Presenters
             return true;
         }
 
-        /// <summary>Reads a single hand slot without changing anything.</summary>
-        /// <param name="playerId">The player to read.</param>
-        /// <param name="slotIndex">The zero-based hand slot to read.</param>
-        /// <param name="card">The card in that slot, or a default id when the player or the slot is unknown.</param>
-        /// <returns>True when the player has a deck and the index names one of its hand slots.</returns>
-        /// <remarks>
-        /// Answers false both for an unknown player and for an out-of-range slot; a caller that has to tell the
-        /// two apart asks <see cref="TryGetHand" /> first.
-        /// </remarks>
         public bool TryGetSlot(int playerId, int slotIndex, out CardId card)
         {
             if (!_playerDecks.TryGetValue(playerId, out DeckState deck))
@@ -178,31 +163,6 @@ namespace GooGalaxy.Runtime.Deck.Presenters
         {
             _kit = kit;
             _handSize = handSize;
-        }
-
-        /// <remarks>
-        /// Called only once the action consuming the slot has been accepted — a play the board resolved
-        /// (<c>DeployController.TryPlayCard</c>) or a discard the ledger has already charged
-        /// (<c>CardDiscardController.TryDiscardCard</c>) — which is what makes the cycle advance a consequence of
-        /// a resolved action rather than of an attempted one. Publishes <c>MatchEvents.HandChanged</c> with the
-        /// rotated hand; nothing is published when the rotation is refused.
-        /// </remarks>
-        internal bool TryAdvanceSlot(int playerId, int slotIndex, out CardId played)
-        {
-            if (!_playerDecks.TryGetValue(playerId, out DeckState deck))
-            {
-                played = default;
-                return false;
-            }
-
-            if (!deck.TryAdvanceSlot(slotIndex, out played))
-            {
-                return false;
-            }
-
-            PublishHandChanged(playerId, deck);
-
-            return true;
         }
 
         private static void PublishHandChanged(int playerId, DeckState deck)
@@ -228,6 +188,28 @@ namespace GooGalaxy.Runtime.Deck.Presenters
             {
                 InitializePlayer(_initializedPlayerIds[i]);
             }
+        }
+
+        // Explicit rather than public: it keeps the rotation off this component's own surface, where a HUD
+        // holding a DeckPresenter would find it, so reaching it means holding the ICardCycle seam the two action
+        // resolvers are injected with. ICardCycle.TryAdvanceSlot states the acceptance contract that makes that
+        // narrowing worth having.
+        bool ICardCycle.TryAdvanceSlot(int playerId, int slotIndex, out CardId played)
+        {
+            if (!_playerDecks.TryGetValue(playerId, out DeckState deck))
+            {
+                played = default;
+                return false;
+            }
+
+            if (!deck.TryAdvanceSlot(slotIndex, out played))
+            {
+                return false;
+            }
+
+            PublishHandChanged(playerId, deck);
+
+            return true;
         }
     }
 }

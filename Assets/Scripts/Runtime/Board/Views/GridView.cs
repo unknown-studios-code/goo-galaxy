@@ -31,6 +31,8 @@ namespace GooGalaxy.Runtime.Board.Views
 
         private readonly Dictionary<HexCoordinates, CellView> _cellViews = new();
 
+        private HexGrid _builtGrid;
+
         public IReadOnlyDictionary<HexCoordinates, CellView> CellViews => _cellViews;
 
         protected void Awake()
@@ -55,14 +57,6 @@ namespace GooGalaxy.Runtime.Board.Views
             _cellVisualSize = cellVisualSize;
         }
 
-        private void HandleGridInitialized(IHexGrid gridObject)
-        {
-            if (gridObject is HexGrid grid)
-            {
-                BuildVisualGrid(grid);
-            }
-        }
-
         private void BuildVisualGrid(HexGrid grid)
         {
             DestroyVisualGrid();
@@ -85,6 +79,29 @@ namespace GooGalaxy.Runtime.Board.Views
 
                 _cellViews[cell.Coordinates] = tileInstance;
             }
+
+            // Claimed only once the cells actually exist, so a build that returned on a missing prefab does not
+            // leave the view believing it has already rendered this grid.
+            _builtGrid = grid;
+        }
+
+        // Returns the existing cells to the state a fresh build would produce: authored tint restored and any
+        // highlight the previous match left dropped, so a rematch never inherits a selection from the last one.
+        private void ResetVisualGrid(HexGrid grid)
+        {
+            foreach (HexCell cell in grid.CellValues)
+            {
+                if (!_cellViews.TryGetValue(cell.Coordinates, out CellView cellView) || cellView == null)
+                {
+                    // A cell went missing since the build — destroyed from outside, or a coordinate the grid
+                    // gained. Nothing can be reset onto it, so fall back to the full rebuild.
+                    BuildVisualGrid(grid);
+                    return;
+                }
+
+                cellView.SetHighlightState(false);
+                cellView.SetCellColor(cell.IsBlocked ? _blockedCellColor : _defaultCellColor);
+            }
         }
 
         private void DestroyVisualGrid()
@@ -103,6 +120,32 @@ namespace GooGalaxy.Runtime.Board.Views
             }
 
             _cellViews.Clear();
+
+            // Cleared with the cells it describes. The editor's OnValidate rebuild constructs a genuinely new
+            // HexGrid, so it never matches this anyway — but a view that kept a reference to a grid it no longer
+            // renders would answer the next announcement with a reset over an empty dictionary.
+            _builtGrid = null;
+        }
+
+        private void HandleGridInitialized(IHexGrid gridObject)
+        {
+            if (gridObject is not HexGrid grid)
+            {
+                return;
+            }
+
+            // PERF: reference identity, not equality. Every match start re-announces the board, and GridPresenter
+            // only ever constructs a new HexGrid when the authored radius changes — so a rematch hands back the
+            // very instance already on screen, and rebuilding would Destroy and Instantiate 61 cell prefabs,
+            // each carrying a SpriteRenderer, a 13-point PolygonCollider2D and a CellView, for a board that did
+            // not move. The reset below is what a rematch actually needs: the same cells, clean.
+            if (ReferenceEquals(grid, _builtGrid))
+            {
+                ResetVisualGrid(grid);
+                return;
+            }
+
+            BuildVisualGrid(grid);
         }
     }
 }
