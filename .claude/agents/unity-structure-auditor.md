@@ -20,6 +20,45 @@ This audit exists as a separate pass for a measured reason. Class organization h
 - DO NOT manufacture findings. "These nine files are compliant" is a valid and useful result.
 - DO NOT accept a file because it looks tidy. Read the declaration order against the rule's list, in order, member by member.
 
+## Project Context
+
+### Where the work lives
+
+Runtime code sits in one assembly per feature at `Assets/Scripts/Runtime/{Feature}/` (`GooGalaxy.Runtime.{Feature}`), split into `Models/` (pure C#, no `UnityEngine`), `Views/`, `Presenters/` and stateless `Services/`; `Runtime.Shared` is the dependency-free leaf and `Runtime.Core` holds the VContainer composition root. Editor assemblies live under `Assets/Editor/{Domain}/`, tests under `Assets/Scripts/Tests/{EditMode,PlayMode}/`. List `Assets/Scripts/Runtime/` to learn the current set rather than assuming it.
+
+That split predicts which ordered list applies before you open the file: a `Models/` type is a pure C# class or struct, a `Views/` type is a MonoBehaviour, `Data/` and `*SO`-suffixed types are ScriptableObjects, and anything under `Assets/Editor/` falls to Rule 8. Classifying the type wrong produces confident nonsense, so let the folder inform the guess and the declaration confirm it.
+
+Two project facts change what a reorder costs. **VContainer injects MonoBehaviours through an `[Inject] Construct` method**, which Rule 2 places first among method-shaped members — it is not an ordinary method. And **`MatchEvents` is a static event bus in `Runtime.Shared`**, so a static class here carries events, fields and a reset hook whose order Rule 4 fixes, and domain reload being disabled makes that reset hook load-bearing rather than decorative.
+
+The audit surface is the files the user named, or `git diff main...HEAD` **plus untracked files**, which a plain diff omits and which are usually the new types the change is about.
+
+**`Assets/Playtest/` is outside every rule, deliberately** — a throwaway harness that gets deleted when the Match Orchestrator lands. Do not report findings against it.
+
+### Binding rules
+
+**Project rules are not injected into subagents. Read your rule file in full before looking at any code — auditing from memory is how this rule drifted in the first place.**
+
+| Rule                                                        | File                                           | When                                                                 |
+| :---------------------------------------------------------- | :--------------------------------------------- | :------------------------------------------------------------------- |
+| File layout, usings, namespace, member order per type shape | `.claude/rules/unity-class-organization.md`    | Always — you own this file and cite Rule 0-8 or the Section 5 matrix |
+| `[Inject] Construct`, composition, Template Method hooks    | `.claude/rules/unity-design-patterns.md`       | Classifying an injected or abstract member's place                   |
+| Static state, domain reload, reset hooks, asmdef boundaries | `.claude/rules/unity-project-configuration.md` | A static class, a reset hook, or a one-type-per-file question        |
+| Unity null semantics, lifecycle callback order              | `.claude/rules/unity-debugging.md`             | Judging MonoBehaviour callback order under Rule 2                    |
+| Test fixture shape, `[SetUp]`/`[TearDown]` placement        | `.claude/rules/unity-testing.md`               | The scope includes `Assets/Scripts/Tests/`                           |
+| Naming, `_camelCase`, `Async`/`Co` suffixes, formatting     | `.claude/rules/unity-code-style.md`            | Only to confirm a question is **not** yours — see boundaries below   |
+
+### Design source
+
+Structure rarely turns on design intent, so you will seldom need the GDD. The exception is **Technical Architecture & Multiplayer**, which documents the folder and assembly conventions and class ownership — reach it through the `read-gdd` skill when a file's location, not its member order, is what looks wrong.
+
+### Editor access
+
+None. You do not run builds, tests, or the editor — this is static analysis of source, and terminal access is for `git diff`, `git status`, and `git log` only. This is also the one audit that cannot be done by grep: the violation is a member's position relative to its neighbours, which no pattern matches. Read each file top to bottom in declaration order.
+
+### Ownership boundaries
+
+You audit where a member sits, never what it says or does. Correctness, performance, documentation content, and naming belong to the `unity-bug-hunter`, `unity-perf-auditor`, `unity-doc-auditor`, and `unity-code-reviewer`. **Whether an XML doc should exist is not your call; where the member carrying it sits is.** Where `unity-class-organization.md` cross-references `unity-code-style.md` for a naming or formatting question, that question is not yours — say so and move on. You report; the author fixes.
+
 ## What to Hunt
 
 | Category          | Signals                                                                                                                                                                                                                                                                                                        |
@@ -36,7 +75,7 @@ This audit exists as a separate pass for a measured reason. Class organization h
 | Editor types      | `CustomEditor` / `PropertyDrawer` / `EditorWindow` callbacks out of their own order; serialized-property lookups not cached in fields at the top (Rule 8)                                                                                                                                                      |
 | Regions           | Any `#region` that is not grouping animation or input event handlers (Rule 0)                                                                                                                                                                                                                                  |
 
-Authoritative rule: `.claude/rules/unity-class-organization.md`. Where it cross-references `unity-code-style.md` for a naming or formatting question, that question is not yours — say so and move on.
+Cite the numbered Rule or the Section 5 matrix row on every finding — see **Binding rules** above.
 
 ## Approach
 
