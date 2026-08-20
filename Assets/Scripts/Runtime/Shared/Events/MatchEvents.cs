@@ -117,6 +117,18 @@ namespace GooGalaxy.Runtime.Shared.Events
         public static event Action<int, float, bool> EnergySpent;
 
         /// <summary>
+        /// Raised when a player's catch-up Energy bonus opens or closes, carrying the player id, whether the
+        /// bonus is active after the change, and the seconds left in the window.
+        /// </summary>
+        /// <remarks>
+        /// Edge-triggered: raised only on the tick a window opens or closes, never once per frame while it
+        /// holds steady. A deactivation reports zero remaining seconds, and a match ending while a window is
+        /// open publishes that close like any other. The payload is value types only, so there is nothing for a
+        /// subscriber to copy.
+        /// </remarks>
+        public static event Action<int, bool, float> CatchUpChanged;
+
+        /// <summary>
         /// Raised after a move has been applied to the board, carrying the command and the coordinates whose
         /// contents changed. The coordinate list is owned by the publisher and is only valid for the duration
         /// of the callback; subscribers must copy it rather than retain the reference, and must read it with an
@@ -300,6 +312,18 @@ namespace GooGalaxy.Runtime.Shared.Events
             EnergySpent?.Invoke(playerId, newEnergy, wasSuccessful);
         }
 
+        /// <summary>
+        /// Publishes <see cref="CatchUpChanged"/>. Called only on the tick a player's catch-up window opens or
+        /// closes, never once per frame while it holds steady.
+        /// </summary>
+        /// <param name="playerId">The player whose catch-up window changed.</param>
+        /// <param name="isActive">Whether the bonus is active after this change.</param>
+        /// <param name="remainingSeconds">Seconds left in the window; zero when deactivating.</param>
+        public static void RaiseCatchUpChanged(int playerId, bool isActive, float remainingSeconds)
+        {
+            CatchUpChanged?.Invoke(playerId, isActive, remainingSeconds);
+        }
+
         /// <summary>Publishes <see cref="MoveExecuted"/>. Called only after the board has been mutated.</summary>
         /// <param name="command">The move that was applied.</param>
         /// <param name="affectedCoordinates">
@@ -416,6 +440,7 @@ namespace GooGalaxy.Runtime.Shared.Events
             MatchEnded = null;
             EnergyChanged = null;
             EnergySpent = null;
+            CatchUpChanged = null;
             MoveExecuted = null;
             ConversionResolved = null;
             LandingResolved = null;

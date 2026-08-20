@@ -64,6 +64,10 @@ namespace GooGalaxy.Runtime.Match.Controllers
 
         private const int PlayerTwoId = 2;
 
+        // The regeneration multiplier of a player with no catch-up bonus open, which is what every player holds
+        // outside a window and what the two ends of a match restore.
+        private const float NoCatchUpMultiplier = 1f;
+
         // No whole second has been published yet. Negative, so the first tick of any phase always publishes.
         private const int NoPublishedSecond = -1;
 
@@ -86,6 +90,10 @@ namespace GooGalaxy.Runtime.Match.Controllers
         // the flag. Mirrors UnitView's marker over its own gated whole-registry pass.
         private static readonly ProfilerMarker _recountScoresMarker = new("MatchController.RecountScores");
 
+        // Folds into BehaviourUpdate without a marker of its own, alongside the clock tick and the overtime
+        // lead tick, so a non-deep profile cannot attribute it. Mirrors _recountScoresMarker above.
+        private static readonly ProfilerMarker _tickCatchUpMarker = new("MatchController.TickCatchUp");
+
         [Header("Match Setup")]
         [SerializeField]
         private MatchConfigSO _matchConfig;
@@ -104,6 +112,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
         private readonly MatchState _state = new();
         private readonly MatchClock _clock = new();
         private readonly OvertimeLeadTracker _overtimeLeadTracker = new();
+        private readonly CatchUpTracker _catchUpTracker = new();
 
         private MatchInitializer _initializer;
         private UnitPresenter _unitPresenter;
@@ -113,9 +122,16 @@ namespace GooGalaxy.Runtime.Match.Controllers
         private float _standardDurationSeconds;
         private float _overtimeDurationSeconds;
         private float _overtimeLeadHoldSeconds;
+
+        // Neutral rather than default: SetPhaseForTests parks a controller in a played phase without running
+        // PrepareForNewMatch, and default(CatchUpConfig) carries a RegenMultiplier of zero — which would not
+        // merely fail to boost, it would stop that player regenerating at all.
+        private CatchUpConfig _catchUpConfig = new(0f, NoCatchUpMultiplier, 0f, 0f);
         private int _countdownTicks;
         private int _lastPublishedSecond = NoPublishedSecond;
         private bool _isScoreDirty;
+        private bool _isPlayerOneCatchUpActive;
+        private bool _isPlayerTwoCatchUpActive;
 
         public MatchPhase Phase => _state.Phase;
 
@@ -228,6 +244,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
             _clock.Tick(deltaTime);
             _state.AddElapsed(deltaTime);
             PublishClockTick();
+            TickCatchUp(deltaTime);
 
             // Tested before the expiry, so a hold that completes on the very frame the overtime clock drains
             // wins outright rather than being handed back to a comparison it has already survived.
@@ -499,16 +516,22 @@ namespace GooGalaxy.Runtime.Match.Controllers
             _state.Reset();
             _clock.Reset(0f);
             _overtimeLeadTracker.Reset();
+            _catchUpTracker.Reset();
             _lastPublishedSecond = NoPublishedSecond;
             _isScoreDirty = false;
+            _isPlayerOneCatchUpActive = false;
+            _isPlayerTwoCatchUpActive = false;
 
             // Captured at start, so an Inspector edit made mid-match changes the next match rather than the
             // running one — the guarantee CardDefinition makes for card data, made here for the clock. Overtime
             // is captured on the same terms even though it is read minutes later, because the alternative is a
-            // match whose sudden death lasts whatever the asset happened to say by the time it got there.
+            // match whose sudden death lasts whatever the asset happened to say by the time it got there. The
+            // catch-up config is captured for the same reason: a designer retuning the threshold between matches
+            // must not retune a bonus already open in the one still running.
             _standardDurationSeconds = _matchConfig.StandardDurationSeconds;
             _overtimeDurationSeconds = _matchConfig.OvertimeDurationSeconds;
             _overtimeLeadHoldSeconds = _matchConfig.OvertimeLeadHoldSeconds;
+            _catchUpConfig = _matchConfig.CatchUp;
 
             // Counted down one whole second at a time, so a fractional authored countdown rounds up to the next
             // whole tick rather than ending early. At the authored 3 seconds this is the GDD's "3 2 1 GO".
@@ -519,8 +542,21 @@ namespace GooGalaxy.Runtime.Match.Controllers
         // None, because a start that never opened normal play is abandoned rather than finished. The phase is
         // still published, so a subscriber that already saw Loading or Countdown is told the match is not
         // coming.
+        //
+        // Both energy multipliers are restored first, for the reason EndMatch states: EnergyPresenter.Update is
+        // not phase-gated, so a rate left doubled or boosted keeps regenerating against no match at all.
+        //
+        // Defensive rather than corrective, and deliberately so — no reachable caller needs it today. Four of
+        // the six abandon from Loading, Countdown or Standard, before either multiplier can be raised;
+        // BeginOvertimePhase's refusal runs before its own SetEnergyOvertime(true); and EndMatch's already
+        // clears both ahead of the transition it might be refused by. That last path is itself dead, since
+        // MatchState admits Overtime -> Ended unconditionally. This exists so the guarantee belongs to the
+        // method every abandon funnels through rather than to each caller's memory of what it had raised.
         private void AbandonStart()
         {
+            SetEnergyOvertime(false);
+            ResetCatchUp();
+
             _state.Reset();
             MatchEvents.RaiseMatchPhaseChanged(_state.Phase);
         }
@@ -657,6 +693,65 @@ namespace GooGalaxy.Runtime.Match.Controllers
             );
         }
 
+        // PERF: reads the counts LateUpdate settled on the previous frame, the same trade TickOvertimeLead makes
+        // just above. Unlike the overtime lead, this reading never decides anything, so it needs no re-confirming
+        // recount — see the class remarks.
+        private void TickCatchUp(float deltaTime)
+        {
+            using (_tickCatchUpMarker.Auto())
+            {
+                TickCatchUpWindows(deltaTime);
+            }
+        }
+
+        private void TickCatchUpWindows(float deltaTime)
+        {
+            _catchUpTracker.Tick(
+                _state.GetScore(PlayerOneId),
+                _state.GetScore(PlayerTwoId),
+                deltaTime,
+                _catchUpConfig,
+                out bool isPlayerOneActive,
+                out bool isPlayerTwoActive
+            );
+
+            ApplyCatchUpEdge(PlayerOneId, isPlayerOneActive, ref _isPlayerOneCatchUpActive);
+            ApplyCatchUpEdge(PlayerTwoId, isPlayerTwoActive, ref _isPlayerTwoCatchUpActive);
+        }
+
+        private void ApplyCatchUpEdge(int playerId, bool isActive, ref bool isStoredActive)
+        {
+            if (isActive == isStoredActive)
+            {
+                return;
+            }
+
+            isStoredActive = isActive;
+
+            SetCatchUpMultiplier(playerId, isActive ? _catchUpConfig.RegenMultiplier : NoCatchUpMultiplier);
+            MatchEvents.RaiseCatchUpChanged(playerId, isActive, isActive ? _catchUpConfig.DurationSeconds : 0f);
+        }
+
+        private void SetCatchUpMultiplier(int playerId, float multiplier)
+        {
+            if (_energyPresenter == null)
+            {
+                return;
+            }
+
+            _energyPresenter.SetCatchUpMultiplier(playerId, multiplier);
+        }
+
+        // Routed through the edge helper rather than writing the presenter directly, so a bonus that was open
+        // when the match ended publishes its close like any other. Announcing it is what MatchEvents.CatchUpChanged
+        // promises, and a subscriber left holding "active" would light a results screen with a live bonus badge.
+        // Each call no-ops when that player's window was already closed.
+        private void ResetCatchUp()
+        {
+            ApplyCatchUpEdge(PlayerOneId, false, ref _isPlayerOneCatchUpActive);
+            ApplyCatchUpEdge(PlayerTwoId, false, ref _isPlayerTwoCatchUpActive);
+        }
+
         // The whole of the standard time-limit decision. A clear lead ends the match; level counts are what
         // Overtime exists for, and are the only route into it.
         private void ResolveTimeLimit()
@@ -734,9 +829,11 @@ namespace GooGalaxy.Runtime.Match.Controllers
         private void EndMatch(MatchOutcome outcome)
         {
             // First, and unconditionally, because EnergyPresenter.Update is not phase-gated: a match that
-            // reached overtime would otherwise keep regenerating at double rate behind a results screen. It runs
-            // ahead of the transition so the refusal path below stops the doubling too.
+            // reached overtime would otherwise keep regenerating at double rate behind a results screen, and a
+            // match that ends while a catch-up bonus is open would otherwise keep boosting one player's
+            // regeneration the same way. Both run ahead of the transition so the refusal path below stops them too.
             SetEnergyOvertime(false);
+            ResetCatchUp();
 
             // Recoverable rather than terminal: a refusal leaves the match in whichever phase it was ending
             // from — Standard on a domination, Overtime, or OvertimeCheck — every one of which MatchState counts

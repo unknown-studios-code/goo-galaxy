@@ -37,3 +37,8 @@ MonoBehaviour:
     PlayerId: 2
     Q: -4
     R: 0
+  _catchUp:
+    <ThresholdRatio>k__BackingField: 0.4
+    <RegenMultiplier>k__BackingField: 1.15
+    <DurationSeconds>k__BackingField: 20
+    <CooldownSeconds>k__BackingField: 60
