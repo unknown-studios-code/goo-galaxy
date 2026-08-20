@@ -273,6 +273,28 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             }
         }
 
+        /// <summary>
+        /// Sets the catch-up Energy multiplier for one player — the per-player counterpart to
+        /// <see cref="SetOvertime"/>, which applies to every player at once. That asymmetry is real: overtime is
+        /// a property of the match, catch-up is a property of one player's position in it.
+        /// </summary>
+        /// <param name="playerId">The player whose multiplier changes.</param>
+        /// <param name="multiplier">The multiplier to apply. 1 restores the standard regeneration rate.</param>
+        /// <remarks>
+        /// An unknown player id is ignored: no state is created and nothing is published. The caller owns the
+        /// value's sanity — zero freezes that player's regeneration and a negative one reverses it, and nothing
+        /// here bounds either.
+        /// </remarks>
+        public void SetCatchUpMultiplier(int playerId, float multiplier)
+        {
+            if (!_playerStates.TryGetValue(playerId, out EnergyState state))
+            {
+                return;
+            }
+
+            state.CatchUpMultiplier = multiplier;
+        }
+
         private static void FlushPendingPublications(int playerId, EnergyState state)
         {
             int pendingSpends = state.PendingSpendCount;

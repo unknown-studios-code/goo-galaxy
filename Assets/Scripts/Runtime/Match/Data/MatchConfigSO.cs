@@ -70,6 +70,10 @@ namespace GooGalaxy.Runtime.Match.Data
         [SerializeField]
         private StartingPlacement[] _startingPlacements = Array.Empty<StartingPlacement>();
 
+        [Header("Catch-Up Bonus")]
+        [SerializeField]
+        private CatchUpConfig _catchUp = new(0.4f, 1.15f, 20f, 60f);
+
         /// <summary>Seconds of normal play before the unit counts decide the match.</summary>
         public float StandardDurationSeconds => _standardDurationSeconds;
 
@@ -91,6 +95,12 @@ namespace GooGalaxy.Runtime.Match.Data
         /// per match and never retains it.
         /// </remarks>
         public IReadOnlyList<StartingPlacement> StartingPlacements => _startingPlacements ?? _noPlacements;
+
+        /// <summary>
+        /// Authored parameters for the catch-up Energy bonus — see <see cref="CatchUpConfig" /> for the four
+        /// fields and the band each one is authorable within.
+        /// </summary>
+        public CatchUpConfig CatchUp => _catchUp;
 
 #if UNITY_EDITOR
         protected void OnValidate()
@@ -120,11 +130,22 @@ namespace GooGalaxy.Runtime.Match.Data
         }
 
         /// <remarks>
+        /// The catch-up counterpart to <see cref="SetAuthoredData" />, and separate from it only because that
+        /// method ends in a <c>params</c> array, which nothing can follow. Skips validation on the same terms,
+        /// so a caller can observe what <see cref="ValidateAuthoredData" /> does to an out-of-band value.
+        /// </remarks>
+        internal void SetAuthoredCatchUp(CatchUpConfig catchUp)
+        {
+            _catchUp = catchUp;
+        }
+
+        /// <remarks>
         /// Runs on every Inspector edit through <c>OnValidate</c>. Clamps the three phase durations and the
         /// overtime lead hold on the same floor — a phase of zero seconds is a match that cannot be played, a
         /// hold of zero settles overtime on the first conversion, and the runtime has no better value to
         /// substitute for either; reports the empty opening position rather than inventing one, because only a
-        /// designer knows where the units belong.
+        /// designer knows where the units belong; then clamps every <see cref="CatchUp" /> field into its own
+        /// authored band.
         /// </remarks>
         internal void ValidateAuthoredData()
         {
@@ -137,6 +158,8 @@ namespace GooGalaxy.Runtime.Match.Data
             {
                 Debug.LogWarning(string.Format(MatchLogMessages.MatchConfigNoPlacementsFormat, name), this);
             }
+
+            ValidateCatchUp();
         }
 
         private void ClampPhaseDuration(ref float durationSeconds, string fieldName)
@@ -157,6 +180,68 @@ namespace GooGalaxy.Runtime.Match.Data
             Debug.LogWarning(message, this);
 
             durationSeconds = MinimumPhaseDurationSeconds;
+        }
+
+        // Reconstructed rather than mutated in place: CatchUpConfig's properties carry a private setter, the
+        // same shape EnergyConfig uses, so a clamped value is assembled locally and only written back if at
+        // least one field actually moved. The bands come from CatchUpConfig itself rather than being restated
+        // here, so this clamp and the [Range] attributes it backs up can never disagree.
+        private void ValidateCatchUp()
+        {
+            float thresholdRatio = _catchUp.ThresholdRatio;
+            float regenMultiplier = _catchUp.RegenMultiplier;
+            float durationSeconds = _catchUp.DurationSeconds;
+            float cooldownSeconds = _catchUp.CooldownSeconds;
+
+            bool wasClamped = ClampCatchUpField(
+                ref thresholdRatio,
+                nameof(CatchUpConfig.ThresholdRatio),
+                CatchUpConfig.MinThresholdRatio,
+                CatchUpConfig.MaxThresholdRatio
+            );
+            wasClamped |= ClampCatchUpField(
+                ref regenMultiplier,
+                nameof(CatchUpConfig.RegenMultiplier),
+                CatchUpConfig.MinRegenMultiplier,
+                CatchUpConfig.MaxRegenMultiplier
+            );
+            wasClamped |= ClampCatchUpField(
+                ref durationSeconds,
+                nameof(CatchUpConfig.DurationSeconds),
+                CatchUpConfig.MinDurationSeconds,
+                CatchUpConfig.MaxDurationSeconds
+            );
+            wasClamped |= ClampCatchUpField(
+                ref cooldownSeconds,
+                nameof(CatchUpConfig.CooldownSeconds),
+                CatchUpConfig.MinCooldownSeconds,
+                CatchUpConfig.MaxCooldownSeconds
+            );
+
+            if (!wasClamped)
+            {
+                return;
+            }
+
+            _catchUp = new CatchUpConfig(thresholdRatio, regenMultiplier, durationSeconds, cooldownSeconds);
+        }
+
+        private bool ClampCatchUpField(ref float value, string fieldName, float min, float max)
+        {
+            float clamped = Mathf.Clamp(value, min, max);
+
+            if (clamped == value)
+            {
+                return false;
+            }
+
+            string message = string.Format(MatchLogMessages.MatchConfigCatchUpFieldInvalidFormat, name, fieldName, value, min, max, clamped);
+
+            Debug.LogWarning(message, this);
+
+            value = clamped;
+
+            return true;
         }
     }
 }

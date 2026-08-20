@@ -136,5 +136,9 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const string MatchConfigNoPlacementsFormat =
             "{0} authors no starting placements, so a match started from it puts nothing on the board and neither player can act. Author the "
             + "opening position — two hexes per player.";
+
+        public const string MatchConfigCatchUpFieldInvalidFormat =
+            "{0} authors a CatchUp.{1} of {2}, which is outside the authorable band of {3}-{4}. It has been clamped to {5}. Author a value "
+            + "inside that band on the Match Config asset.";
     }
 }
