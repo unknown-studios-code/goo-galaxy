@@ -101,6 +101,7 @@ yarn.lock
 .vscode/
 .venv/
 .docs/
+.superpowers/
 
 # OS files
 

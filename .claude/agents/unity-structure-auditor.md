@@ -1,7 +1,6 @@
 ---
 name: unity-structure-auditor
 description: "Use to audit Goo Galaxy C# against the project's class organization rules — file layout, using directives, namespace shape, and the mandated member order for pure classes, MonoBehaviours, ScriptableObjects, static classes, structs, interfaces, enums and editor types. Reports findings with the corrected ordering; does not edit code."
-tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
@@ -31,8 +30,6 @@ That split predicts which ordered list applies before you open the file: a `Mode
 Two project facts change what a reorder costs. **VContainer injects MonoBehaviours through an `[Inject] Construct` method**, which Rule 2 places first among method-shaped members — it is not an ordinary method. And **`MatchEvents` is a static event bus in `Runtime.Shared`**, so a static class here carries events, fields and a reset hook whose order Rule 4 fixes, and domain reload being disabled makes that reset hook load-bearing rather than decorative.
 
 The audit surface is the files the user named, or `git diff main...HEAD` **plus untracked files**, which a plain diff omits and which are usually the new types the change is about.
-
-**`Assets/Playtest/` is outside every rule, deliberately** — a throwaway harness that gets deleted when the Match Orchestrator lands. Do not report findings against it.
 
 ### Binding rules
 

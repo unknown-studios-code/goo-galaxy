@@ -397,3 +397,6 @@ nohup.out
 
 # Local documentation
 .docs/
+
+# Superpowers plugin state
+.superpowers/
