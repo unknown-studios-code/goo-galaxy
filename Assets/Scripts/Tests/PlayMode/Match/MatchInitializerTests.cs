@@ -381,7 +381,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private MatchConfigSO BuildMatchConfig(params StartingPlacement[] placements)
         {
             MatchConfigSO config = ScriptableObject.CreateInstance<MatchConfigSO>();
-            config.SetAuthoredData(180f, 3f, 60f, placements);
+            config.SetAuthoredData(180f, 3f, 60f, 3f, placements);
             _spawned.Add(config);
 
             return config;

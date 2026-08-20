@@ -32,7 +32,10 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private const int HandSize = 4;
         private const int PlayerOneId = 1;
         private const int PlayerTwoId = 2;
-        private const int PollFrameBudget = 200000;
+
+        // Not a real bound — [Timeout] on each test is what actually bounds the wait. This only backstops
+        // against an infinite loop if the awaited event never fires at all.
+        private const int PollFrameBudget = 20000;
         private const string TroopCardId = "troop_alpha";
 
         private readonly List<Object> _spawned = new();
@@ -128,7 +131,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
             }
 
             // THEN
-            Assert.That(frameBudget, Is.GreaterThan(0), "The match never reached Standard within the frame budget.");
+            Assert.That(frameBudget, Is.GreaterThan(0), "The match never reached Standard before the poll exhausted its infinite-loop backstop.");
             Assert.That(tickedValues, Is.EqualTo(new[] { 3, 2, 1 }));
         }
 
@@ -162,7 +165,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
             }
 
             // THEN
-            Assert.That(frameBudget, Is.GreaterThan(0), "The match never reached Standard within the frame budget.");
+            Assert.That(frameBudget, Is.GreaterThan(0), "The match never reached Standard before the poll exhausted its infinite-loop backstop.");
             Assert.That(matchController.Phase, Is.EqualTo(MatchPhase.Standard));
         }
 
@@ -196,7 +199,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
             }
 
             // THEN
-            Assert.That(frameBudget, Is.GreaterThan(0), "The match never reached Standard within the frame budget.");
+            Assert.That(frameBudget, Is.GreaterThan(0), "The match never reached Standard before the poll exhausted its infinite-loop backstop.");
             Assert.That(matchController.RemainingSeconds, Is.GreaterThan(0f));
         }
 
@@ -270,7 +273,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
 
         [UnityTest]
         [Timeout(15000)]
-        public IEnumerator TryStartMatch_CalledAgainAfterATimeLimitEnding_ReturnsSuccess()
+        public IEnumerator TryStartMatch_CalledAgainAfterADrawOnTheOvertimeClock_ReturnsSuccess()
         {
             // GIVEN — the four refusal branches all call AbandonStart() too, so this pins that none of them
             // fire on the happy path: a normal time-limit ending must not leave the match unable to restart.
@@ -287,7 +290,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
                 yield return null;
             }
 
-            Assert.That(outcome, Is.Not.Null, "Test setup expects the match to have ended by the time limit.");
+            Assert.That(outcome, Is.Not.Null, "Test setup expects the match to have ended: level counts run through overtime and draw on the overtime clock.");
 
             // WHEN
             MatchStartResult result = matchController.TryStartMatch();
@@ -364,32 +367,8 @@ namespace GooGalaxy.Tests.PlayMode.Match
             }
 
             // THEN
-            Assert.That(outcome, Is.Not.Null, "MatchEnded never fired within the frame budget.");
+            Assert.That(outcome, Is.Not.Null, "MatchEnded never fired before the poll exhausted its infinite-loop backstop.");
             Assert.That((outcome.Value.WinnerPlayerId, outcome.Value.Reason), Is.EqualTo((PlayerOneId, MatchEndReason.TimeLimit)));
-        }
-
-        [UnityTest]
-        [Timeout(15000)]
-        public IEnumerator ClockExpiry_EqualUnitCounts_PublishesTheDrawOutcome()
-        {
-            // GIVEN
-            MatchConfigSO config = BuildConfig(1f, 1f, 1f, Placement(1, PlayerOneId, 0, 0), Placement(2, PlayerTwoId, -1, 0));
-            MatchController matchController = BuildMatchController(config);
-            MatchOutcome? outcome = null;
-            MatchEvents.MatchEnded += raised => outcome = raised;
-            matchController.TryStartMatch();
-
-            // WHEN
-            int frameBudget = PollFrameBudget;
-
-            while (outcome == null && frameBudget-- > 0)
-            {
-                yield return null;
-            }
-
-            // THEN
-            Assert.That(outcome, Is.Not.Null, "MatchEnded never fired within the frame budget.");
-            Assert.That(outcome.Value, Is.EqualTo(MatchOutcome.Drawn));
         }
 
         [UnityTest]
@@ -446,7 +425,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
                 yield return null;
             }
 
-            Assert.That(outcome, Is.Not.Null, "Test setup expects the match to have ended by the time limit.");
+            Assert.That(outcome, Is.Not.Null, "Test setup expects the match to have ended: level counts run through overtime and draw on the overtime clock.");
 
             var scoreChanges = new List<(int PlayerId, int UnitCount)>();
             MatchEvents.ScoreChanged += (playerId, unitCount) => scoreChanges.Add((playerId, unitCount));
@@ -532,7 +511,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
         )
         {
             MatchConfigSO config = ScriptableObject.CreateInstance<MatchConfigSO>();
-            config.SetAuthoredData(standardDurationSeconds, countdownSeconds, overtimeDurationSeconds, placements);
+            config.SetAuthoredData(standardDurationSeconds, countdownSeconds, overtimeDurationSeconds, 3f, placements);
             _spawned.Add(config);
 
             return config;
@@ -546,7 +525,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
             go.SetActive(false);
             MatchController controller = go.AddComponent<MatchController>();
             controller.SetMatchConfigForTests(config, matchSeed: 0, isAutoStartEnabled: false);
-            controller.Construct(_initializer, _unitPresenter, _deployController, _cardDiscardController);
+            controller.Construct(_initializer, _unitPresenter, _deployController, _cardDiscardController, _energyPresenter);
             go.SetActive(true);
             _spawned.Add(go);
 

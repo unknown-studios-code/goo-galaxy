@@ -71,8 +71,9 @@ namespace GooGalaxy.Runtime.Match.Controllers
         /// </para>
         /// <para>
         /// <b>The phase gate sits ahead of the re-entrancy latch</b>, for the reason
-        /// <c>DeployController.TryPlayCard</c> states for its own: a discard made outside
-        /// <see cref="MatchPhase.Standard" /> must not raise the latch, and
+        /// <c>DeployController.TryPlayCard</c> states for its own: a discard made in a phase that accepts no
+        /// play — anything but <see cref="MatchPhase.Standard" /> and <see cref="MatchPhase.Overtime" /> — must
+        /// not raise the latch, and
         /// <see cref="CardDiscardResult.MatchNotInPlay" /> is the more useful answer than
         /// <see cref="CardDiscardResult.DeckBusy" /> when both would apply. It also puts the two controllers on
         /// the same gate, so a card cannot be cycled out of hand in a phase it cannot be played in.
@@ -97,7 +98,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 return CardDiscardResult.DeckUnavailable;
             }
 
-            if (_matchController.Phase != MatchPhase.Standard)
+            if (_matchController.Phase is not (MatchPhase.Standard or MatchPhase.Overtime))
             {
                 return CardDiscardResult.MatchNotInPlay;
             }

@@ -39,6 +39,10 @@ namespace GooGalaxy.Runtime.Shared.Constants
             "MatchController was not injected with a CardDiscardController, so discards would never be gated on the match phase. "
             + "Register both components in GameLifetimeScope and keep them in the scene.";
 
+        public const string MatchEnergyPresenterMissing =
+            "MatchController was not injected with an EnergyPresenter, so overtime will never double energy regeneration and both players will "
+            + "regenerate at the standard rate through sudden death. Register both components in GameLifetimeScope and keep them in the scene.";
+
         public const string DeployCardCycleMissing =
             "DeployController was not injected with an ICardCycle, so no card can be read from a hand and every play is rejected. "
             + "Register DeckPresenter as ICardCycle in GameLifetimeScope and keep a DeckPresenter in the scene.";

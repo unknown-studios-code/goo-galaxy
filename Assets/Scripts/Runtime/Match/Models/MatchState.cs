@@ -24,11 +24,12 @@ namespace GooGalaxy.Runtime.Match.Models
         internal MatchPhase Phase { get; private set; } = MatchPhase.None;
 
         /// <remarks>
-        /// Seconds of scaled match time accumulated while <see cref="MatchPhase.Standard" /> was running, and
-        /// only then: the orchestrator ticks this from the same early-returning <c>Update</c> that drives the
-        /// clock, so the pre-match countdown contributes nothing to it.
+        /// Seconds of scaled match time accumulated while one of the two played phases —
+        /// <see cref="MatchPhase.Standard" /> or <see cref="MatchPhase.Overtime" /> — was running, and only
+        /// then: the orchestrator ticks this from the same early-returning <c>Update</c> that drives the clock,
+        /// so the pre-match countdown contributes nothing to it.
         /// <para>
-        /// <b>Written every frame of normal play and read by nothing today.</b> Its reader is the post-match
+        /// <b>Written every frame of a played phase and read by nothing today.</b> Its reader is the post-match
         /// results screen — how long the match actually ran is what it reports, and the clock cannot answer that
         /// because it counts down and is reset per phase. It arrives with whatever owns
         /// <see cref="MatchPhase.Results" />, which nothing transitions into yet.
@@ -106,10 +107,12 @@ namespace GooGalaxy.Runtime.Match.Models
             return _scores.TryGetValue(playerId, out int cached) ? cached : 0;
         }
 
-        // The legal-transition table, and the whole of it. Two edges are declared here that nothing reaches
-        // today, both deliberately: Standard -> Ended is the domination path GOOM-12 fills, and Ended ->
-        // Results belongs to the results screen that owns that phase. Refusing them now would mean GOOM-12 and
-        // the results screen each editing this table for an edge the phase enum already promises.
+        // The legal-transition table, and the whole of it. One edge is declared here that nothing reaches
+        // today: Ended -> Results belongs to the results screen that owns that phase, and refusing it now would
+        // mean that screen editing this table for an edge the phase enum already promises. Standard -> Ended is
+        // the domination path, taken the moment a recount finds one player holding every live unit;
+        // OvertimeCheck -> Ended is the clear-lead ending of normal play; and Overtime -> Ended carries every
+        // ending sudden death produces, domination included.
         private static bool IsTransitionLegal(MatchPhase current, MatchPhase next)
         {
             return current switch

@@ -15,6 +15,7 @@ MonoBehaviour:
   _standardDurationSeconds: 180
   _countdownSeconds: 3
   _overtimeDurationSeconds: 60
+  _overtimeLeadHoldSeconds: 3
   _startingPlacements:
   - CardId: subject_alpha
     UnitId: 1

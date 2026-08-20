@@ -9,6 +9,12 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// system reads what it needs from here rather than reaching for the authored asset, so a mid-match edit to
     /// that asset cannot change the rules of a match already in progress.
     /// <para>
+    /// The overtime lead hold is the one authored value deliberately absent: nothing outside the orchestrator
+    /// needs it, and the orchestrator captures it off the asset at match start on the same terms as the
+    /// durations here. Add it if a HUD ever has to render the hold, or if a networked session has to agree on
+    /// it — peers already agree on the overtime duration through this type, and the hold decides that phase.
+    /// </para>
+    /// <para>
     /// Default construction stays legal and yields <see cref="Seed" /> zero. That is a valid seed, not an unset
     /// marker: both peers derive the same sequence from it, so a match started from a defaulted configuration is
     /// still deterministic and still identical on both sides. Do not diagnose a zero seed as a bug.
@@ -82,10 +88,7 @@ namespace GooGalaxy.Runtime.Shared.Types
         /// <summary>Seconds of pre-match countdown before normal play opens. Zero when unauthored.</summary>
         public float CountdownSeconds { get; }
 
-        /// <summary>
-        /// Seconds of sudden death after a tied comparison. Zero when unauthored, and unread until GOOM-12
-        /// implements overtime.
-        /// </summary>
+        /// <summary>Seconds of sudden death after a tied comparison. Zero when unauthored.</summary>
         public float OvertimeDurationSeconds { get; }
     }
 }

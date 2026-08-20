@@ -41,6 +41,7 @@ namespace GooGalaxy.Tests.EditMode.Match
                 authoredDuration,
                 3f,
                 60f,
+                3f,
                 new StartingPlacement
                 {
                     CardId = "unit_alpha",
@@ -68,11 +69,48 @@ namespace GooGalaxy.Tests.EditMode.Match
             Assert.That(_config.StandardDurationSeconds, Is.EqualTo(MinimumPhaseDurationSeconds));
         }
 
+        [TestCase(0f)]
+        [TestCase(-5f)]
+        public void ValidateAuthoredData_NonPositiveOvertimeLeadHoldSeconds_ClampsToMinimumAndWarns(float authoredHoldSeconds)
+        {
+            // GIVEN
+            _config.SetAuthoredData(
+                180f,
+                3f,
+                60f,
+                authoredHoldSeconds,
+                new StartingPlacement
+                {
+                    CardId = "unit_alpha",
+                    UnitId = 1,
+                    PlayerId = 1,
+                    Q = 0,
+                    R = 0,
+                }
+            );
+            LogAssert.Expect(
+                LogType.Warning,
+                string.Format(
+                    MatchLogMessages.MatchConfigPhaseDurationInvalidFormat,
+                    AssetName,
+                    nameof(MatchConfigSO.OvertimeLeadHoldSeconds),
+                    authoredHoldSeconds,
+                    MinimumPhaseDurationSeconds
+                )
+            );
+
+            // WHEN
+            _config.ValidateAuthoredData();
+
+            // THEN
+            Assert.That(_config.OvertimeLeadHoldSeconds, Is.EqualTo(MinimumPhaseDurationSeconds));
+        }
+
         [Test]
         public void ValidateAuthoredData_EmptyStartingPlacements_Warns()
         {
             // GIVEN
-            _config.SetAuthoredData(180f, 3f, 60f);
+            _config.SetAuthoredData(180f, 3f, 60f, 3f);
             LogAssert.Expect(LogType.Warning, string.Format(MatchLogMessages.MatchConfigNoPlacementsFormat, AssetName));
 
             // WHEN
@@ -80,6 +118,19 @@ namespace GooGalaxy.Tests.EditMode.Match
 
             // THEN
             Assert.That(_config.StartingPlacements, Is.Empty);
+        }
+
+        [Test]
+        public void SetAuthoredData_OvertimeLeadHoldSecondsAuthored_ReadsBackTheAuthoredValue()
+        {
+            // GIVEN
+            const float authoredHoldSeconds = 4.5f;
+
+            // WHEN
+            _config.SetAuthoredData(180f, 3f, 60f, authoredHoldSeconds);
+
+            // THEN
+            Assert.That(_config.OvertimeLeadHoldSeconds, Is.EqualTo(authoredHoldSeconds).Within(0.0001f));
         }
     }
 }

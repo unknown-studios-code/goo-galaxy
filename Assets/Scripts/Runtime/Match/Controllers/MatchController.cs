@@ -1,5 +1,6 @@
 using System;
 using GooGalaxy.Runtime.Board.Presenters;
+using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Match.Data;
 using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Match.Services;
@@ -36,8 +37,21 @@ namespace GooGalaxy.Runtime.Match.Controllers
     /// the back-reference. Both controllers live in this assembly, so the seam is invisible outside it.
     /// </para>
     /// <para>
-    /// Only <see cref="MatchPhase.Standard" /> is played today. <see cref="MatchPhase.Overtime" /> and the
-    /// domination path are declared, transitionable, and unreached until GOOM-12.
+    /// <b>Three things end a match, and all three are decided here.</b> The standard clock running out compares
+    /// the unit counts, and a level comparison opens <see cref="MatchPhase.Overtime" /> rather than publishing a
+    /// draw. Overtime keeps plays open, doubles energy regeneration, and is won by the first player to hold a
+    /// unit-count lead unbroken for the authored hold — or, if its own clock runs out first, by whoever is
+    /// ahead. Domination is the one ending that waits for no clock: the instant a recount finds one player
+    /// holding every live unit, in either played phase, the match is over.
+    /// </para>
+    /// <para>
+    /// <b>The overtime lead is read one frame late, deliberately — but never decided on.</b> The hold is ticked
+    /// against the counts <see cref="LateUpdate" /> settled on the previous frame rather than against a fresh
+    /// walk of the registry, for the same reason that recount is deferred at all: a count taken mid-resolution
+    /// credits units that are about to vanish. One frame against a hold measured in seconds moves no outcome
+    /// while the hold is still accumulating. It would move one on the frame the hold completes, so that frame
+    /// recounts and re-confirms the lead before ending the match — the cache times the hold, the board settles
+    /// it.
     /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
@@ -89,12 +103,16 @@ namespace GooGalaxy.Runtime.Match.Controllers
 
         private readonly MatchState _state = new();
         private readonly MatchClock _clock = new();
+        private readonly OvertimeLeadTracker _overtimeLeadTracker = new();
 
         private MatchInitializer _initializer;
         private UnitPresenter _unitPresenter;
         private DeployController _deployController;
         private CardDiscardController _cardDiscardController;
+        private EnergyPresenter _energyPresenter;
         private float _standardDurationSeconds;
+        private float _overtimeDurationSeconds;
+        private float _overtimeLeadHoldSeconds;
         private int _countdownTicks;
         private int _lastPublishedSecond = NoPublishedSecond;
         private bool _isScoreDirty;
@@ -102,38 +120,57 @@ namespace GooGalaxy.Runtime.Match.Controllers
         public MatchPhase Phase => _state.Phase;
 
         /// <summary>
-        /// Seconds left in <see cref="MatchPhase.Standard" />, at frame precision. Zero in every other phase,
-        /// and zero once the clock has run out.
+        /// Seconds left on the clock the running phase is counting down — <see cref="MatchPhase.Standard" />,
+        /// then <see cref="MatchPhase.Overtime" /> — at frame precision.
         /// </summary>
         /// <remarks>
+        /// <b>Outside those two phases it reports whatever the clock was last left holding.</b> That is zero
+        /// before a match starts and zero once a phase's clock has run out, but a match ended early — by
+        /// domination, or by a lead held through overtime — leaves the seconds that were still on it, because
+        /// ending a match stops the clock rather than draining it.
+        /// <para>
         /// <b>Not the countdown.</b> <c>MatchEvents.MatchClockTicked</c> is the throttled form of this during
-        /// normal play only: the pre-match countdown publishes from its own whole-second counter and never
-        /// starts this clock, so a reader polling here through <see cref="MatchPhase.Countdown" /> sees zero
-        /// while ticks are still going out.
+        /// the two played phases only: the pre-match countdown publishes from its own whole-second counter and
+        /// never starts this clock, so a reader polling here through <see cref="MatchPhase.Countdown" /> sees
+        /// zero while ticks are still going out.
+        /// </para>
         /// </remarks>
         public float RemainingSeconds => _clock.Remaining;
+
+        // The two phases the clock runs in, plays are accepted in, and a domination can end. Standard and
+        // Overtime differ only in what their expiry resolves to, so every per-frame step but that one is shared.
+        private bool IsPlayOpen => _state.Phase is MatchPhase.Standard or MatchPhase.Overtime;
 
         /// <remarks>
         /// Also completes the wiring in the other direction, handing this component to the two controllers that
         /// gate on the phase. See the class remarks for why that is a push rather than a second registration.
+        /// <para>
+        /// The energy presenter is taken concretely rather than as <c>IEnergyLedger</c>, which
+        /// <see cref="MatchInitializer" /> already does for the same reason: the ledger is about affordability
+        /// and payment, and what the orchestrator needs of it — doubling regeneration for overtime — is neither.
+        /// Widening the ledger to carry a phase would put match flow into an interface the board depends on.
+        /// </para>
         /// </remarks>
         [Inject]
         public void Construct(
             MatchInitializer initializer,
             UnitPresenter unitPresenter,
             DeployController deployController,
-            CardDiscardController cardDiscardController
+            CardDiscardController cardDiscardController,
+            EnergyPresenter energyPresenter
         )
         {
             Debug.Assert(initializer != null, MatchLogMessages.MatchInitializerMissing, this);
             Debug.Assert(unitPresenter != null, MatchLogMessages.MatchUnitPresenterMissing, this);
             Debug.Assert(deployController != null, MatchLogMessages.MatchDeployControllerMissing, this);
             Debug.Assert(cardDiscardController != null, MatchLogMessages.MatchDiscardControllerMissing, this);
+            Debug.Assert(energyPresenter != null, MatchLogMessages.MatchEnergyPresenterMissing, this);
 
             _initializer = initializer;
             _unitPresenter = unitPresenter;
             _deployController = deployController;
             _cardDiscardController = cardDiscardController;
+            _energyPresenter = energyPresenter;
 
             if (_deployController != null)
             {
@@ -178,29 +215,69 @@ namespace GooGalaxy.Runtime.Match.Controllers
 
         protected void Update()
         {
-            // Overtime will tick here too once GOOM-12 implements it; it is excluded rather than forgotten.
-            if (_state.Phase != MatchPhase.Standard)
+            // Both played phases tick here. The clock, the elapsed accumulator and the throttled tick are
+            // identical in either one; only what the expiry resolves to differs, which is the branch at the end.
+            if (!IsPlayOpen)
             {
                 return;
             }
 
+            bool isOvertime = _state.Phase == MatchPhase.Overtime;
             float deltaTime = Time.deltaTime;
 
             _clock.Tick(deltaTime);
             _state.AddElapsed(deltaTime);
             PublishClockTick();
 
-            if (!_clock.HasExpired)
+            // Tested before the expiry, so a hold that completes on the very frame the overtime clock drains
+            // wins outright rather than being handed back to a comparison it has already survived.
+            int leadWinnerId = isOvertime ? TickOvertimeLead(deltaTime) : MatchOutcome.NoWinner;
+            bool hasLeadWinner = leadWinnerId != MatchOutcome.NoWinner;
+
+            if (!hasLeadWinner && !_clock.HasExpired)
             {
                 return;
             }
 
-            // Deferred rather than dropped. Scoring the match in the middle of a landing would read a registry
-            // whose conversions are committed but not yet applied to every unit, so the expiry is left latched
-            // and reclaimed on a later frame. The clock is already at zero either way, so nothing about the
-            // deadline moves — only the moment the transition runs.
+            // Deferred rather than dropped, and for both endings below. Scoring the match in the middle of a
+            // landing would read a registry whose conversions are committed but not yet applied to every unit,
+            // so the expiry is left latched and reclaimed on a later frame. The clock is already at zero either
+            // way, and a lead that survives the resolution is still reported next frame — so nothing about
+            // either deadline moves, only the moment the transition runs.
             if (_deployController != null && _deployController.IsResolving)
             {
+                return;
+            }
+
+            if (hasLeadWinner)
+            {
+                // Recounted rather than trusted, for the same reason both expiries recount, and it matters more
+                // here than anywhere: the hold was measured against counts LateUpdate settled on an earlier
+                // frame, so a landing resolved earlier in this one has already moved the board without them.
+                // Ending on the cache would name a winner the board no longer has, and would swallow that
+                // landing's pending publish with it — ScoreChanged stops at match end, and LateUpdate returns on
+                // a match that is no longer running.
+                RecountScores(out int leadPlayerOneUnits, out int leadPlayerTwoUnits);
+
+                MatchOutcome settled = MatchOutcomeResolver.ResolveByUnitCount(leadPlayerOneUnits, leadPlayerTwoUnits, PlayerOneId, PlayerTwoId);
+
+                // Re-confirmed against the settled board, because a resolution that broke the lead has to break
+                // the hold with it. Falling through costs nothing: the tracker reads the counts this recount has
+                // just published on its next tick, and restarts the hold itself.
+                if (settled.WinnerPlayerId == leadWinnerId)
+                {
+                    // TimeLimit rather than a reason of its own: what ended the match is a clock running out —
+                    // the hold the lead had to survive — and the enum is destined for the wire, so a member is
+                    // not added for a distinction a results screen can already draw from the phase it ended in.
+                    EndMatch(new MatchOutcome(leadWinnerId, MatchEndReason.TimeLimit));
+                }
+
+                return;
+            }
+
+            if (isOvertime)
+            {
+                ResolveOvertimeExpiry();
                 return;
             }
 
@@ -228,7 +305,30 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 return;
             }
 
-            RecountScores();
+            RecountScores(out int playerOneUnits, out int playerTwoUnits);
+
+            // Tested after both counts have gone out, because MatchEvents.ScoreChanged stops at match end: the
+            // counts the outcome is decided from have to reach a results screen while the match is still
+            // running, and ending it first would swallow the very publish that says a player reached zero.
+            //
+            // Gated on the two played phases because a domination is only an ending in them. Before the board is
+            // seeded both counts are zero, which is not a domination but is also not a match; and neither
+            // Loading nor Countdown has a legal edge to Ended, so an ungated check that reached one of them
+            // would log an illegal transition and abandon the match rather than end it. OvertimeCheck cannot
+            // reach here at all — ResolveTimeLimit clears the dirty flag on its own recount and leaves the phase
+            // past OvertimeCheck before Update returns — so the gate is what keeps that true rather than
+            // incidental.
+            if (!IsPlayOpen)
+            {
+                return;
+            }
+
+            if (!MatchOutcomeResolver.TryResolveDomination(playerOneUnits, playerTwoUnits, PlayerOneId, PlayerTwoId, out int winnerId))
+            {
+                return;
+            }
+
+            EndMatch(new MatchOutcome(winnerId, MatchEndReason.Domination));
         }
 
         protected void OnDisable()
@@ -306,7 +406,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 PlayerTwoId,
                 _standardDurationSeconds,
                 _matchConfig.CountdownSeconds,
-                _matchConfig.OvertimeDurationSeconds
+                _overtimeDurationSeconds
             );
 
             MatchStartResult setup = _initializer.InitializeMatch(_matchConfig, configuration);
@@ -324,8 +424,10 @@ namespace GooGalaxy.Runtime.Match.Controllers
             }
 
             // The opening score, published before anybody can change it, so a HUD binding to a starting match
-            // shows the seeded counts rather than waiting for the first deployment to move one.
-            RecountScores();
+            // shows the seeded counts rather than waiting for the first deployment to move one. The counts are
+            // discarded: the phase is Loading, so a seeded board that somehow held only one player's units is
+            // not a domination yet — LateUpdate tests that once play is open.
+            RecountScores(out _, out _);
 
             _ = RunCountdownAsync();
 
@@ -396,12 +498,17 @@ namespace GooGalaxy.Runtime.Match.Controllers
         {
             _state.Reset();
             _clock.Reset(0f);
+            _overtimeLeadTracker.Reset();
             _lastPublishedSecond = NoPublishedSecond;
             _isScoreDirty = false;
 
             // Captured at start, so an Inspector edit made mid-match changes the next match rather than the
-            // running one — the guarantee CardDefinition makes for card data, made here for the clock.
+            // running one — the guarantee CardDefinition makes for card data, made here for the clock. Overtime
+            // is captured on the same terms even though it is read minutes later, because the alternative is a
+            // match whose sudden death lasts whatever the asset happened to say by the time it got there.
             _standardDurationSeconds = _matchConfig.StandardDurationSeconds;
+            _overtimeDurationSeconds = _matchConfig.OvertimeDurationSeconds;
+            _overtimeLeadHoldSeconds = _matchConfig.OvertimeLeadHoldSeconds;
 
             // Counted down one whole second at a time, so a fractional authored countdown rounds up to the next
             // whole tick rather than ending early. At the authored 3 seconds this is the GDD's "3 2 1 GO".
@@ -517,7 +624,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
             PublishClockTick();
         }
 
-        // PERF: allocation-free and called every frame of normal play. The comparison is against the last
+        // PERF: allocation-free and called every frame of both played phases. The comparison is against the last
         // published whole second rather than an accumulated timer, so a long frame that crosses two seconds
         // publishes once and lands on the correct value instead of drifting.
         private void PublishClockTick()
@@ -534,9 +641,24 @@ namespace GooGalaxy.Runtime.Match.Controllers
             MatchEvents.RaiseMatchClockTicked(wholeSecond);
         }
 
-        // The whole of the time-limit decision, kept in one method because GOOM-12 replaces exactly one branch
-        // of it: a tie ends the match as a draw today, and will enter Overtime instead. Everything else here —
-        // the OvertimeCheck transition, the recount, the clear-lead winner — survives that change unaltered.
+        // PERF: allocation-free, and the only per-frame work overtime adds — two dictionary reads and an
+        // accumulator. The counts come from MatchState's cache rather than a fresh walk of the registry, so a
+        // lead is recognised on the frame after the landing that created it; see the class remarks for why one
+        // frame of lag is the correct trade against reading a board mid-resolution.
+        private int TickOvertimeLead(float deltaTime)
+        {
+            return _overtimeLeadTracker.Tick(
+                _state.GetScore(PlayerOneId),
+                _state.GetScore(PlayerTwoId),
+                PlayerOneId,
+                PlayerTwoId,
+                _overtimeLeadHoldSeconds,
+                deltaTime
+            );
+        }
+
+        // The whole of the standard time-limit decision. A clear lead ends the match; level counts are what
+        // Overtime exists for, and are the only route into it.
         private void ResolveTimeLimit()
         {
             // Recoverable rather than terminal. The match would otherwise sit in Standard at zero forever — the
@@ -549,32 +671,77 @@ namespace GooGalaxy.Runtime.Match.Controllers
             }
 
             // Consumed only now that the transition acting on the edge has been accepted, rather than by the
-            // caller before it could refuse. From here the phase is what makes this run once — Update returns on
-            // anything but Standard — so the latch is bookkeeping, and MatchClock's "exactly one caller per
-            // expiry" contract is honoured rather than spent on a transition that might not happen.
+            // caller before it could refuse. From here the phase is what makes this run once — Update reaches
+            // this branch only from Standard, which the transition above has just left — so the latch is
+            // bookkeeping, and MatchClock's "exactly one caller per expiry" contract is honoured rather than
+            // spent on a transition that might not happen.
             _ = _clock.TryConsumeExpiry();
 
             // Recounted rather than trusted: the cached scores are only as fresh as the last deployment, and a
             // fuse that expired on this same frame has not published anything yet.
-            RecountScores();
-
-            int playerOneUnits = _state.GetScore(PlayerOneId);
-            int playerTwoUnits = _state.GetScore(PlayerTwoId);
+            RecountScores(out int playerOneUnits, out int playerTwoUnits);
 
             if (playerOneUnits == playerTwoUnits)
             {
-                EndMatch(MatchOutcome.Drawn);
+                BeginOvertimePhase();
                 return;
             }
 
-            EndMatch(new MatchOutcome(playerOneUnits > playerTwoUnits ? PlayerOneId : PlayerTwoId, MatchEndReason.TimeLimit));
+            EndMatch(MatchOutcomeResolver.ResolveByUnitCount(playerOneUnits, playerTwoUnits, PlayerOneId, PlayerTwoId));
+        }
+
+        // The overtime clock running out, which unlike the standard one has nothing left to break a tie with:
+        // whoever is ahead wins, and level counts publish a draw.
+        private void ResolveOvertimeExpiry()
+        {
+            // Consumed here rather than by the caller, on the same terms as ResolveTimeLimit: from Overtime the
+            // only transition left is the one this method makes, so the latch is spent on an ending that
+            // actually happens.
+            _ = _clock.TryConsumeExpiry();
+
+            RecountScores(out int playerOneUnits, out int playerTwoUnits);
+
+            EndMatch(MatchOutcomeResolver.ResolveByUnitCount(playerOneUnits, playerTwoUnits, PlayerOneId, PlayerTwoId));
+        }
+
+        private void BeginOvertimePhase()
+        {
+            _clock.Reset(_overtimeDurationSeconds);
+            _lastPublishedSecond = NoPublishedSecond;
+
+            // Cleared rather than assumed clear: the tracker is only reset per match otherwise, and overtime is
+            // the one phase that reads it — a hold must start from zero however the previous match left it.
+            _overtimeLeadTracker.Reset();
+
+            // Recoverable rather than terminal, like every other refusal here: the match would otherwise sit in
+            // OvertimeCheck, which MatchState counts as running, and every later TryStartMatch would answer
+            // AlreadyRunning for the rest of the session.
+            if (!TryChangePhase(MatchPhase.Overtime))
+            {
+                AbandonStart();
+                return;
+            }
+
+            // After the transition, so a start abandoned on the edge above does not leave both players
+            // regenerating at double rate with no overtime to spend it in.
+            SetEnergyOvertime(true);
+
+            // The phase's opening tick, so a HUD renders the full overtime duration on the frame it opens rather
+            // than a second later. The same reset-and-publish BeginStandardPhase makes, for the same reason.
+            PublishClockTick();
         }
 
         private void EndMatch(MatchOutcome outcome)
         {
-            // Recoverable rather than terminal: a refusal leaves the match in OvertimeCheck, which MatchState
-            // counts as running, and no outcome is published either way — so abandoning is what lets the session
-            // start another match instead of answering AlreadyRunning forever.
+            // First, and unconditionally, because EnergyPresenter.Update is not phase-gated: a match that
+            // reached overtime would otherwise keep regenerating at double rate behind a results screen. It runs
+            // ahead of the transition so the refusal path below stops the doubling too.
+            SetEnergyOvertime(false);
+
+            // Recoverable rather than terminal: a refusal leaves the match in whichever phase it was ending
+            // from — Standard on a domination, Overtime, or OvertimeCheck — every one of which MatchState counts
+            // as running, and no outcome is published either way. Abandoning is what lets the session start
+            // another match instead of answering AlreadyRunning forever.
             if (!TryChangePhase(MatchPhase.Ended))
             {
                 AbandonStart();
@@ -598,16 +765,30 @@ namespace GooGalaxy.Runtime.Match.Controllers
             return true;
         }
 
-        private void RecountScores()
+        private void SetEnergyOvertime(bool isActive)
+        {
+            if (_energyPresenter == null)
+            {
+                return;
+            }
+
+            _energyPresenter.SetOvertime(isActive);
+        }
+
+        // PERF: hands the counted pair back rather than making the caller read it out of MatchState again, so
+        // the domination test and the two expiry comparisons all run on this one walk. Calling the counter a
+        // second time would double a whole-registry pass on a path budgeted at zero allocations, and overtime
+        // already doubles how often the pass runs.
+        private void RecountScores(out int playerOneUnits, out int playerTwoUnits)
         {
             using (_recountScoresMarker.Auto())
             {
                 _isScoreDirty = false;
 
                 // PERF: both counts off one walk of the registry rather than one walk per player. They also
-                // describe the same board by construction, which matters at the time limit, where the pair is
-                // what decides the winner.
-                MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out int playerOneUnits, out int playerTwoUnits);
+                // describe the same board by construction, which matters at the time limit and at a domination,
+                // where the pair is what decides the winner.
+                MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out playerOneUnits, out playerTwoUnits);
 
                 PublishScore(PlayerOneId, playerOneUnits);
                 PublishScore(PlayerTwoId, playerTwoUnits);
