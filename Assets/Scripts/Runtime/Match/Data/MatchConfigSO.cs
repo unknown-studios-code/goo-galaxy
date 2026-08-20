@@ -31,7 +31,7 @@ namespace GooGalaxy.Runtime.Match.Data
         private static readonly StartingPlacement[] _noPlacements = Array.Empty<StartingPlacement>();
 
         [Header("Phase Durations")]
-        [Tooltip("Seconds of normal play before the unit counts decide the match. The GDD authors 180 (3:00); shortening it is a playtest tool, not a mode.")]
+        [Tooltip("Seconds of normal play before the unit counts decide the match. The GDD authors 180 (3:00); shortening it is a tuning tool, not a mode.")]
         [Min(MinimumPhaseDurationSeconds)]
         [SerializeField]
         private float _standardDurationSeconds = 180f;

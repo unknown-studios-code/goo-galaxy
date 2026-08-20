@@ -1,108 +1,89 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project
 
-Goo Galaxy — real-time PvP mobile strategy game (Unity 6000.3.18f1, URP 17.3). Hex-grid territorial domination (Ataxx/Hexxagon-style) with asymmetrical deck-building and specimen deployment. Sentient alien slime sci-fi theme. Targets iOS and Android via IL2CPP.
+Goo Galaxy — real-time PvP mobile strategy game. Hex-grid territorial domination (Ataxx/Hexxagon-style) with asymmetrical deck-building and specimen deployment. Sentient alien slime sci-fi theme.
 
-## Commands
+## Tech Stack
 
-Prerequisites: Unity 6000.3.18f1, Node.js (`npm` scripts and Husky), the .NET SDK (`dotnet tool restore` pulls CSharpier), and **Docker Desktop** — the pre-commit hook shells out to a container to scan staged changes for secrets and fails the commit outright if the daemon is not reachable.
+Versions come from `ProjectSettings/ProjectVersion.txt` and `Packages/manifest.json` — read those rather than trusting this table when a version decides something.
 
-**Compile through the running editor before any format or check script, and before committing.** `npm run unity:recompile` does it and waits, exiting non-zero if the project does not build — never batch mode, and never a bare `npm run format` on a project the editor has not settled. Unity generates `goo-galaxy.slnx` and the per-assembly `.csproj`, both untracked, and `dotnet format` reads them rather than the `.asmdef` files. They refresh as a side effect of a compile actually running, so a change that touches no code — restoring a plugin, editing an `.asmdef` — leaves them stale and needs a forced sync. See Rule 3a in `.claude/rules/unity-editor-automation.md`.
+| Layer         | Choice                                                                                   |
+| :------------ | :--------------------------------------------------------------------------------------- |
+| Engine        | Unity 6000.3.18f1, URP 17.3.0                                                            |
+| Target        | iOS and Android, IL2CPP, ARM64                                                           |
+| DI            | VContainer 1.18.0 (OpenUPM), `GameLifetimeScope` as the composition root                 |
+| Multiplayer   | Netcode for GameObjects 2.13.1, distributed authority — no authoritative server          |
+| Sessions      | Multiplayer Services SDK (Lobby, Matchmaker, Relay) — specified, not yet in the manifest |
+| Input         | Input System 1.19.0                                                                      |
+| UI            | UI Toolkit — UXML and USS                                                                |
+| Async         | `Awaitable`, always with `destroyCancellationToken`                                      |
+| Spawning      | `UnityEngine.Pool.ObjectPool<T>`                                                         |
+| Config        | `ScriptableObject` for authored data only, never runtime state                           |
+| Tests         | Unity Test Framework 1.6.0, EditMode and PlayMode                                        |
+| Editor bridge | `com.unity.pipeline` 0.4.0-exp.1, driving the `unity cmd` surface                        |
+| Formatting    | CSharpier, `dotnet format`, Prettier — gated by Husky and `lint-staged`                  |
 
-Existing is not the same as current. A csproj stale relative to the `.asmdef` files makes `dotnet format` delete `using` directives it wrongly reads as unused — and inside `lint-staged` that deletion is re-staged straight into the commit. A settled compile is what prevents it, which is why the moment of highest risk is the commit that adds a script or an assembly.
+**Never deviate.** The legacy Input Manager, uGUI, coroutines for delays, and `Instantiate`/`Destroy` churn each have a replacement above; reaching for one of them needs a stated reason.
 
-`npm run unity:recompile` handles the awkward part: a compile drops the editor bridge during the domain reload, and the call comes back as a timeout that reports the bridge rather than the compile. The script polls **at an interval rather than in a tight loop** — while the reload is in flight each call burns its full `--timeout` before failing — and it gates on `EditorUtility.scriptCompilationFailed` rather than `recompile_status.failed`, which resets to a clean `up_to_date` while the project is still broken. Going manual means owning both; `unity status` confirms the editor is alive before you conclude anything. The pre-commit hook fails with an instruction to open the editor when `goo-galaxy.slnx` is absent, rather than skipping the check.
+## Rules
 
-```powershell
-npm install                    # runs husky + dotnet tool restore via the prepare script
-npm run unity:recompile        # compile through the open editor and wait — run before format/check
-npm run format                 # csharpier + dotnet + prettier, rewriting in place — run before every commit
-npm run check                  # the same three, verify only — what the CI Format Check runs
+Most rules arrive on their own when you open a file they govern. `build-and-tooling.md` and `unity-editor-automation.md` arrive on nothing and are always opened by path, and **dispatching a subagent hands it no rules — name the paths it must open in the prompt.**
 
-npm run unity:test:editmode    # EditMode suite; compiles first, exit 0 only if it built and passed
-npm run unity:test:playmode    # PlayMode suite; same gate, async internally
+| Rule                                | Covers                                                                                          | Use it when                                                                   |
+| :---------------------------------- | :---------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| `build-and-tooling.md`              | Prerequisites, the `npm` format and check chain, the Husky pre-commit sequence, secret scanning | Committing, formatting, or a hook or the CI Format Check fails                |
+| `unity-class-organization.md`       | File layout and the mandated member order for every type, test fixtures included                | Adding a type, or deciding where a member goes inside one                     |
+| `unity-code-documentation.md`       | XML doc scope, tooltips, comments that earn their place, log text, GIVEN-WHEN-THEN              | Weighing whether something needs a doc, a tooltip, or a comment at all        |
+| `unity-code-style.md`               | Formatting, naming, fields, properties, events, async, pooling, type suffixes                   | Naming anything, or picking the suffix that declares a type's role            |
+| `unity-debugging.md`                | Diagnostic order, Unity null semantics, lifecycle timing, Input System, physics, async          | Something throws, misfires, or never fires, and the cause is unknown          |
+| `unity-design-patterns.md`          | SOLID, VContainer DI, `MatchEvents`, State, Template Method, Command, pooling                   | Choosing a pattern, registering a dependency, or adding an event              |
+| `unity-editor-automation.md`        | The `unity cmd` surface, tests and builds through the open editor, why batch mode is banned     | Running tests or a build, or changing a scene, prefab, asset or setting       |
+| `unity-netcode.md`                  | Authority topology, ownership, `NetworkVariable` vs RPC, session, matchmaking, relay            | Writing anything replicated, or chasing a desync                              |
+| `unity-performance-optimization.md` | What counts as a hot path, allocations, caching, collections, physics, rendering, the LINQ ban  | Writing code that runs per frame, per tick, or per tile on a repeating pass   |
+| `unity-project-configuration.md`    | Play mode and domain reload, static resets, assemblies, build profiles, IL2CPP                  | Adding an assembly, holding static state, or touching a build or play setting |
+| `unity-testing.md`                  | EditMode vs PlayMode, naming, GIVEN-WHEN-THEN, doubles, determinism, assembly wiring            | Writing a test, or a suite fails and the test itself is suspect               |
+| `unity-ui-toolkit.md`               | USS/CSS differences, BEM, flexbox, binding, custom elements, `ListView` virtualization          | Building a screen, or an element will not lay out, style, or receive a click  |
 
-npm run unity:test:editmode -- AbilityContextTests   # partial match on the test name
-npm run unity:console:mark     # remember where the console is, before doing something
-npm run unity:console          # show only what was logged since that mark; exit 1 on any error
-```
+## Skills
 
-The `unity:*` scripts answer with an **exit code**, which is the point: reaching the editor by hand means parsing a two-layer JSON envelope, and getting it wrong reports a green suite that never ran. Both test scripts run the recompile gate themselves, so they do not need chaining. Arguments are positional and optional, so there is no flag name to misspell. Sources in `scripts/`; the traps they encode are Rules 12–18 of `.claude/rules/unity-editor-automation.md`.
+Work runs Notion (GOO\*) → branch (`feat/GOOM-1`, `fix/GOOE-42`) → commits → PR → merge. The skills perform each step rather than draft text for it, and they own the conventions — Conventional Commits with a **mandatory scope** among them — so invoke the skill instead of hand-formatting.
 
-**A green suite is not proof the code compiles**, and the console buffer is not scoped to your change — that is what `unity:console:mark` is for. Both are measured failure modes, not hypotheticals.
+| Skill                | Does                                                                                  | Invoke when                                         |
+| :------------------- | :------------------------------------------------------------------------------------ | :-------------------------------------------------- |
+| `/refine-task`       | Writes a task, story, epic or bug into the Notion database from the project templates | Scoping work before any code is written             |
+| `/start-task`        | Grounds a task against the real repo, then picks and sequences the specialist agents  | Beginning implementation of a GOO\* task            |
+| `/track-task`        | Looks up and updates GOOE/GOOS/GOOT/GOOM pages                                        | A task ID is mentioned, or its status must move     |
+| `/create-commit`     | Stages and commits with the mandatory scope, footer trackers, multi-line handling     | Committing anything                                 |
+| `/open-pull-request` | Opens, updates and labels the PR, with the template body and Notion sync              | Opening or updating a pull request                  |
+| `/read-gdd`          | Resolves a GDD chapter to its Notion page and fetches it                              | Design intent is needed, or a chapter must be cited |
 
-Run `format` first, then `check`: `format` fixes what a formatter can, and `check` reports what is left. Per-formatter variants exist as `format:csharpier`, `format:dotnet`, `format:prettier` and the matching `check:*`.
+## Agents
 
-**`dotnet format` is what enforces `.editorconfig`.** It is the only tool in the chain that reads the file's `dotnet_diagnostic` and naming entries — Unity's own compiler never does, and CSharpier only owns layout. That includes the 42 UNT rules in Section 6, because the Unity-generated `.csproj` reference `Microsoft.Unity.Analyzers.dll` and Roslyn discovers `.editorconfig` by walking the directory tree.
+**Pass an explicit model tier for every subagent you dispatch.** The `Agent` tool's `model` parameter overrides the agent's frontmatter; omitting it inherits the session model — `opus` here — and silently promotes routine work. Choose from the complexity of that agent's slice, not the agent's identity: `haiku` for mechanical, fully-specified work (renames, applying findings someone already wrote out, `.asmdef` scaffolding, mirroring an existing test); **`sonnet` as the default** for ordinary implementation inside established patterns; `opus` for architecture and assembly-boundary decisions, root-causing intermittent or desync defects, balance math, and reviewing a large diff. The four read-only auditors below pin `model: opus` in their frontmatter and are never dispatched lower, because a silent false negative from the last line of defense costs far more than the tokens it saved. Delegate a whole discipline to one agent rather than spreading a task across several, and state the tier next to the roster so the choice is visible.
 
-Both `format:dotnet` and `check:dotnet` pass `--severity info`, and the flag is load-bearing on the write side too. `dotnet format` defaults to `warn`, which fixes none of the `:suggestion` rules that Sections 3 and 5 declare — leaving `format` unable to fix what `check` then rejects. Keep the two symmetric.
-
-The Husky `pre-commit` hook checks that Docker is reachable, then that the Unity solution exists, then runs `lint-staged`, then the two secret gates (see below). **`lint-staged` works on the staged files only** — CSharpier then `dotnet format` on staged C#, Prettier on staged JSON/Markdown/YAML — and re-stages what it rewrote, so the formatter's output lands in the commit. It hides unstaged hunks while it runs, so a partially staged file keeps the hunks you deliberately left out. Its config lives under `lint-staged` in `package.json`.
-
-CSharpier runs before `dotnet format` there and in `npm run format`, and the two do not fight: `dotnet format whitespace` reports zero divergences against CSharpier's output, so neither undoes the other. `dotnet format` adds roughly five seconds regardless of how many files are staged — the cost is loading the MSBuild workspace, not the file count.
-
-The order is deliberate at both ends. Docker and the solution check come first because they are the gates answerable without the index, so a stopped daemon or a closed editor fails in milliseconds instead of after the formatters run. The secret gates run last because `lint-staged` is what finally settles the index, and scanning any earlier would examine pre-formatter content — or miss a file the formatter restaged.
-
-The trade is that the hook no longer verifies the **whole repository**: a violation in a file you did not stage now reaches CI instead of failing locally. That is what CI's Format Check is for, and `npm run check` covers it locally on demand.
-
-**Do not disable the hooks with `HUSKY=0`.** It used to be the routine path for agent-authored commits, because the Commitizen `prepare-commit-msg` hook opened an interactive prompt that hung any non-interactive caller. That hook now exits immediately whenever git already has a message — which `git commit -m` always does — so the prompt only appears for a bare `git commit`. `HUSKY=0` today buys nothing and costs the formatting and secret gates.
-
-**Run tests and builds through the open editor, never through batch mode.** `unity cmd run_tests` and `unity cmd build` drive the running editor and report back; `Unity.exe -batchmode` needs the project lock and forces the editor closed. **The `unity test`, `unity build`, and `unity run` subcommands fall under the same ban** — they spawn their own editor in batch mode rather than talking to the open one. `unity cmd` is the only surface that reaches the running editor. See `.claude/rules/unity-editor-automation.md`. CI runs both suites on PRs.
-
-**A build dirties the working tree, and the open editor does not save you from it.** A measured `unity cmd build` rewrote `UniversalRP.asset`, `UniversalRenderPipelineGlobalSettings.asset`, `ProjectSettings.asset` and `UnityConnectSettings.asset`, and dropped a stray `Assets/DefaultVolumeProfile.asset` — the churn comes from building, not from the mode. Validate with `--dry_run true`, leave player builds to CI, and if you must build locally do it on a clean tree and restore afterwards with `git restore` plus `git clean`. Rule 19 has the detail.
-
-**Secret scanning runs on every commit and in CI.** The `pre-commit` hook and `.github/workflows/secret-scan.yml` both run [Betterleaks](https://github.com/betterleaks/betterleaks) as a container, digest-pinned — `ghcr.io/betterleaks/betterleaks@sha256:16f903f0100ce7358ef1f870858777e55bec94cf04c6b65c45d013274ea3311c`, never a tag, never `:latest` — plus a filename-extension gate for secret-shaped files (`.key`, `.pem`, `.p12`, `.pfx`, `.keystore`, `.jks`, `.mobileprovision`, `.cer`, `.p8`, sourced from `.github/rulesets/push-rulesets/01-sensitive-files-protection.json`). If the hook fails on the Docker check, start Docker Desktop and retry — it fails the commit rather than skipping the scan, on purpose, so never work around it by uninstalling or ignoring the hook. If it fails on an actual finding, treat it as a real leak until proven otherwise: fix the content or rotate the credential. Never add `--redact` removal, `|| true`, `continue-on-error`, or a `.betterleaksignore`/`.betterleaks.toml` to force it green — ask first if you believe a finding is a false positive.
-
-## Architecture
-
-Runtime code is split into one assembly per feature domain — `Assets/Scripts/Runtime/{Feature}/` with an `.asmdef` named `GooGalaxy.Runtime.{Feature}`. The set grows over time, so list the folder instead of assuming it. `Runtime.Shared` is the dependency-free leaf every other assembly may reference and must never depend on a feature assembly; `Runtime.Core` holds DI. Editor assemblies (`GooGalaxy.Editor.*` under `Assets/Editor/`) depend on `Editor.Shared` and are never referenced by runtime code. Tests live in `Assets/Scripts/Tests/{EditMode,PlayMode}/`, reaching internals through `InternalsVisibleTo` rather than widened access modifiers.
-
-**Established patterns** — `MatchEvents` (static event bus for in-match facts, in `Runtime.Shared`; publishers call `Raise*`), **VContainer** DI with `GameLifetimeScope` as the composition root in `Runtime.Core` (constructor injection for plain classes, `[Inject]` methods for MonoBehaviours — never a Service Locator), MVP split into `Models/`, `Views/`, `Presenters/` plus stateless `Services/` per feature (`*Controller` is reserved for gameplay/system control such as `PlayController` or a camera rig, never for a view mediator), composition over inheritance, and `ScriptableObject` for authored config only — never runtime state (suffix `*SO`/`*DataSO`).
-
-**Tech choices, never deviate** — Unity Input System (not the legacy Input Manager), UI Toolkit (not uGUI), `Awaitable` instead of coroutines for delays and sequencing, `UnityEngine.Pool.ObjectPool<T>` for frequent spawn/despawn, Netcode for GameObjects plus Unity Multiplayer Services.
-
-## Conventions
-
-Detailed rules live in `.claude/rules/`. Most carry `paths:` frontmatter so they load when you touch the files they govern (`Assets/Scripts/**`, `Assets/Editor/**`, `.uxml`/`.uss`, `.asmdef`); `unity-editor-automation.md` deliberately has none, because how to reach the editor is not triggered by opening a particular file. Read the matching file before writing or reviewing code — **subagents do not receive them automatically and must open them by path.**
-
-**`Assets/Playtest/` is outside every rule, deliberately.** It is a throwaway harness that gets deleted when the Match Orchestrator lands, so the `paths:` globs enumerate `Assets/Scripts/**` and `Assets/Editor/**` rather than `Assets/**`. Do not audit it, do not report findings against it, and do not spend a task bringing it into line — the code is leaving. Fix something there only when it blocks a playtest.
-
-The rules that get violated most:
-
-- **`_camelCase`** private fields, **`PascalCase`** everything else (never `UPPER_CASE` constants); Allman braces, 160-char lines
-- **No allocations, LINQ, or `Camera.main` in update loops** — cache, pool, reuse
-- **`Awaitable` methods take an `Async` suffix**, coroutines a `Co` suffix — always pass `destroyCancellationToken`
-- **Never `is null` / `is not null` on `UnityEngine.Object`** — use `== null`
-- **XML `<summary>` only** for interfaces, abstract members, cross-assembly public APIs, and generic utilities — plus `<remarks>` at any accessibility level for an invariant (`unity-code-documentation.md` Rule 4)
-- **Tests use GIVEN-WHEN-THEN** with literal `// GIVEN`, `// WHEN`, `// THEN` comments and `MethodUnderTest_Scenario_ExpectedOutcome` names
-
-## Workflow
-
-Notion task (GOO\*) → branch (`feat/GOOM-1`, `fix/GOOE-42`) → commits → PR → merge. Commit and PR titles require Conventional Commits with a **mandatory scope**: `type(scope): subject`, subject lowercase and ≤72 chars.
-
-The project skills own each step (`/create-commit`, `/open-pull-request`, `/refine-task`, `/start-task`, `/track-task`) — invoke them instead of hand-formatting; they perform the action, not just draft text. `/start-task` picks and sequences the specialist subagents in `.claude/agents/`; delegate a whole discipline to one of them rather than spreading a task across several.
-
-**Pass an explicit model tier for every subagent you dispatch.** The `Agent` tool's `model` parameter overrides the agent's frontmatter; omitting it inherits the session model, and the lead here runs on `opus`, so an omitted tier silently promotes routine work. Choose from the complexity of that agent's slice, not the agent's identity: `haiku` for mechanical, fully-specified work (renames, applying findings someone already wrote out, `.asmdef` scaffolding, mirroring an existing test); **`sonnet` as the default** for ordinary implementation inside established patterns; `opus` only for architecture and assembly-boundary decisions, root-causing intermittent or desync defects, balance math, and reviewing a large diff. The two read-only analysts are the exception — `unity-perf-auditor` and `unity-code-reviewer` pin `model: opus` in their frontmatter and are never dispatched lower, because a silent false negative from the last line of defense costs far more than the tokens it saved. State the tier next to the roster so the choice is visible.
+| Agent                      | Owns                                                                                    | Dispatch when                                          |
+| :------------------------- | :-------------------------------------------------------------------------------------- | :----------------------------------------------------- |
+| `dependency-doctor`        | Packages, asmdef compile errors, stale csproj, Roslyn analyzers, npm and Husky tooling  | Plumbing blocks the build                              |
+| `game-balance-analyst`     | Capture and flip math, power budgets, energy curves, pacing, reward rates, pricing      | Numbers need modelling; it does not implement systems  |
+| `gdd-steward`              | The 12 GDD chapters in Notion, and drift between them and the repo                      | The design doc must change or be audited               |
+| `release-engineer`         | GitHub Actions, IL2CPP build profiles, licence and Library caching, LFS, rulesets       | CI or a player build needs work                        |
+| `shader-vfx-artist`        | URP Shader Graph and HLSL, goo surfaces, VFX Graph, variant and quality-tier budgets    | An effect must be built, or is too expensive on mobile |
+| `task-planner`             | Turning a rough idea, bug report or request into a refined Notion page                  | A request needs scoping; it does not implement         |
+| `unity-bug-hunter`         | Nulls, lifecycle order, static state, Input System, physics, async cancellation, desync | Something misbehaves and the cause is unknown          |
+| `unity-code-reviewer`      | Style, ordering, naming, doc scope, patterns, assembly direction, correctness           | A diff needs review before commit or PR — reports only |
+| `unity-doc-auditor`        | XML doc scope, comments that narrate or contradict, tooltips, log text, test structure  | Documentation must be audited — reports only           |
+| `unity-editor-tooling`     | Inspectors, drawers, EditorWindows, postprocessors, validation and batch asset passes   | Editor tooling is needed; never runtime gameplay       |
+| `unity-gameplay-engineer`  | Runtime gameplay in any feature assembly, and scaffolding a new one                     | Implementing or refactoring gameplay                   |
+| `unity-netcode-engineer`   | NGO, authority, `NetworkVariable` vs RPC, ownership, lobby, relay, matchmaking          | Any multiplayer work                                   |
+| `unity-perf-auditor`       | Allocations, LINQ in hot paths, uncached lookups, boxing, draw calls, IL2CPP pitfalls   | Mobile performance must be audited — reports only      |
+| `unity-structure-auditor`  | File layout, using directives, namespace shape, the mandated member order               | Class organization must be audited — reports only      |
+| `unity-test-author`        | EditMode and PlayMode suites, GIVEN-WHEN-THEN, `InternalsVisibleTo` and asmdef wiring   | Tests must be written, improved, or run                |
+| `unity-uitoolkit-engineer` | UXML, USS, custom elements, binding, `ListView`, HUD and menus, safe area               | Any UI work                                            |
 
 ## Boundaries
 
-- **Never write `.asset`, `.meta`, `.prefab`, or `.unity` files directly.** Unity authors them; writing the bytes from an agent corrupts GUIDs and serialized references. The `deny` rules in `.claude/settings.json` enforce this — a denial there is policy, not a bug.
-- **Changing those assets through the editor is allowed and is the expected path**, because the editor writes the files and GUIDs stay valid. The editor is reached with `unity cmd <command>` in the shell — there is no Unity MCP server on this project. Prefer the named command — `unity cmd set_serialized_field`, `set_component_properties`, `move_asset`, `delete_asset` — over `eval`, and read the value back with a different command before asserting it landed. A denial on a direct write means "use the editor", not "this cannot be done". `unity status` says whether the editor is alive before you conclude anything, and `unity list --json` is the authoritative list of what it exposes. Full guidance in `.claude/rules/unity-editor-automation.md`.
+- **`.asset`, `.meta`, `.prefab` and `.unity` are the editor's to write.** The `deny` rules in `.claude/settings.json` block the byte-level write to protect GUIDs — a denial there is policy, and it means "use the editor", not "this cannot be done". Reach the editor with `unity cmd <command>` in the shell; there is no Unity MCP server on this project. Prefer the named command over `eval`, and read the value back before asserting it landed. Full guidance in `.claude/rules/unity-editor-automation.md`.
+- **`goo-galaxy.slnx` and the per-assembly `.csproj` are Unity-generated and untracked** — change the `.asmdef`, never them, and see Rule 3a in `unity-editor-automation.md` for keeping them current.
 - **`ProjectSettings/` and render pipeline assignment stay the user's call.** Ask before changing Graphics/Quality settings or anything project-wide.
 - **Never commit, push, or open a PR** unless asked.
-
-## Gotchas
-
-- **`.slnx`** — new .NET XML solution format; some IDE versions and external tools don't recognize it. If tooling complains, open the `.slnx` directly.
-- **Root `.csproj` files** are Unity-generated — never hand-edit them; change the `.asmdef` instead.
-
-## GDD
-
-The game design doc is the design source of truth — pitch, mechanics, math/balance, troops, economy, meta-game, art, audio, tech architecture, MVP roadmap, ops/legal. Read the governing chapter before designing a feature, and keep it in sync when project structure changes.
-
-**It lives in Notion**, as 12 pages in the [Documentation wiki](https://app.notion.com/p/31b56d55129b801aa007d27114249b81) — one per chapter, tagged and cross-linked. There is no copy in the repository, so it is never grepped: every read is a fetch and every citation is a link.
-
-The `read-gdd` skill is the index. It carries the chapter-to-URL table and says which chapter governs what, so a lookup costs one fetch instead of a search — invoke it rather than hunting for a page. Cite a chapter with `<mention-page>` inside Notion and with its URL everywhere else; **`gdd-steward` owns edits**, and they are made to the page, never to a local copy. Refinement documents follow the same rule — `/refine-task` creates them in the Notion task database, not on disk.

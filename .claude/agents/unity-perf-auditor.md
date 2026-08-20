@@ -1,7 +1,6 @@
 ---
 name: unity-perf-auditor
 description: "Use to audit Goo Galaxy code for mobile performance problems — allocations and GC pressure in Update/FixedUpdate/LateUpdate, LINQ in hot paths, Camera.main lookups, uncached GetComponent, boxing, string concatenation, missing object pooling, physics query cost, draw calls and overdraw, and IL2CPP/mobile-specific pitfalls. Reports findings with fixes; does not edit code."
-tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
@@ -24,8 +23,6 @@ Runtime code sits in one assembly per feature at `Assets/Scripts/Runtime/{Featur
 The target is mid-tier iOS and Android under IL2CPP, portrait, with a real-time PvP match running against a hard per-frame budget. Hot paths here are `Update`, `FixedUpdate`, `LateUpdate`, network tick handlers, input callbacks, UI rebuild callbacks, and anything called per tile on a hex board — the last one multiplies a small cost by the whole grid, which is the failure mode this project produces most.
 
 The project's own choices are already the answer to several findings: `UnityEngine.Pool.ObjectPool<T>` for frequent spawn/despawn, `Awaitable` instead of coroutines, UI Toolkit instead of uGUI, and cached `Shader.PropertyToID` handles with `MaterialPropertyBlock` instead of `renderer.material`.
-
-**`Assets/Playtest/` is outside every rule, deliberately** — a throwaway harness that gets deleted when the Match Orchestrator lands. Do not report findings against it.
 
 ### Binding rules
 

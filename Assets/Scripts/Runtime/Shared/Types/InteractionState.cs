@@ -4,8 +4,8 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// The phase a player's card interaction is in, from picking a card to committing a deployment.
     /// </summary>
     /// <remarks>
-    /// Not yet consumed by any runtime system — the playtest harness drives its own flags instead. Treat the member
-    /// semantics as provisional until a real input state machine adopts it.
+    /// Not yet consumed by any runtime system. Treat the member semantics as provisional until a real input state
+    /// machine adopts it.
     /// </remarks>
     public enum InteractionState
     {
