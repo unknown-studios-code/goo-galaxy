@@ -67,10 +67,19 @@ namespace GooGalaxy.Tests.PlayMode.AI
         // the evidence and can never turn the test red.
         private const int RetiredLoopFrameBudget = 60;
 
-        // Bounds on polls that wait for something the loop does on its own clock. Generous enough that a slow
-        // machine cannot exhaust them, and an infinite-loop backstop rather than a deadline.
-        private const int CeilingTruncationFrameBudget = 300;
-        private const int SubscriberFailureFrameBudget = 300;
+        // Bounds on polls that wait for something the loop does on its own clock, matching PollFrameBudget in
+        // MatchControllerTests and MatchCatchUpTests. An infinite-loop backstop rather than a deadline: the poll
+        // exits the moment the condition holds, so this count is only ever reached by a genuine failure, and
+        // [Timeout] is what bounds that in real time.
+        //
+        // The hazard is a FAST machine, not a slow one, which is the opposite of what it looks like. The loop
+        // waits in real-time slices, so the frames a budget buys are worth less the faster the machine runs: a
+        // headless CI runner turned 300 frames into 0.26s, barely over the 0.25s slice the loop must finish
+        // before it can read the Energy ceiling, and the test lost that race while passing locally at 60 FPS
+        // with the same 300 frames spanning five seconds. Size these against the slice, never against a frame
+        // count that looks generous.
+        private const int CeilingTruncationFrameBudget = 20000;
+        private const int SubscriberFailureFrameBudget = 20000;
 
         private static readonly HexCoordinates _machineOrigin = new(0, 0);
         private static readonly HexCoordinates _humanOrigin = new(-3, 0);
