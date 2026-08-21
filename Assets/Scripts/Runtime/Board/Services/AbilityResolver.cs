@@ -37,53 +37,14 @@ namespace GooGalaxy.Runtime.Board.Services
     internal static class AbilityResolver
     {
         /// <remarks>
-        /// Checks that <paramref name="targets" /> — the hexes the player picked, centre first — forms the cluster
-        /// <paramref name="effect" /> was authored for, against <paramref name="grid" />.
-        /// <para>
-        /// The GDD describes a Protocol's target as "a 3-hex cluster (1 center hex + 2 adjacent)", and the two
-        /// authored fields already say exactly that without a new schema:
-        /// <see cref="ImpactEffect.ClusterSize"/> is how many hexes the player picks, and
-        /// <see cref="ImpactEffect.Radius"/> is how far each may sit from the centre.
-        /// <para>
-        /// <c>targets[0]</c> is the centre by definition, and it is measured against itself, so a distance of
-        /// zero always passes. A cluster size of zero fails: on a troop impact zero means "no cap", but a
-        /// Protocol with no target count is not authored, and silently accepting any number of hexes for it
-        /// would be worse than rejecting it.
-        /// </para>
-        /// Allocation-free. Distinctness is a nested indexed scan rather than a set, because the count is the
-        /// authored cluster size — three or four — and a <c>HashSet</c> would cost an allocation to save
-        /// nothing. Returns true when the count matches the authored cluster size, every hex is on the board, no hex
-        /// repeats, and every hex is within the authored radius of the first one.
-        /// </para>
+        /// Forwards to <see cref="AbilityTargetValidator.ValidateTargets" />, which owns the four rules and the
+        /// reasoning behind them. Kept on the resolver so the controller and the EditMode suite reach the check
+        /// through the type they already hold, and so the resolver and a caller choosing a cluster can never
+        /// drift onto two different answers.
         /// </remarks>
         internal static bool ValidateTargets(IReadOnlyList<HexCoordinates> targets, ImpactEffect effect, HexGrid grid)
         {
-            if (targets == null || grid == null || effect.ClusterSize <= 0 || targets.Count != effect.ClusterSize)
-            {
-                return false;
-            }
-
-            HexCoordinates centre = targets[0];
-
-            for (int i = 0; i < targets.Count; i++)
-            {
-                HexCoordinates target = targets[i];
-
-                if (!grid.TryGetCell(target, out _) || centre.CalculateDistance(target) > effect.Radius)
-                {
-                    return false;
-                }
-
-                for (int j = 0; j < i; j++)
-                {
-                    if (targets[j] == target)
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            return true;
+            return AbilityTargetValidator.ValidateTargets(targets, effect, grid);
         }
 
         /// <remarks>

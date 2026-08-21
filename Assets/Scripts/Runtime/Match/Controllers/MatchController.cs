@@ -109,6 +109,13 @@ namespace GooGalaxy.Runtime.Match.Controllers
         [SerializeField]
         private bool _isAutoStartEnabled = true;
 
+        [Tooltip(
+            "What drives the second seat. Local Human is a hot-seat match on one device; Machine hands that seat to the AI, which is what a "
+                + "PvE scene authors. Remote Human is reserved for a networked session and is inert today."
+        )]
+        [SerializeField]
+        private PlayerControl _playerTwoControl = PlayerControl.LocalHuman;
+
         private readonly MatchState _state = new();
         private readonly MatchClock _clock = new();
         private readonly OvertimeLeadTracker _overtimeLeadTracker = new();
@@ -417,10 +424,12 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 return MatchStartResult.DomainUnavailable;
             }
 
+            // The first seat is always local — it is the device the match is being played on. The second is
+            // authored, because it is the only one that varies between the PvP and the PvE scene.
             var configuration = new MatchConfiguration(
                 _matchSeed,
-                PlayerOneId,
-                PlayerTwoId,
+                new PlayerSlot(PlayerOneId, PlayerControl.LocalHuman),
+                new PlayerSlot(PlayerTwoId, _playerTwoControl),
                 _standardDurationSeconds,
                 _matchConfig.CountdownSeconds,
                 _overtimeDurationSeconds
@@ -462,6 +471,18 @@ namespace GooGalaxy.Runtime.Match.Controllers
             _matchConfig = matchConfig;
             _matchSeed = matchSeed;
             _isAutoStartEnabled = isAutoStartEnabled;
+        }
+
+        /// <remarks>
+        /// Test-only seam: assigns the control kind the second seat is announced with, which an Inspector
+        /// otherwise authors per scene. Separate from <see cref="SetMatchConfigForTests" /> so the fixtures
+        /// already calling that one keep compiling, and because a fixture that cares about the seat rarely
+        /// cares about the seed. Must run before <see cref="TryStartMatch" />, which is where the announced
+        /// configuration is built.
+        /// </remarks>
+        internal void SetPlayerTwoControlForTests(PlayerControl control)
+        {
+            _playerTwoControl = control;
         }
 
         /// <remarks>
