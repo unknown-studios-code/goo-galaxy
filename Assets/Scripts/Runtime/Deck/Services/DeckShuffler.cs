@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.Shared.Utils;
 
 namespace GooGalaxy.Runtime.Deck.Services
 {
@@ -10,13 +11,10 @@ namespace GooGalaxy.Runtime.Deck.Services
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Why neither standard generator is used.</b> <c>UnityEngine.Random</c> is global mutable state, so the
-    /// order a player receives would depend on whatever else in the frame happened to draw from it first — a
-    /// particle system is enough to desynchronize two peers. <c>System.Random</c> carries no cross-platform
-    /// stability guarantee: its algorithm is an implementation detail and has already changed once between
-    /// runtimes, so an iOS and an Android peer of the same match are not promised the same sequence from the
-    /// same seed. This shuffle must produce byte-identical output on both, so it carries its own xorshift32
-    /// instead. Do not "simplify" it back to either of them.
+    /// <b>Where the randomness comes from.</b> Every draw is taken from <see cref="Xorshift32" />, which carries
+    /// the reasoning: neither <c>UnityEngine.Random</c> nor <c>System.Random</c> promises two peers the same
+    /// sequence from the same seed, and this shuffle must produce byte-identical output on both. Do not
+    /// "simplify" it back to either of them.
     /// </para>
     /// <para>
     /// <b>Allocation.</b> Assumed to be setup, not a hot path: this runs once per player when a match starts, so
@@ -26,15 +24,6 @@ namespace GooGalaxy.Runtime.Deck.Services
     /// </remarks>
     public static class DeckShuffler
     {
-        // Any odd constant works; this is the 32-bit golden-ratio constant, chosen because multiplying a player
-        // id by an odd number is injective modulo 2^32 — two players of one match can never collide on a seed.
-        private const uint PlayerSeedStride = 0x9E3779B9u;
-
-        // xorshift32 has no way out of a zero state: every shift and xor of zero is zero, so a zero-seeded generator
-        // returns zero forever and the shuffle becomes the identity. Any seed reaching Shuffle is legal, including a
-        // derived one that lands on zero, so zero is substituted rather than rejected.
-        private const uint FallbackState = 0x6C078965u;
-
         /// <summary>
         /// Copies a Kit into the caller's list and shuffles it in place with a seeded Fisher-Yates pass.
         /// </summary>
@@ -65,16 +54,15 @@ namespace GooGalaxy.Runtime.Deck.Services
                 results.Add(kit[i]);
             }
 
-            uint state = CreateState(seed);
+            var random = new Xorshift32(seed);
 
             // Fisher-Yates, descending: index i is settled by swapping it with a uniformly chosen index in
-            // [0, i]. The modulo is a small bias toward low indices for a range that does not divide 2^32
-            // evenly, which is irrelevant here and — the point of this whole class — identical on both peers.
+            // [0, i]. The bound is i + 1 because the index may land on i itself, which is the case that leaves
+            // a card where it already was.
             for (int i = results.Count - 1; i > 0; i--)
             {
-                state = NextState(state);
+                int swapIndex = random.NextIndex(i + 1);
 
-                int swapIndex = (int)(state % (uint)(i + 1));
                 (results[i], results[swapIndex]) = (results[swapIndex], results[i]);
             }
         }
@@ -85,61 +73,15 @@ namespace GooGalaxy.Runtime.Deck.Services
         /// </summary>
         /// <remarks>
         /// Deterministic in both arguments and injective in the player id, so a player's order is reproducible
-        /// from the match seed alone — which is what lets a peer verify the other's opening hand.
+        /// from the match seed alone — which is what lets a peer verify the other's opening hand. The player is
+        /// the stream <see cref="Xorshift32.DeriveSeed" /> splits the match seed by.
         /// </remarks>
         /// <param name="matchSeed">The match's shared seed, from <c>MatchConfiguration.Seed</c>.</param>
         /// <param name="playerId">The player the seed is for.</param>
         /// <returns>The seed to pass to <see cref="Shuffle" />.</returns>
         public static int DeriveSeed(int matchSeed, int playerId)
         {
-            unchecked
-            {
-                uint mixed = (uint)matchSeed + ((uint)playerId * PlayerSeedStride);
-
-                return (int)Avalanche(mixed);
-            }
-        }
-
-        private static uint CreateState(int seed)
-        {
-            unchecked
-            {
-                uint state = (uint)seed;
-
-                return state == 0u ? FallbackState : state;
-            }
-        }
-
-        // xorshift32, Marsaglia's (13, 17, 5) triple: a full-period generator over the 2^32-1 non-zero states,
-        // specified as exact integer operations rather than as a library behaviour, which is what makes it
-        // reproducible across runtimes and architectures.
-        private static uint NextState(uint state)
-        {
-            unchecked
-            {
-                state ^= state << 13;
-                state ^= state >> 17;
-                state ^= state << 5;
-
-                return state;
-            }
-        }
-
-        // The murmur3 finalizer: a bijection over 32 bits, so distinct inputs stay distinct while neighbouring
-        // player ids stop producing neighbouring seeds — without it, adjacent seeds start xorshift in adjacent
-        // states and the first few draws correlate visibly.
-        private static uint Avalanche(uint value)
-        {
-            unchecked
-            {
-                value ^= value >> 16;
-                value *= 0x85EBCA6Bu;
-                value ^= value >> 13;
-                value *= 0xC2B2AE35u;
-                value ^= value >> 16;
-
-                return value;
-            }
+            return Xorshift32.DeriveSeed(matchSeed, playerId);
         }
     }
 }

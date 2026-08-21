@@ -134,8 +134,8 @@ namespace GooGalaxy.Runtime.Match.Services
 
             // 8. Deal both players. Named by the configuration rather than invented here — DeckPresenter has no
             //    opinion about who is playing, and neither does this.
-            _deckPresenter.InitializePlayer(configuration.PlayerOneId);
-            _deckPresenter.InitializePlayer(configuration.PlayerTwoId);
+            _deckPresenter.InitializePlayer(configuration.PlayerOne.Id);
+            _deckPresenter.InitializePlayer(configuration.PlayerTwo.Id);
 
             return MatchStartResult.Success;
         }

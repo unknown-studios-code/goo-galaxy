@@ -41,8 +41,6 @@ namespace GooGalaxy.Tests.EditMode.Board
         private static readonly HexCoordinates _neighborW = new(-1, 0);
         private static readonly HexCoordinates _outsideGridCoords = new(99, 99);
         private static readonly HexCoordinates _unoccupiedCoords = new(2, -1);
-        private static readonly HexCoordinates _distantFromOriginCoords = new(2, 0);
-        private static readonly HexCoordinates _offAxisDistantCoords = new(1, 1);
 
         private HexGrid _grid;
         private Dictionary<int, GridUnit> _units;
@@ -775,187 +773,6 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
-        public void ValidateTargets_ValidCryoStasisCluster_ReturnsTrue()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborNW };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.True);
-        }
-
-        [Test]
-        public void ValidateTargets_CountBelowClusterSize_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_CountAboveClusterSize_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborNW, _neighborW };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_DuplicateHex_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborE };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_HexOffGrid_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _outsideGridCoords };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_HexBeyondRadiusOfCentre_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _offAxisDistantCoords };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_CollinearHexesWithEndpointFirst_ReturnsFalseBecauseFarEndpointExceedsRadius()
-        {
-            // GIVEN — targets[0] is the rule's centre; a straight line's endpoint is not its geometric middle.
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _distantFromOriginCoords };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_CollinearHexesWithMidpointFirst_ReturnsTrueBecauseBothEndpointsAreWithinRadius()
-        {
-            // GIVEN — same three hexes, but the geometric middle is targets[0], so both endpoints are 1 away.
-            var targets = new List<HexCoordinates> { _neighborE, _origin, _distantFromOriginCoords };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.True);
-        }
-
-        [Test]
-        public void ValidateTargets_ClusterSizeZero_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborNW };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 0);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_NullTargets_ReturnsFalse()
-        {
-            // GIVEN
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(null, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_EmptyTargets_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates>();
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_NullGrid_ReturnsFalse()
-        {
-            // GIVEN
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborNW };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 3);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, null);
-
-            // THEN
-            Assert.That(isValid, Is.False);
-        }
-
-        [Test]
-        public void ValidateTargets_SterilizationBeamShapedClusterOfFour_ReturnsTrue()
-        {
-            // GIVEN — proves the rule is authored data alone: a wider cluster needs no new code, only (4, 1).
-            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborNW, _neighborW };
-            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, 4);
-
-            // WHEN
-            bool isValid = AbilityResolver.ValidateTargets(targets, effect, _grid);
-
-            // THEN
-            Assert.That(isValid, Is.True);
-        }
-
-        [Test]
         public void Resolve_ApplyStatusAllyFilter_AffectsTheActingPlayersUnit()
         {
             // GIVEN
@@ -1416,6 +1233,19 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(actingUnit.HasStatus(StatusType.Frozen), Is.True);
+        }
+
+        [TestCase(3, ExpectedResult = true)]
+        [TestCase(4, ExpectedResult = false)]
+        public bool ValidateTargets_ForAnAuthoredClusterSize_AnswersWithTheValidatorsRule(int clusterSize)
+        {
+            // GIVEN
+            var targets = new List<HexCoordinates> { _origin, _neighborE, _neighborNW };
+            var effect = new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.All, clusterSize);
+
+            // WHEN / THEN — a one-line forwarder that owns no rule of its own; every rule and every boundary
+            // lives in AbilityTargetValidatorTests, and this only pins that both entry points answer alike.
+            return AbilityResolver.ValidateTargets(targets, effect, _grid);
         }
 
         private static AbilityContext LandingContext(int actingUnitId, HexCoordinates originHex)

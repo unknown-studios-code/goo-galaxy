@@ -1,18 +1,14 @@
 {
-  "name": "GooGalaxy.Runtime.Core",
-  "rootNamespace": "GooGalaxy.Runtime.Core",
+  "name": "GooGalaxy.Runtime.AI",
+  "rootNamespace": "GooGalaxy.Runtime.AI",
   "defineConstraints": [],
   "excludePlatforms": [],
   "includePlatforms": [],
   "precompiledReferences": [],
   "references": [
     "GooGalaxy.Runtime.Shared",
-    "GooGalaxy.Runtime.AI",
     "GooGalaxy.Runtime.Board",
-    "GooGalaxy.Runtime.Networking",
     "GooGalaxy.Runtime.Cards",
-    "GooGalaxy.Runtime.Deck",
-    "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Match",
     "VContainer"
   ],

@@ -329,7 +329,14 @@ namespace GooGalaxy.Tests.PlayMode.Match
 
         private static MatchConfiguration BuildConfiguration()
         {
-            return new MatchConfiguration(0, PlayerOneId, PlayerTwoId, 180f, 3f, 60f);
+            return new MatchConfiguration(
+                0,
+                new PlayerSlot(PlayerOneId, PlayerControl.LocalHuman),
+                new PlayerSlot(PlayerTwoId, PlayerControl.LocalHuman),
+                180f,
+                3f,
+                60f
+            );
         }
 
         private void BuildBoard(params Vector2Int[] blockedCoordinates)
