@@ -19,6 +19,8 @@ using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.UI.Presenters;
+using GooGalaxy.Tests.PlayMode.UI;
 using NUnit.Framework;
 using UnityEngine;
 using VContainer;
@@ -45,6 +47,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameObject _energyPresenterGO;
         private GameObject _cellPrefabGO;
         private GameObject _unitPrefabGO;
+        private GameObject _hudGO;
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
         private DeckPresenter _deckPresenter;
@@ -71,6 +74,11 @@ namespace GooGalaxy.Tests.PlayMode.Core
             if (_unitPrefabGO != null)
             {
                 Object.DestroyImmediate(_unitPrefabGO);
+            }
+
+            if (_hudGO != null)
+            {
+                Object.DestroyImmediate(_hudGO);
             }
 
             foreach (GameObject go in _autoScaffoldedGOs)
@@ -436,7 +444,32 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
             presenterGO.SetActive(true);
 
+            CreateHud();
+
             return presenterGO;
+        }
+
+        // GameLifetimeScope registers MatchHudPresenter with RegisterComponentInHierarchy, which makes it
+        // mandatory in any scene carrying the scope. Left to the generic auto-scaffolding in BuildContainer, the
+        // bare component it creates has no view assigned, and its Start() would log UiLogMessages.HudViewMissing
+        // as an error no test here anticipates — the same class of problem the grid layout and the kitted
+        // DeckPresenter above already solve, solved the same way: author a properly formed one ahead of the
+        // scaffold. Every [Test] in this fixture runs synchronously to completion and TearDown destroys the
+        // scene before the player loop ever reaches a deferred Start(), which is what let the bare scaffolded
+        // presenter pass silently before this existed — a latent failure rather than a genuine one.
+        //
+        // The double is assigned through SetViewForTests rather than a real MatchHudView, because a real one
+        // brings its own UIDocument via RequireComponent and that UIDocument has no authored Source Asset here;
+        // this fixture exercises container wiring, not HUD rendering, and ResolveSink treats a MatchHudView-typed
+        // sink as a destroyed authored view once its serialized _view field is null, which a real component
+        // assigned only through this seam would be.
+        private void CreateHud()
+        {
+            _hudGO = new GameObject("MatchHudPresenter_DI_Test");
+            _hudGO.SetActive(false);
+            MatchHudPresenter presenter = _hudGO.AddComponent<MatchHudPresenter>();
+            presenter.SetViewForTests(new FakeMatchHudView());
+            _hudGO.SetActive(true);
         }
 
         private KitDataSO BuildKit()

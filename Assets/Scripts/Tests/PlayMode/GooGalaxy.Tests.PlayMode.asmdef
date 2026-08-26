@@ -18,6 +18,7 @@
     "GooGalaxy.Runtime.Core",
     "GooGalaxy.Runtime.Deck",
     "GooGalaxy.Runtime.Match",
+    "GooGalaxy.Runtime.UI",
     "VContainer",
     "UnityEngine.TestRunner"
   ],

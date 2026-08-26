@@ -27,6 +27,26 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
         public CardType Type { get; }
 
         /// <summary>
+        /// The presentation family this card belongs to, which the HUD draws as the accent bar on its hand slot.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="CardAccent.None" /> on a card that authors no accent, and a consumer must read that as "draw
+        /// no accent" rather than substituting a default — an unauthored card shows no bar at all.
+        /// <para>
+        /// <b>The role is authored here and the colour is not.</b> The accent resolves from a USS token at draw
+        /// time, which is what lets the colourblind stylesheet swap card accents along with the faction pair. A
+        /// <c>UnityEngine.Color</c> on this contract would sit outside that swap, so nothing here may carry one.
+        /// </para>
+        /// <para>
+        /// This is the first presentation member on the contract; the artwork and rarity tracked in GOOM-30 join it
+        /// here rather than on a parallel one. That task introduces a rarity enum whose tiers each take a palette
+        /// treatment — a second colour system arriving on this same slot, and one that has to resolve through
+        /// tokens the way this member does, or the bar and the border will disagree about what the card is.
+        /// </para>
+        /// </remarks>
+        public CardAccent Accent { get; }
+
+        /// <summary>
         /// The card's authored Energy cost. See <see cref="Shared.Interfaces.IEnergyPriced.EnergyCost" /> for how it
         /// prices an action.
         /// </summary>

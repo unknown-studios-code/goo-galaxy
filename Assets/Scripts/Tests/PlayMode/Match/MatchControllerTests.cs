@@ -313,6 +313,37 @@ namespace GooGalaxy.Tests.PlayMode.Match
             Assert.That(result, Is.EqualTo(MatchStartResult.ConfigMissing));
         }
 
+        // Regression test: Configuration is assigned ahead of the first refusal that can abandon a start, not
+        // merely ahead of setup, specifically so an abandoned start still reports the seats it attempted rather
+        // than the previous match's. An invalid placement is what forces InitializeMatch to refuse setup and
+        // abandon here, without needing to break MatchState's own transition table to do it.
+        [Test]
+        public void Configuration_StartAbandonedByAnInvalidPlacement_StillReportsTheAttemptedSeats()
+        {
+            // GIVEN
+            MatchConfigSO config = BuildConfig(
+                60f,
+                1f,
+                1f,
+                new StartingPlacement
+                {
+                    CardId = "unknown_card",
+                    UnitId = 1,
+                    PlayerId = PlayerOneId,
+                    Q = 0,
+                    R = 0,
+                }
+            );
+            MatchController matchController = BuildMatchController(config);
+            LogAssert.Expect(LogType.Error, string.Format(MatchLogMessages.StartingPlacementCardMissingFormat, 0, "unknown_card"));
+
+            // WHEN
+            matchController.TryStartMatch();
+
+            // THEN
+            Assert.That((matchController.Configuration.PlayerOne.Id, matchController.Configuration.PlayerTwo.Id), Is.EqualTo((PlayerOneId, PlayerTwoId)));
+        }
+
         [UnityTest]
         [Timeout(15000)]
         public IEnumerator MatchClockTicked_DuringStandardPhase_FiresAtMostOncePerWholeSecond()
@@ -443,6 +474,51 @@ namespace GooGalaxy.Tests.PlayMode.Match
 
             // THEN
             Assert.That(scoreChanges, Is.Empty);
+        }
+
+        [Test]
+        public void ScoreOf_UnknownPlayer_ReturnsZeroRatherThanThrowing()
+        {
+            // GIVEN
+            MatchController matchController = BuildInactiveMatchController();
+
+            // WHEN
+            int score = matchController.ScoreOf(999);
+
+            // THEN
+            Assert.That(score, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(15000)]
+        public IEnumerator ScoreOf_AfterTheOpeningRecountPublishes_AgreesWithTheLastScoreChangedForBothSeats()
+        {
+            // GIVEN
+            MatchConfigSO config = BuildConfig(60f, 1f, 1f, Placement(1, PlayerOneId, 0, 0), Placement(2, PlayerTwoId, -1, 0));
+            MatchController matchController = BuildMatchController(config);
+            var scoreChanges = new List<(int PlayerId, int UnitCount)>();
+            MatchEvents.ScoreChanged += (playerId, unitCount) => scoreChanges.Add((playerId, unitCount));
+
+            // WHEN — TryStartMatch's opening recount publishes both seats' starting counts before anybody can
+            // move one, which is enough of a fact for ScoreOf to agree with without waiting on Standard.
+            matchController.TryStartMatch();
+
+            int frameBudget = PollFrameBudget;
+
+            while ((scoreChanges.Count < 2) && frameBudget-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.That(
+                scoreChanges.Count,
+                Is.GreaterThanOrEqualTo(2),
+                "Test setup expects the opening recount to publish a ScoreChanged for both seeded seats."
+            );
+
+            // THEN — each placement seeds exactly one unit for its player, so the opening count is known
+            // without deriving it from the events the code under test just published.
+            Assert.That((matchController.ScoreOf(PlayerOneId), matchController.ScoreOf(PlayerTwoId)), Is.EqualTo((1, 1)));
         }
 
         [TestCase(MatchPhase.None)]

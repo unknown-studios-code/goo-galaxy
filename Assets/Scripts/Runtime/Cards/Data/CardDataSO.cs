@@ -33,6 +33,13 @@ namespace GooGalaxy.Runtime.Cards.Data
         [SerializeField]
         private CardType _type;
 
+        [Header("Presentation")]
+        [Tooltip(
+            "Presentation family the HUD draws as a bar across the top of this card's hand slot. None draws no bar at all. There is no colour to author here — it comes from the stylesheet, so a colourblind palette can swap every accent at once."
+        )]
+        [SerializeField]
+        private CardAccent _accent;
+
         [Header("Energy")]
         [Tooltip("Energy cost required to play this card, in whole Energy units.")]
         [SerializeField]
@@ -92,6 +99,8 @@ namespace GooGalaxy.Runtime.Cards.Data
         public string Description => _description ?? string.Empty;
 
         public CardType Type => _type;
+
+        public CardAccent Accent => _accent;
 
         public int EnergyCost => _energyCost;
 

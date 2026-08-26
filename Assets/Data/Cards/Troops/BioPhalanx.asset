@@ -17,6 +17,7 @@ MonoBehaviour:
   _description: Armored membrane. The first assimilation attempt strips the armor;
     only a second one flips it.
   _type: 0
+  _accent: 4
   _energyCost: 3
   _canClone: 1
   _canJump: 1

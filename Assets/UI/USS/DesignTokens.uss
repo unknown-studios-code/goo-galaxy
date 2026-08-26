@@ -1,0 +1,108 @@
+/*
+ * Cosmic Neon, as the Art Direction & UX chapter of the GDD authors it, expressed as role tokens.
+ *
+ * Named by ROLE, never by colour, so a colourblind palette is a second stylesheet swapped at runtime rather
+ * than a rename across every rule in the project. Colours are rgb()/rgba() rather than hex, and not because
+ * USS cannot read hex — it parses both to identical values. It is so the alpha channel stays legible beside the
+ * opaque roles, and so a colourblind stylesheet can be diffed line for line against this one.
+ *
+ * Every contrast figure below is the GDD's, measured against the Deep Space background rgb(27, 27, 27).
+ * Text and interactive roles all clear the 4.5:1 WCAG 2.1 AA floor; the recessed border role sits below it
+ * deliberately, because it is structure and never carries information on its own.
+ *
+ * Lengths are in the 1080 x 1920 panel reference space, so on a 1080-wide device one unit is one device pixel.
+ */
+:root {
+  /* Surfaces */
+  --color-surface-void: rgb(27, 27, 27);
+  --color-surface-wash: rgb(11, 15, 26);
+  --color-surface-panel: rgba(11, 15, 26, 0.92);
+  --color-surface-veil: rgba(11, 15, 26, 0.86);
+  --color-surface-recessed: rgb(43, 45, 66);
+  --color-surface-empty: rgba(43, 45, 66, 0.45);
+  --color-scrim: rgba(0, 0, 0, 0.4);
+
+  /* Information and status */
+  --color-info: rgb(255, 255, 255); /* 17.22:1 */
+  --color-info-muted: rgb(178, 182, 194); /* 8.1:1 */
+  --color-critical: rgb(57, 255, 20); /* 12.70:1 — Energy */
+  --color-urgent: rgb(255, 106, 0); /* 6.00:1 — clock running out, overtime */
+  --color-negative: rgb(255, 68, 68); /* 5.05:1 — reserved for failed actions */
+  --color-boon: rgb(255, 215, 0); /* 12.28:1 — catch-up, Protocol cards */
+
+  /*
+   * Faction tokens come in two families on purpose. The seat pair is the fact: the board colours units by
+   * player id, so a badge must follow the id or it contradicts the board in every match the local player takes
+   * the second seat. The home/away pair is the role, for anything that is about sides of the screen rather
+   * than about ownership.
+   */
+  --color-faction-one: rgb(0, 245, 255); /* 12.72:1 */
+  --color-faction-two: rgb(255, 45, 170); /* 5.09:1 */
+  --color-faction-home: rgb(0, 245, 255);
+  --color-faction-away: rgb(255, 45, 170);
+
+  /*
+   * Card accent family. One token per authored CardAccent role, and the only colours here that identify a card
+   * rather than a state. A colourblind stylesheet is expected to redefine all five alongside the faction pair —
+   * that swap is the whole reason the card asset authors a role and never a colour.
+   *
+   * Every value clears the faction pair, their Blue/Orange colourblind replacements, and the Warning Orange,
+   * Radioactive Lime and Bright Gold semantic roles by at least CIEDE2000 19.7 (Explosive against Hot Magenta),
+   * and clears every other accent by at least 21.8. The bar is 17.6, which is this palette's own narrowest gap
+   * between two colours that must mean different things — Warning Orange against Soft Red.
+   *
+   * The five are separable in the default palette only. Simulated deuteranopia collapses Corrosive to within 2.2
+   * of Soft Red, which no choice of five hues avoids on a palette this crowded; that is what the colourblind
+   * stylesheet is for, not a margin to be tuned here.
+   */
+  --color-accent-baseline: rgb(176, 186, 226); /* 9.00:1 */
+  --color-accent-control: rgb(34, 158, 178); /* 5.41:1 */
+  --color-accent-explosive: rgb(190, 112, 255); /* 5.70:1 */
+  --color-accent-defensive: rgb(36, 190, 146); /* 7.26:1 */
+  --color-accent-corrosive: rgb(126, 168, 28); /* 6.16:1 */
+
+  /* Lines */
+  --color-border-recessed: rgb(43, 45, 66); /* 1.28:1 — decorative structure only */
+  --color-border-neutral: rgb(120, 126, 145);
+  --color-text-outline: rgb(0, 0, 0);
+  --color-text-shadow: rgba(0, 0, 0, 0.9);
+
+  /* Spacing */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-s: 16px;
+  --space-m: 24px;
+  --space-l: 32px;
+  --space-xl: 48px;
+
+  /* Type. The MVP imports no font, so every size resolves against the default runtime theme face. */
+  --font-size-caption: 22px;
+  --font-size-body: 28px;
+  --font-size-score: 52px;
+  --font-size-timer: 64px;
+  --font-size-banner: 72px;
+  --font-size-outcome: 96px;
+  --font-size-countdown: 220px;
+
+  /* Geometry */
+  --radius-s: 8px;
+  --radius-m: 16px;
+  --border-thin: 2px;
+  --border-thick: 6px;
+
+  /* 144 reference units is 48dp on a 1080-wide xxhdpi screen, the platform minimum touch target. */
+  --size-touch-min: 144px;
+  --size-badge-min: 108px;
+  --size-card-slot-height: 232px;
+  --size-card-slot-accent-height: 16px;
+  --size-gauge-height: 44px;
+  --size-gauge-value-width: 148px;
+
+  /* Fixed so the proportional default face cannot re-measure the bar every time a digit turns over. */
+  --size-timer-width: 240px;
+
+  --size-text-outline: 4px;
+
+  --opacity-disabled: 0.35;
+  --opacity-unaffordable: 0.4;
+}

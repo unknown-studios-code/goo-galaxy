@@ -252,6 +252,11 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             public CardType Type { get; }
 
+            // CardDefinition copies whatever accent is authored here; None keeps this fixture on the same
+            // "no accent" path an unauthored card asset takes, since none of the tests in this file assert
+            // on a specific accent.
+            public CardAccent Accent => CardAccent.None;
+
             public int EnergyCost { get; }
 
             public bool CanClone { get; }

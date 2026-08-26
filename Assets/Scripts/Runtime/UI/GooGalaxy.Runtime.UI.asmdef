@@ -1,0 +1,21 @@
+{
+  "name": "GooGalaxy.Runtime.UI",
+  "rootNamespace": "GooGalaxy.Runtime.UI",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Match",
+    "GooGalaxy.Runtime.Cards",
+    "GooGalaxy.Runtime.Energy",
+    "GooGalaxy.Runtime.Deck",
+    "VContainer"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}
