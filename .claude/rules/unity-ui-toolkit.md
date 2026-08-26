@@ -22,7 +22,7 @@ This document defines coding, styling, and architectural rules for building UI w
 ## 3. Core Rules
 
 - **Rule 1 (File Organization & Naming):** Keep UXML in `Assets/UI/UXML/` and USS in `Assets/UI/USS/`, with matching PascalCase names (`MainMenuView.uxml` / `MainMenuView.uss`). Reference stylesheets from UXML with `<Style src="project://database/..."/>`; USS has no `@import`. Format `.uxml` and `.uss` with 2-space indentation and a 120-character line limit, per `.editorconfig`.
-- **Rule 2 (USS Is a CSS Subset):** Flexbox only — no `display: grid`. Lengths in `px` and `%` only — no `em`, `rem`, `vh`, `vw`, or `calc()`. No `z-index`: stacking follows the UXML declaration order. No `@media` queries. Colors use `rgb()`/`rgba()` or a `var()` token — hexadecimal is not parsed. `box-sizing: border-box` is the default and cannot be changed. Custom properties are declared in `:root {}` only. Hit testing is **not** styleable: `picking-mode` is a UXML attribute and a C# property (`VisualElement.pickingMode`), never a USS declaration — writing it in USS logs one "Unknown property" warning at asset import and is then dropped, so the element silently keeps `PickingMode.Position`. An unknown USS property never fails a build and never re-warns at play time, which is what makes this class of mistake survive review.
+- **Rule 2 (USS Is a CSS Subset):** Flexbox only — no `display: grid`. Lengths in `px` and `%` only — no `em`, `rem`, `vh`, `vw`, or `calc()`. No `z-index`: stacking follows the UXML declaration order. No `@media` queries. Colors are written as `rgb()`/`rgba()` or a `var()` token by convention, not by necessity: hexadecimal parses correctly — `#ff8800` and `rgb(255, 136, 0)` produce byte-identical values with no import warning, measured on 6000.3.18f1 — but `rgba()` keeps the alpha channel legible beside the opaque roles, and it lets a colourblind stylesheet be diffed against the base one line for line. `box-sizing: border-box` is the default and cannot be changed. Custom properties are declared in `:root {}` only. Hit testing is **not** styleable: `picking-mode` is a UXML attribute and a C# property (`VisualElement.pickingMode`), never a USS declaration — writing it in USS logs one "Unknown property" warning at asset import and is then dropped, so the element silently keeps `PickingMode.Position`. An unknown USS property never fails a build and never re-warns at play time, which is what makes this class of mistake survive review.
 - **Rule 3 (Unity-Specific Properties):** Text and background styling use Unity's namespaced properties, not their CSS counterparts: `-unity-font-definition`, `-unity-font-style`, `-unity-text-align` (`upper|middle|lower` + `left|center|right`), `-unity-text-outline-width/-color`, `-unity-background-scale-mode`, `-unity-background-image-tint-color`, and `-unity-slice-left/right/top/bottom` with `-unity-slice-scale` for 9-slice sprites. Asset URLs use `url('project://database/Assets/...')` for project assets or `resource('...')` for `Resources`; relative `url('../Icons/icon.png')` resolves from the USS file.
 - **Rule 4 (Selectors & Pseudo-Classes):** USS supports `:hover`, `:active`, `:focus`, `:checked`, `:disabled`, `:enabled`, and `:root`. It does not support `:nth-child()`, `:not()`, `:first-child`, `:last-child`, `:is()`, or `:where()`. Keep selectors flat and specific (`.block__element`) — deep descendant chains are brittle and slower to match.
 - **Rule 5 (BEM & Element Identity):** Name USS classes `block-name__element-name--modifier-name` and UXML `name` attributes in kebab-case. Use `name` for elements queried from C# and keep it unique inside its block; use `class` for styling and reuse. Express runtime state as additive modifier classes (`.is-selected`, `.is-disabled`) toggled with `AddToClassList`/`RemoveFromClassList`/`EnableInClassList`, never by writing inline styles. Centralize selector strings as `const` in a static class so a rename is a compile error rather than a silent no-op.
@@ -45,7 +45,8 @@ This document defines coding, styling, and architectural rules for building UI w
 ```
 
 ```css
-/* ❌ Hexadecimal color, unsupported properties and selector */
+/* ❌ camelCase class, unsupported properties and selector. The hex color is legal USS and parses fine —
+   it is off-convention here, not broken, which is why it is not what this example is about. */
 .primaryButton {
   background-color: #ff6432;
   z-index: 10;
@@ -223,22 +224,22 @@ public class <ViewComponent> : MonoBehaviour
 
 ## 5. Quick Reference & Decision Matrix
 
-| Feature        | CSS Standard                | USS Subset / Unity Extension                         |
-| :------------- | :-------------------------- | :--------------------------------------------------- |
-| Layout System  | Flexbox + Grid              | Flexbox (Yoga) only                                  |
-| Size Units     | px, %, em, rem, vh, vw      | px and % only                                        |
-| Math           | `calc(100% - 20px)`         | Not supported — use `flex-grow` or fixed values      |
-| Layering       | `z-index: 10`               | Not supported — UXML declaration order decides       |
-| Color Formats  | Hex, `rgb()`, `rgba()`      | `rgb()`/`rgba()` or `var()` only; hex is not parsed  |
-| Variables      | Any selector                | `:root` only                                         |
-| Media Queries  | `@media`                    | Not supported — separate USS files, swap at runtime  |
-| Stylesheet ref | `@import`                   | `<Style src="project://database/..."/>` in UXML      |
-| Layout Gaps    | `gap: 10px`                 | Not supported — margins on children                  |
-| Pseudo-classes | `:nth-child`, `:not`, `:is` | `:hover :active :focus :checked :disabled :enabled`  |
-| Text align     | `text-align: center`        | `-unity-text-align: middle-center`                   |
-| Transform      | `transform: scale(1.1)`     | Individual `scale`, `rotate`, `translate` properties |
-| Box model      | Configurable `box-sizing`   | Always `border-box`                                  |
-| Hit testing    | `pointer-events: none`      | Not a USS property — UXML `picking-mode` or C#       |
+| Feature        | CSS Standard                | USS Subset / Unity Extension                            |
+| :------------- | :-------------------------- | :------------------------------------------------------ |
+| Layout System  | Flexbox + Grid              | Flexbox (Yoga) only                                     |
+| Size Units     | px, %, em, rem, vh, vw      | px and % only                                           |
+| Math           | `calc(100% - 20px)`         | Not supported — use `flex-grow` or fixed values         |
+| Layering       | `z-index: 10`               | Not supported — UXML declaration order decides          |
+| Color Formats  | Hex, `rgb()`, `rgba()`      | All three parse; `rgb()`/`rgba()`/`var()` by convention |
+| Variables      | Any selector                | `:root` only                                            |
+| Media Queries  | `@media`                    | Not supported — separate USS files, swap at runtime     |
+| Stylesheet ref | `@import`                   | `<Style src="project://database/..."/>` in UXML         |
+| Layout Gaps    | `gap: 10px`                 | Not supported — margins on children                     |
+| Pseudo-classes | `:nth-child`, `:not`, `:is` | `:hover :active :focus :checked :disabled :enabled`     |
+| Text align     | `text-align: center`        | `-unity-text-align: middle-center`                      |
+| Transform      | `transform: scale(1.1)`     | Individual `scale`, `rotate`, `translate` properties    |
+| Box model      | Configurable `box-sizing`   | Always `border-box`                                     |
+| Hit testing    | `pointer-events: none`      | Not a USS property — UXML `picking-mode` or C#          |
 
 | Problem Symptom         | Primary Cause                       | Troubleshooting Checklist                                                                                  |
 | :---------------------- | :---------------------------------- | :--------------------------------------------------------------------------------------------------------- |
