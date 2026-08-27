@@ -7,6 +7,7 @@ using GooGalaxy.Runtime.Energy.Presenters;
 using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Interfaces;
+using GooGalaxy.Runtime.UI.Presenters;
 using VContainer;
 using VContainer.Unity;
 
@@ -51,6 +52,7 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<AbilityController>().AsSelf();
             builder.RegisterComponentInHierarchy<GridView>().AsSelf();
             builder.RegisterComponentInHierarchy<UnitView>().AsSelf();
+            builder.RegisterComponentInHierarchy<MatchHudPresenter>().AsSelf();
         }
     }
 }

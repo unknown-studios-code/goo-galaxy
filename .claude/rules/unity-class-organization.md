@@ -46,7 +46,7 @@ Within fields and methods, order by accessibility: `public` → `internal` → `
 
 1. Constants and `static readonly` fields (shader IDs, cached hashes)
 2. Static fields
-3. Serialized inspector fields, grouped with `[Header]`, each attribute on its own line above `[SerializeField]`
+3. Serialized inspector fields, each attribute on its own line above `[SerializeField]`, grouped with `[Header]` once the type authors more than one group. A single field takes no header — a section bar over one control is noise, and five MonoBehaviours here already omit it (`AiController`, `GridPresenter`, `CellView`, `CardPresenter`, `BoardCameraController`)
 4. Runtime fields (`readonly` collections first, then mutable state)
 5. Delegates and events, then `UnityEvent` fields
 6. Properties and indexers
@@ -73,11 +73,11 @@ Prefer `readonly struct` for value types; implement `IEquatable<T>` and provide 
 
 ### Rule 6 — Interfaces and enums
 
-Interfaces declare, in order: constants, static members, properties and indexers, events, then methods (instance → static → default implementations). Declare only the capability the consumer needs. Enums list values in a meaningful order — logical sequence or explicit numeric values when they are serialized or sent over the network — with `None = 0` when a neutral value exists. **A result enum has no neutral value**, because every member is a real outcome, so it opens with `Success = 0` and that is not a violation of the clause above (`MatchStartResult`, `CardPlayResult`, `CardDiscardResult`, `MovementResult`, `SpellResult`). Reach for `None = 0` where a default-constructed value would otherwise assert something false — `MatchEndReason` is the case that earns it, since `default(MatchOutcome)` would otherwise read as a real ending.
+Interfaces declare, in order: constants, static members, events, properties and indexers, then methods (instance → static → default implementations) — **events before properties, the same order Rules 1 and 2 give a class**, so a contract and the type implementing it read alike. Declare only the capability the consumer needs. Enums list values in a meaningful order — logical sequence or explicit numeric values when they are serialized or sent over the network — with `None = 0` when a neutral value exists. **A result enum has no neutral value**, because every member is a real outcome, so it opens with `Success = 0` and that is not a violation of the clause above (`MatchStartResult`, `CardPlayResult`, `CardDiscardResult`, `MovementResult`, `SpellResult`). Reach for `None = 0` where a default-constructed value would otherwise assert something false — `MatchEndReason` is the case that earns it, since `default(MatchOutcome)` would otherwise read as a real ending.
 
 ### Rule 7 — Generic, abstract, and partial types
 
-Abstract bases declare the template first: abstract and virtual members before the concrete helpers that support them, so an implementer reads the contract at the top. Partial classes keep the primary declaration (fields, lifecycle, public surface) in the file named after the type, and each additional part groups one concern; generated or attribute-driven parts (`[UxmlElement] public partial class`) carry no hand-written state.
+Abstract bases declare the template first: abstract and virtual members before the concrete helpers that support them, so an implementer reads the contract at the top. Partial classes keep the primary declaration (fields, lifecycle, public surface) in the file named after the type, and each additional part groups one concern. For an attribute-driven type it is the **generated** part that carries no hand-written state: a `[UxmlElement] public partial class` is the primary declaration and holds the fields, constructor and public surface, ordered by Rule 1 — a `VisualElement` is a plain C# class, so Rule 2's lifecycle bands do not apply to it. Unity's source generator emits the `UxmlSerializedData` half, which nobody edits.
 
 ### Rule 8 — Editor types
 
@@ -195,7 +195,7 @@ namespace GooGalaxy.Runtime.Board.Views
 | Member Category                    | Position     | Ordering Detail                                                                        |
 | :--------------------------------- | :----------- | :------------------------------------------------------------------------------------- |
 | `const` / `static readonly`        | Top          | Before every instance member, including cached shader and hash IDs                     |
-| Serialized inspector fields        | Upper        | Grouped with `[Header]`; attributes stacked on their own lines                         |
+| Serialized inspector fields        | Upper        | Attributes stacked on their own lines; `[Header]` once there is more than one group    |
 | Runtime fields                     | Upper-middle | `readonly` first, then mutable                                                         |
 | Delegates, events, `UnityEvent`    | Middle       | Before properties (.NET/StyleCop order)                                                |
 | Properties and indexers            | Middle       | After events, before any method                                                        |

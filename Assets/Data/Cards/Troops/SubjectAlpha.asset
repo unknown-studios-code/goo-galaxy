@@ -16,6 +16,7 @@ MonoBehaviour:
   _displayName: Subject Alpha
   _description: The fundamental biomass unit. Cheap enough to deploy almost continuously.
   _type: 0
+  _accent: 1
   _energyCost: 1
   _canClone: 1
   _canJump: 1

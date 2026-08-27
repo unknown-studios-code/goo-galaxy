@@ -1,0 +1,67 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+  <Style src="project://database/Assets/UI/USS/DesignTokens.uss" />
+  <Style src="project://database/Assets/UI/USS/MatchHudView.uss" />
+  <ui:VisualElement name="hud-background" class="hud__background" picking-mode="Ignore">
+    <GooGalaxy.Runtime.UI.Views.Elements.SafeAreaElement
+      name="hud-safe-area"
+      class="hud__safe-area"
+      picking-mode="Ignore"
+    >
+      <ui:VisualElement name="top-bar" class="hud__top-bar" picking-mode="Ignore">
+        <GooGalaxy.Runtime.UI.Views.Elements.ScoreBadgeElement
+          name="opponent-score"
+          class="score-badge"
+          picking-mode="Ignore"
+        />
+        <ui:Label name="match-timer" class="match-timer" picking-mode="Ignore" />
+        <GooGalaxy.Runtime.UI.Views.Elements.OpponentBadgeElement
+          name="opponent-badge"
+          class="opponent-badge"
+          picking-mode="Ignore"
+        />
+      </ui:VisualElement>
+      <ui:VisualElement name="board-window" class="hud__board-window" picking-mode="Ignore" />
+      <ui:VisualElement name="bottom-bar" class="hud__bottom-bar" picking-mode="Ignore">
+        <ui:VisualElement name="status-row" class="hud__status-row" picking-mode="Ignore">
+          <GooGalaxy.Runtime.UI.Views.Elements.ScoreBadgeElement
+            name="local-score"
+            class="score-badge"
+            picking-mode="Ignore"
+          />
+          <!-- TODO (GOOM-17): drop picking-mode here, which keeps this inert even once it is enabled. -->
+          <ui:Button name="emote-slot" class="emote-slot" text="EMOTE" enabled="false" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:Label name="catch-up-line" class="catch-up-line is-hidden" picking-mode="Ignore" />
+        <GooGalaxy.Runtime.UI.Views.Elements.EnergyGaugeElement
+          name="energy-gauge"
+          class="energy-gauge"
+          picking-mode="Ignore"
+        />
+        <ui:VisualElement name="hand-strip" class="hand-strip" picking-mode="Ignore">
+          <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement name="hand-slot-0" class="card-slot" />
+          <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement name="hand-slot-1" class="card-slot" />
+          <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement name="hand-slot-2" class="card-slot" />
+          <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement name="hand-slot-3" class="card-slot" />
+          <ui:VisualElement name="hand-strip-divider" class="hand-strip__divider" picking-mode="Ignore" />
+          <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement
+            name="next-card-slot"
+            class="card-slot card-slot--next"
+          />
+        </ui:VisualElement>
+      </ui:VisualElement>
+    </GooGalaxy.Runtime.UI.Views.Elements.SafeAreaElement>
+    <ui:VisualElement name="countdown-scrim" class="hud__scrim is-hidden" picking-mode="Ignore" />
+    <GooGalaxy.Runtime.UI.Views.Elements.CountdownOverlayElement
+      name="countdown-overlay"
+      class="countdown-overlay is-hidden"
+      picking-mode="Ignore"
+    />
+    <ui:VisualElement name="overtime-banner" class="overtime-banner is-hidden" picking-mode="Ignore">
+      <ui:Label class="overtime-banner__label" text="OVERTIME" picking-mode="Ignore" />
+    </ui:VisualElement>
+    <ui:VisualElement name="outcome-overlay" class="outcome-overlay is-hidden" picking-mode="Ignore">
+      <ui:Label name="outcome-title" class="outcome-overlay__title" picking-mode="Ignore" />
+      <ui:Label name="outcome-reason" class="outcome-overlay__reason" picking-mode="Ignore" />
+    </ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>

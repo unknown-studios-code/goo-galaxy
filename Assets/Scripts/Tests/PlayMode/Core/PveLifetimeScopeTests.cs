@@ -17,6 +17,8 @@ using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.UI.Presenters;
+using GooGalaxy.Tests.PlayMode.UI;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -199,6 +201,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private IEnumerator PrepareScene()
         {
             CreateBoard();
+            CreateHud();
             ScaffoldMissingComponents();
 
             yield return null;
@@ -269,6 +272,28 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
             presenterGO.SetActive(true);
             _spawned.Add(presenterGO);
+        }
+
+        // GameLifetimeScope now registers MatchHudPresenter with RegisterComponentInHierarchy, which makes it
+        // mandatory in any scene carrying the scope. Without a view assigned, its Start() logs
+        // UiLogMessages.HudViewMissing as an error the scaffold pass below never anticipates — the same class of
+        // problem CreateBoard already solves for DeckPresenter's Kit, solved the same way: author a properly
+        // formed one ahead of the scaffold rather than let the probe auto-create a bare component.
+        //
+        // The double is assigned through SetViewForTests rather than a real MatchHudView, because a real one
+        // brings its own UIDocument via RequireComponent and that UIDocument has no authored Source Asset here —
+        // this fixture exercises container wiring, not HUD rendering, and depending on a committed UXML asset
+        // just to keep the presenter quiet would violate the same rule CreateBoard already follows for its own
+        // ScriptableObjects. ResolveSink also treats a MatchHudView-typed sink as a destroyed authored view once
+        // its serialized _view field is null, which a real component assigned only through this seam would be.
+        private void CreateHud()
+        {
+            var hudGO = new GameObject("MatchHudPresenter_PVE_Test");
+            hudGO.SetActive(false);
+            MatchHudPresenter presenter = hudGO.AddComponent<MatchHudPresenter>();
+            presenter.SetViewForTests(new FakeMatchHudView());
+            hudGO.SetActive(true);
+            _spawned.Add(hudGO);
         }
 
         private KitDataSO BuildKit()

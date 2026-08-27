@@ -1,0 +1,423 @@
+/*
+ * The in-match HUD. Tokens come from DesignTokens.uss; nothing here hardcodes a colour, a spacing or a size.
+ *
+ * Zoning follows the GDD: the top and bottom bars take their content height and the board window between them
+ * absorbs every surplus pixel, so the hand sits at the same physical height on every aspect ratio and a taller
+ * phone gives its extra height to the board rather than to the chrome.
+ *
+ * USS has no box-shadow, so no box in this file glows. State is carried by border colour, border width, fill
+ * and opacity; the two text properties that do exist — text-shadow and -unity-text-outline — are used to keep
+ * numerals legible over the board and under the countdown scrim.
+ */
+
+/* Shared state classes */
+.is-hidden {
+  display: none;
+}
+
+.is-invisible {
+  visibility: hidden;
+}
+
+/* Frame */
+.hud__background {
+  flex-grow: 1;
+}
+
+.hud__safe-area {
+  flex-grow: 1;
+}
+
+.hud__top-bar {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-s);
+  padding-right: var(--space-s);
+  padding-bottom: var(--space-s);
+  padding-left: var(--space-s);
+  background-color: var(--color-surface-panel);
+  border-bottom-width: var(--border-thin);
+  border-bottom-color: var(--color-border-recessed);
+}
+
+.hud__board-window {
+  flex-grow: 1;
+}
+
+.hud__bottom-bar {
+  padding-top: var(--space-s);
+  padding-right: var(--space-s);
+  padding-bottom: var(--space-s);
+  padding-left: var(--space-s);
+  background-color: var(--color-surface-panel);
+  border-top-width: var(--border-thin);
+  border-top-color: var(--color-border-recessed);
+}
+
+.hud__status-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.hud__scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background-color: var(--color-scrim);
+}
+
+/* Timer */
+.match-timer {
+  width: var(--size-timer-width);
+  font-size: var(--font-size-timer);
+  color: var(--color-info);
+  -unity-font-style: bold;
+  -unity-text-align: middle-center;
+  text-shadow: 0 2px 4px var(--color-text-shadow);
+}
+
+.match-timer--urgent {
+  color: var(--color-urgent);
+}
+
+/* Score badges */
+.score-badge {
+  min-width: var(--size-badge-min);
+  flex-grow: 1;
+  flex-basis: 0;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.score-badge__value {
+  font-size: var(--font-size-score);
+  color: var(--color-info);
+  -unity-font-style: bold;
+  text-shadow: 0 2px 4px var(--color-text-shadow);
+}
+
+.score-badge--faction-one .score-badge__value {
+  color: var(--color-faction-one);
+}
+
+.score-badge--faction-two .score-badge__value {
+  color: var(--color-faction-two);
+}
+
+/* Opponent identity */
+.opponent-badge {
+  min-width: var(--size-badge-min);
+  flex-grow: 1;
+  flex-basis: 0;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.opponent-badge__label {
+  font-size: var(--font-size-caption);
+  color: var(--color-info-muted);
+  -unity-text-align: middle-right;
+  white-space: nowrap;
+}
+
+/* Catch-up line, above the gauge so nothing about the window is lost when overtime takes the border */
+.catch-up-line {
+  font-size: var(--font-size-caption);
+  color: var(--color-boon);
+  -unity-font-style: bold;
+  -unity-text-align: middle-left;
+  margin-bottom: var(--space-2xs);
+}
+
+/* Energy gauge */
+.energy-gauge {
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: var(--space-s);
+}
+
+.energy-gauge__track {
+  flex-grow: 1;
+  height: var(--size-gauge-height);
+  background-color: var(--color-surface-recessed);
+  border-top-width: var(--border-thin);
+  border-right-width: var(--border-thin);
+  border-bottom-width: var(--border-thin);
+  border-left-width: var(--border-thin);
+  border-top-color: var(--color-border-recessed);
+  border-right-color: var(--color-border-recessed);
+  border-bottom-color: var(--color-border-recessed);
+  border-left-color: var(--color-border-recessed);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+
+.energy-gauge__fill {
+  width: 0;
+  height: 100%;
+  background-color: var(--color-critical);
+}
+
+.energy-gauge__value {
+  width: var(--size-gauge-value-width);
+  margin-left: var(--space-s);
+  font-size: var(--font-size-body);
+  color: var(--color-info);
+  -unity-text-align: middle-right;
+}
+
+.energy-gauge--at-cap .energy-gauge__track {
+  border-top-color: var(--color-critical);
+  border-right-color: var(--color-critical);
+  border-bottom-color: var(--color-critical);
+  border-left-color: var(--color-critical);
+}
+
+.energy-gauge--catch-up .energy-gauge__track {
+  border-top-width: var(--border-thick);
+  border-right-width: var(--border-thick);
+  border-bottom-width: var(--border-thick);
+  border-left-width: var(--border-thick);
+  border-top-color: var(--color-boon);
+  border-right-color: var(--color-boon);
+  border-bottom-color: var(--color-boon);
+  border-left-color: var(--color-boon);
+}
+
+.energy-gauge--overtime .energy-gauge__track {
+  border-top-width: var(--border-thick);
+  border-right-width: var(--border-thick);
+  border-bottom-width: var(--border-thick);
+  border-left-width: var(--border-thick);
+  border-top-color: var(--color-urgent);
+  border-right-color: var(--color-urgent);
+  border-bottom-color: var(--color-urgent);
+  border-left-color: var(--color-urgent);
+}
+
+/* Hand */
+.hand-strip {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* The slot pads nothing itself. Its padding lives on the two labels instead, so the scrim reaches the border on
+   every side and the accent bar — a flow child at the top, not an absolute one — reaches it left, right and top.
+   Both are clipped by the radius rather than floating inside it. */
+.card-slot {
+  flex-grow: 1;
+  flex-basis: 0;
+  height: var(--size-card-slot-height);
+  margin-right: var(--space-xs);
+  background-color: var(--color-surface-recessed);
+  border-top-width: var(--border-thin);
+  border-right-width: var(--border-thin);
+  border-bottom-width: var(--border-thin);
+  border-left-width: var(--border-thin);
+  border-top-color: var(--color-border-neutral);
+  border-right-color: var(--color-border-neutral);
+  border-bottom-color: var(--color-border-neutral);
+  border-left-color: var(--color-border-neutral);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+}
+
+/* First child and in the flow, not absolute: the bar owns the top strip of the card, so the cost below it
+   never has to be padded clear of it, and is-hidden takes the strip back out of layout on a card that authors
+   no accent — which is also how the bar rests before the first card is pushed into the slot. This rule paints
+   nothing; the colour arrives as one of the role modifiers below. */
+.card-slot__accent {
+  height: var(--size-card-slot-accent-height);
+  flex-shrink: 0;
+}
+
+/* One rule per CardAccent member. The card asset authors the role and the token carries the colour, so the
+   colourblind stylesheet redefines these five in DesignTokens.uss and every accent swaps with the faction pair
+   rather than staying behind on a colour baked into the asset. */
+.card-slot__accent--baseline {
+  background-color: var(--color-accent-baseline);
+}
+
+.card-slot__accent--control {
+  background-color: var(--color-accent-control);
+}
+
+.card-slot__accent--explosive {
+  background-color: var(--color-accent-explosive);
+}
+
+.card-slot__accent--defensive {
+  background-color: var(--color-accent-defensive);
+}
+
+.card-slot__accent--corrosive {
+  background-color: var(--color-accent-corrosive);
+}
+
+.card-slot__cost {
+  padding-top: var(--space-2xs);
+  padding-right: var(--space-2xs);
+  padding-left: var(--space-2xs);
+  font-size: var(--font-size-body);
+  color: var(--color-critical);
+  -unity-font-style: bold;
+  -unity-text-align: upper-right;
+}
+
+.card-slot__name {
+  flex-grow: 1;
+  padding-right: var(--space-2xs);
+  padding-bottom: var(--space-2xs);
+  padding-left: var(--space-2xs);
+  font-size: var(--font-size-caption);
+  color: var(--color-info);
+  -unity-text-align: lower-center;
+  white-space: normal;
+}
+
+/* Paints over the cost and the name because CardSlotElement adds it last — stacking is child order and USS has
+   no z-index, so this rule cannot lift it. Hidden until a modifier turns it on, today only the queued slot. */
+.card-slot__scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background-color: var(--color-scrim);
+  display: none;
+}
+
+.card-slot--protocol {
+  border-top-color: var(--color-boon);
+  border-right-color: var(--color-boon);
+  border-bottom-color: var(--color-boon);
+  border-left-color: var(--color-boon);
+}
+
+.card-slot--unaffordable {
+  opacity: var(--opacity-unaffordable);
+}
+
+.card-slot--empty {
+  background-color: var(--color-surface-empty);
+}
+
+.hand-strip__divider {
+  width: var(--border-thin);
+  height: var(--size-card-slot-height);
+  margin-left: var(--space-xs);
+  margin-right: var(--space-s);
+  background-color: var(--color-border-neutral);
+}
+
+.card-slot--next {
+  /* Same width as the four hand slots. It used to take flex-grow: 0.6, which against a flex-basis of 0 resolved
+     to 0.6/4.6 of the strip where each hand slot took 1/4.6 — about 132px against 221px at the 1080 reference —
+     narrow enough to wrap a two-word card name onto a second line while its neighbours stayed on one. The
+     divider to its left and the scrim below carry "not in hand yet" instead, and neither depends on the name. */
+  margin-right: 0;
+}
+
+/* The queued card is not playable, and the scrim is the whole of that statement — no second dimming on top of
+   it, which would take the authored accent colour down with it. */
+.card-slot--next .card-slot__scrim {
+  display: flex;
+}
+
+/* TODO (GOOM-17): the emote is present and inert until its own task wires it. */
+.emote-slot {
+  width: var(--size-touch-min);
+  height: var(--size-touch-min);
+  font-size: var(--font-size-caption);
+  color: var(--color-info-muted);
+  background-color: var(--color-surface-recessed);
+  border-top-width: var(--border-thin);
+  border-right-width: var(--border-thin);
+  border-bottom-width: var(--border-thin);
+  border-left-width: var(--border-thin);
+  border-top-color: var(--color-border-neutral);
+  border-right-color: var(--color-border-neutral);
+  border-bottom-color: var(--color-border-neutral);
+  border-left-color: var(--color-border-neutral);
+  border-radius: var(--radius-m);
+}
+
+.emote-slot:disabled {
+  opacity: var(--opacity-disabled);
+}
+
+/* Countdown */
+.countdown-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-overlay__value {
+  font-size: var(--font-size-countdown);
+  color: var(--color-info);
+  -unity-font-style: bold;
+  -unity-text-align: middle-center;
+  -unity-text-outline-width: var(--size-text-outline);
+  -unity-text-outline-color: var(--color-text-outline);
+  text-shadow: 0 4px 12px var(--color-text-shadow);
+}
+
+/* Overtime entry banner */
+.overtime-banner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--space-m);
+  padding-bottom: var(--space-m);
+  background-color: var(--color-surface-panel);
+  border-top-width: var(--border-thick);
+  border-bottom-width: var(--border-thick);
+  border-top-color: var(--color-urgent);
+  border-bottom-color: var(--color-urgent);
+}
+
+.overtime-banner__label {
+  font-size: var(--font-size-banner);
+  color: var(--color-urgent);
+  -unity-font-style: bold;
+  -unity-text-align: middle-center;
+}
+
+/* Outcome */
+.outcome-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-surface-veil);
+}
+
+.outcome-overlay__title {
+  font-size: var(--font-size-outcome);
+  color: var(--color-info);
+  -unity-font-style: bold;
+  -unity-text-align: middle-center;
+}
+
+.outcome-overlay__reason {
+  margin-top: var(--space-s);
+  font-size: var(--font-size-body);
+  color: var(--color-info-muted);
+  -unity-text-align: middle-center;
+}

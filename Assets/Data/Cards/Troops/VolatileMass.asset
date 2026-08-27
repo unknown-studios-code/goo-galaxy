@@ -17,6 +17,7 @@ MonoBehaviour:
   _description: Assimilates two sector rings on landing. Cannot Clone; detonates
     on its Jump, or on its own after three seconds.
   _type: 0
+  _accent: 3
   _energyCost: 4
   _canClone: 0
   _canJump: 1

@@ -17,6 +17,7 @@ MonoBehaviour:
   _description: Leaves a toxic puddle on the sector it vacates when it Jumps. Nothing
     can land there.
   _type: 0
+  _accent: 5
   _energyCost: 2
   _canClone: 1
   _canJump: 1

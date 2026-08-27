@@ -127,6 +127,34 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
+        public void Accent_DefaultValue_IsNone()
+        {
+            // GIVEN
+            CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card = card;
+
+            // THEN
+            Assert.That(card.Accent, Is.EqualTo(CardAccent.None));
+        }
+
+        // Not asset-pinning: no specific accent is asserted, only that every authored card leaves the field
+        // something other than None. HandSlotState.Empty and an unauthored CardAccent.None both degrade the
+        // hand strip to its pre-accent look, so a sixth card added with no accent would ship silently rather
+        // than fail a build — this is the one place that catches it. Loads the real assets rather than
+        // constructing doubles because the authored data itself is what is under test (Rule 6's exception in
+        // unity-testing.md).
+        [TestCaseSource(nameof(AuthoredCardDataAssetPaths))]
+        public void Accent_EveryAuthoredCardAsset_IsNotNone(string assetPath)
+        {
+            // GIVEN
+            CardDataSO card = AssetDatabase.LoadAssetAtPath<CardDataSO>(assetPath);
+            Assert.That(card, Is.Not.Null, $"Test setup expects '{assetPath}' to import as a CardDataSO.");
+
+            // WHEN / THEN
+            Assert.That(card.Accent, Is.Not.EqualTo(CardAccent.None), $"'{assetPath}' authors no accent, which the hand strip degrades to a hidden bar.");
+        }
+
+        [Test]
         public void Description_AfterSetAuthoredData_RoundTrips()
         {
             // GIVEN
@@ -670,6 +698,14 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             // THEN
             LogAssert.NoUnexpectedReceived();
+        }
+
+        private static IEnumerable<string> AuthoredCardDataAssetPaths()
+        {
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(CardDataSO)}"))
+            {
+                yield return AssetDatabase.GUIDToAssetPath(guid);
+            }
         }
     }
 }

@@ -125,6 +125,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
         private UnitPresenter _unitPresenter;
         private DeployController _deployController;
         private CardDiscardController _cardDiscardController;
+        private MatchConfiguration _configuration;
         private EnergyPresenter _energyPresenter;
         private float _standardDurationSeconds;
         private float _overtimeDurationSeconds;
@@ -141,6 +142,21 @@ namespace GooGalaxy.Runtime.Match.Controllers
         private bool _isPlayerTwoCatchUpActive;
 
         public MatchPhase Phase => _state.Phase;
+
+        /// <summary>The configuration the running match was started with.</summary>
+        /// <remarks>
+        /// The pull counterpart of <c>MatchEvents.MatchStarted</c>, and the seat map in particular: a subscriber
+        /// that enabled after the announcement — a HUD attached to a match already under way — resolves which
+        /// seat is the local one from here instead of assuming a side.
+        /// <para>
+        /// Before the first <see cref="TryStartMatch" /> of the session it is <c>default</c>, whose two slots
+        /// both carry <see cref="PlayerSlot.UnassignedId" /> and <see cref="PlayerControl.Unassigned" /> — which
+        /// is what a reader must treat as "no seats yet" rather than as player zero. It is assigned before setup
+        /// runs, so an abandoned start leaves the configuration that was attempted, and the phase says the match
+        /// is not running.
+        /// </para>
+        /// </remarks>
+        public MatchConfiguration Configuration => _configuration;
 
         /// <summary>
         /// Seconds left on the clock the running phase is counting down — <see cref="MatchPhase.Standard" />,
@@ -413,17 +429,6 @@ namespace GooGalaxy.Runtime.Match.Controllers
 
             PrepareForNewMatch();
 
-            // Unreachable while the table stands: Reset leaves the state in None, and None -> Loading is legal.
-            // Kept so a future edit to the table cannot quietly start a match that never entered a phase. It
-            // abandons like every other refusal, which here only announces the None that Reset already left
-            // behind — a subscriber still holding the previous match's Ended would otherwise never be told.
-            if (!TryChangePhase(MatchPhase.Loading))
-            {
-                AbandonStart();
-
-                return MatchStartResult.DomainUnavailable;
-            }
-
             // The first seat is always local — it is the device the match is being played on. The second is
             // authored, because it is the only one that varies between the PvP and the PvE scene.
             var configuration = new MatchConfiguration(
@@ -434,6 +439,22 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 _matchConfig.CountdownSeconds,
                 _overtimeDurationSeconds
             );
+
+            // Cached ahead of the first refusal that can abandon, not merely ahead of setup, so every abandoned
+            // start reports the seats it attempted rather than the previous match's. Configuration states what a
+            // reader may conclude from that.
+            _configuration = configuration;
+
+            // Unreachable while the table stands: Reset leaves the state in None, and None -> Loading is legal.
+            // Kept so a future edit to the table cannot quietly start a match that never entered a phase. It
+            // abandons like every other refusal, which here only announces the None that Reset already left
+            // behind — a subscriber still holding the previous match's Ended would otherwise never be told.
+            if (!TryChangePhase(MatchPhase.Loading))
+            {
+                AbandonStart();
+
+                return MatchStartResult.DomainUnavailable;
+            }
 
             MatchStartResult setup = _initializer.InitializeMatch(_matchConfig, configuration);
 
@@ -458,6 +479,25 @@ namespace GooGalaxy.Runtime.Match.Controllers
             _ = RunCountdownAsync();
 
             return MatchStartResult.Success;
+        }
+
+        /// <summary>Reports the unit count this orchestrator last published for a player.</summary>
+        /// <remarks>
+        /// The pull counterpart of <c>MatchEvents.ScoreChanged</c>: it answers with the value that event last
+        /// carried, so a subscriber that enabled after the opening score can fill itself in rather than render
+        /// zeroes until the next deployment moves a count. It reads the cache, not the registry — a recount is
+        /// what refreshes it, and one is never taken on this call.
+        /// <para>
+        /// A player the match has never counted reports zero, which is also what a player wiped off the board
+        /// reports. The two are indistinguishable here and are not meant to be told apart: a caller that needs
+        /// to know the match is over reads <c>MatchEvents.MatchEnded</c>, which is the only thing that says so.
+        /// </para>
+        /// </remarks>
+        /// <param name="playerId">The player whose score to read.</param>
+        /// <returns>The player's last published unit count, or zero if they have never been counted.</returns>
+        public int ScoreOf(int playerId)
+        {
+            return _state.GetScore(playerId);
         }
 
         /// <remarks>

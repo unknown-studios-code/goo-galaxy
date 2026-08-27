@@ -780,6 +780,10 @@ namespace GooGalaxy.Tests.EditMode.AI
 
             public CardType Type { get; }
 
+            // Accent is authored presentation the resolver never reads; None keeps the fake at the same
+            // "no accent" degrade path an unauthored card asset takes.
+            public CardAccent Accent => CardAccent.None;
+
             public int EnergyCost { get; }
 
             public bool CanClone => false;
