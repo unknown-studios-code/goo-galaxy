@@ -67,6 +67,8 @@ namespace GooGalaxy.Runtime.UI.Constants
 
         public const string EnergyGauge = "energy-gauge";
 
+        public const string DiscardZone = "discard-zone";
+
         public const string HandStrip = "hand-strip";
 
         public const string HandSlotZero = "hand-slot-0";
@@ -128,6 +130,12 @@ namespace GooGalaxy.Runtime.UI.Constants
         public const string EnergyGaugeCatchUp = "energy-gauge--catch-up";
 
         public const string EnergyGaugeOvertime = "energy-gauge--overtime";
+
+        public const string DiscardZoneBlock = "discard-zone";
+
+        public const string DiscardZoneLabel = "discard-zone__label";
+
+        public const string DiscardZoneArmed = "discard-zone--armed";
 
         public const string HandStripDivider = "hand-strip__divider";
 

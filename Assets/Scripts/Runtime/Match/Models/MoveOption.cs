@@ -2,13 +2,17 @@ using System.Collections.Generic;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Types;
 
-namespace GooGalaxy.Runtime.AI.Models
+namespace GooGalaxy.Runtime.Match.Models
 {
     /// <summary>
-    /// One action the machine player could legally take right now, in the shape the entry points a human tap
-    /// uses already accept.
+    /// One action a player could legally take right now, in the shape the entry points already accept.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Named for the player, not for what drives them. The machine picks one of these to move with, and the
+    /// input layer highlights the board from the same set — which is what makes a tap and an AI move provably
+    /// agree about what is legal.
+    /// </para>
     /// <para>
     /// Four action shapes share one value type so a strategy can pick uniformly across all of them without
     /// knowing what it picked. A board move — Deploy, Clone or Jump — carries its move type, source, target and

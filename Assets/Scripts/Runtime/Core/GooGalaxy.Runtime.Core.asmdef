@@ -13,6 +13,7 @@
     "GooGalaxy.Runtime.Cards",
     "GooGalaxy.Runtime.Deck",
     "GooGalaxy.Runtime.Energy",
+    "GooGalaxy.Runtime.Input",
     "GooGalaxy.Runtime.Match",
     "GooGalaxy.Runtime.UI",
     "VContainer"

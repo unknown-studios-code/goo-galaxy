@@ -10,6 +10,7 @@ using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.Shared.Utils;
 using GooGalaxy.Runtime.UI.Constants;
 using GooGalaxy.Runtime.UI.Models;
 using GooGalaxy.Runtime.UI.Views;
@@ -56,11 +57,6 @@ namespace GooGalaxy.Runtime.UI.Presenters
     [DisallowMultipleComponent]
     public class MatchHudPresenter : MonoBehaviour
     {
-        // The seat the HUD falls back to when the configuration names no local player.
-        private const int FallbackHomePlayerId = 1;
-
-        private const int FallbackAwayPlayerId = 2;
-
         // No clock is running, which renders as placeholder glyphs rather than as zero.
         private const int NoTimer = -1;
 
@@ -94,8 +90,8 @@ namespace GooGalaxy.Runtime.UI.Presenters
         private string _opponentLabel = HudText.OpponentUnknown;
         private string _outcomeTitle = string.Empty;
         private string _outcomeReason = string.Empty;
-        private int _localPlayerId = FallbackHomePlayerId;
-        private int _opponentPlayerId = FallbackAwayPlayerId;
+        private int _localPlayerId = LocalSeatResolver.FallbackHomePlayerId;
+        private int _opponentPlayerId = LocalSeatResolver.FallbackAwayPlayerId;
         private int _localScore;
         private int _opponentScore;
         private int _timerSeconds = NoTimer;
@@ -300,33 +296,23 @@ namespace GooGalaxy.Runtime.UI.Presenters
 
         private void ResolveSeats(MatchConfiguration config)
         {
-            PlayerSlot one = config.PlayerOne;
-            PlayerSlot two = config.PlayerTwo;
+            bool wasResolved = LocalSeatResolver.TryResolve(in config, out PlayerSlot home, out PlayerSlot away);
 
-            if (one.Control == PlayerControl.LocalHuman)
+            _localPlayerId = home.Id;
+            _opponentPlayerId = away.Id;
+            _opponentLabel = ResolveOpponentLabel(away.Control);
+
+            if (wasResolved)
             {
-                ApplySeats(one, two);
                 return;
             }
-
-            if (two.Control == PlayerControl.LocalHuman)
-            {
-                ApplySeats(two, one);
-                return;
-            }
-
-            ApplySeats(one, two);
 
             // Once per enable, not once per session: the snapshot resolves seats again every time the HUD is
             // enabled into a running match, so a machine-versus-machine debug session repeats this.
-            Debug.LogWarning(string.Format(UiLogMessages.HudLocalSeatUnresolvedFormat, one.Control, two.Control, _localPlayerId), this);
-        }
-
-        private void ApplySeats(PlayerSlot home, PlayerSlot away)
-        {
-            _localPlayerId = home.Id == PlayerSlot.UnassignedId ? FallbackHomePlayerId : home.Id;
-            _opponentPlayerId = away.Id == PlayerSlot.UnassignedId ? FallbackAwayPlayerId : away.Id;
-            _opponentLabel = ResolveOpponentLabel(away.Control);
+            Debug.LogWarning(
+                string.Format(UiLogMessages.HudLocalSeatUnresolvedFormat, config.PlayerOne.Control, config.PlayerTwo.Control, _localPlayerId),
+                this
+            );
         }
 
         private void PullSnapshot()

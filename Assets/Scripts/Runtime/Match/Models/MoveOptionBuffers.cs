@@ -3,7 +3,7 @@ using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Types;
 
-namespace GooGalaxy.Runtime.AI.Models
+namespace GooGalaxy.Runtime.Match.Models
 {
     /// <summary>
     /// The scratch space one enumeration pass needs, owned by the caller and reused across passes so the pass
