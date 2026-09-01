@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using GooGalaxy.Runtime.AI.Interfaces;
-using GooGalaxy.Runtime.AI.Models;
+using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Shared.Utils;
 
 namespace GooGalaxy.Runtime.AI.Services

@@ -9,6 +9,10 @@ using GooGalaxy.Runtime.UI.Views.Elements;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -36,6 +40,19 @@ namespace GooGalaxy.Tests.PlayMode.UI
         // than exactly.
         private const float WidthToleranceInPixels = 1.5f;
 
+        // Arbitrary and only used to give the discard zone a non-zero, absolutely-positioned rect to read
+        // worldBound from — the discard-zone tests below measure that resolved rect rather than assuming where
+        // it lands, since the zone's actual position depends on sibling content (topBar's label height, in
+        // particular) that this fixture does not control.
+        private const float DiscardZoneTestWidth = 240f;
+        private const float DiscardZoneTestHeight = 120f;
+
+        // Arbitrary, and only needed by the HandSlotPressed tests: the bare fixture tree carries no stylesheet,
+        // and a card-slot's height comes entirely from the authored USS, so without this a hand slot resolves to
+        // a real width but a zero-area worldBound — a rect a pointer can never land inside no matter where it is
+        // aimed.
+        private const float HandSlotClickTestHeight = 64f;
+
         private GameObject _documentGO;
         private PanelSettings _panelSettings;
         private UIDocument _document;
@@ -44,6 +61,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
         private ScoreBadgeElement _opponentScoreElement;
         private OpponentBadgeElement _opponentBadgeElement;
         private EnergyGaugeElement _energyGaugeElement;
+        private VisualElement _discardZone;
         private CardSlotElement _handSlotZero;
         private CardSlotElement _handSlotOne;
         private CardSlotElement _handSlotTwo;
@@ -51,9 +69,22 @@ namespace GooGalaxy.Tests.PlayMode.UI
         private CardSlotElement _nextCardSlot;
         private CountdownOverlayElement _countdownOverlayElement;
 
+        // Only populated by the two HandSlotPressed tests -- a real EventSystem and a real, if virtual, Mouse
+        // device are what GOOM-17 found the shipping scenes were missing, so proving the dispatch fires needs
+        // the genuine runtime input pipeline rather than a call straight into the private handler.
+        private GameObject _eventSystemGO;
+        private Mouse _mouse;
+        private int? _raisedHandSlotIndex;
+
         [UnitySetUp]
         public IEnumerator SetUp()
         {
+            // Unity's Test Framework reuses one fixture instance across every test in the class rather than
+            // constructing a fresh one per test, so a field a test writes has to be reset here or it leaks into
+            // whichever test runs next — which is exactly what an unreset _raisedHandSlotIndex did the first
+            // time these two tests ran back to back.
+            _raisedHandSlotIndex = null;
+
             _panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
 
             _documentGO = new GameObject(nameof(MatchHudView));
@@ -94,6 +125,16 @@ namespace GooGalaxy.Tests.PlayMode.UI
             if (_panelSettings != null)
             {
                 Object.Destroy(_panelSettings);
+            }
+
+            if (_eventSystemGO != null)
+            {
+                Object.Destroy(_eventSystemGO);
+            }
+
+            if (_mouse != null)
+            {
+                InputSystem.RemoveDevice(_mouse);
             }
 
             yield return null;
@@ -373,6 +414,61 @@ namespace GooGalaxy.Tests.PlayMode.UI
             Assert.That(_handSlotZero.IsAffordable, Is.False);
         }
 
+        [UnityTest]
+        public IEnumerator HandSlotPressed_PointerDownOnAFilledSlot_RaisesWithThatSlotIndex()
+        {
+            // GIVEN
+            var state = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 3, HandSlotKind.Specimen, CardAccent.None);
+            _view.SetHandSlot(0, in state);
+            _view.HandSlotPressed += HandleHandSlotPressed;
+            yield return SettleHandSlotLayoutAsync(_handSlotZero);
+            CreateEventSystem();
+            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_handSlotZero.worldBound.center);
+
+            // WHEN
+            yield return LeftClickAtAsync(screenPoint);
+
+            // THEN
+            Assert.That(_raisedHandSlotIndex, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator HandSlotPressed_PointerDownOnASlotOtherThanTheFirst_RaisesThatSlotsOwnIndex()
+        {
+            // GIVEN — slot one rather than slot zero, because HandleHandSlotPointerDown resolves the index by
+            // scanning _handSlots for the pressed element. Pressing only the first slot passes whether the
+            // handler reports the element it matched or a hardcoded zero, so this is the case that actually pins
+            // the loop — and the hand strip is due to be reworked when card artwork lands.
+            var state = new HandSlotState(new CardId("acid_crawler"), "Acid Crawler", 2, HandSlotKind.Specimen, CardAccent.None);
+            _view.SetHandSlot(1, in state);
+            _view.HandSlotPressed += HandleHandSlotPressed;
+            yield return SettleHandSlotLayoutAsync(_handSlotOne);
+            CreateEventSystem();
+            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_handSlotOne.worldBound.center);
+
+            // WHEN
+            yield return LeftClickAtAsync(screenPoint);
+
+            // THEN
+            Assert.That(_raisedHandSlotIndex, Is.EqualTo(1));
+        }
+
+        [UnityTest]
+        public IEnumerator HandSlotPressed_PointerDownOnAnEmptySlot_DoesNotRaise()
+        {
+            // GIVEN -- SetUp never draws a card into slot zero, so it starts empty.
+            _view.HandSlotPressed += HandleHandSlotPressed;
+            yield return SettleHandSlotLayoutAsync(_handSlotZero);
+            CreateEventSystem();
+            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_handSlotZero.worldBound.center);
+
+            // WHEN
+            yield return LeftClickAtAsync(screenPoint);
+
+            // THEN
+            Assert.That(_raisedHandSlotIndex, Is.Null);
+        }
+
         [Test]
         public void SetEnergy_GivenAState_LandsOnTheEnergyGauge()
         {
@@ -396,6 +492,99 @@ namespace GooGalaxy.Tests.PlayMode.UI
 
             // THEN
             Assert.That(_countdownOverlayElement.Seconds, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void SetDiscardZoneArmed_ArmedWithThePanelReady_AddsTheArmedModifier()
+        {
+            // GIVEN
+
+            // WHEN
+            _view.SetDiscardZoneArmed(true);
+
+            // THEN
+            Assert.That(_discardZone.ClassListContains(HudSelectors.DiscardZoneArmed), Is.True);
+        }
+
+        [Test]
+        public void SetDiscardZoneArmed_DisarmedAfterBeingArmed_RemovesTheArmedModifier()
+        {
+            // GIVEN
+            _view.SetDiscardZoneArmed(true);
+
+            // WHEN
+            _view.SetDiscardZoneArmed(false);
+
+            // THEN
+            Assert.That(_discardZone.ClassListContains(HudSelectors.DiscardZoneArmed), Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator IsScreenPointInDiscardZone_ScreenPointInsideTheZone_ReturnsTrue()
+        {
+            // GIVEN — the flip under test: a bottom-left-origin screen point is converted to the zone's
+            // top-left-origin panel rect by mirroring across Screen.height, exactly as the production code does.
+            yield return SettleDiscardZoneGeometryAsync();
+            _view.SetDiscardZoneArmed(true);
+            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_discardZone.worldBound.center);
+
+            // WHEN
+            bool result = _view.IsScreenPointInDiscardZone(screenPoint);
+
+            // THEN
+            Assert.That(result, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator IsScreenPointInDiscardZone_ScreenPointAboveTheZone_ReturnsFalse()
+        {
+            // GIVEN — the mirrored point: the screen coordinate that an unflipped ScreenToPanel call reads
+            // straight through as the zone's own panel-space centre, with no flip applied. That is exactly the
+            // coordinate the unflipped implementation this test guards against would have treated as landing
+            // inside the zone.
+            yield return SettleDiscardZoneGeometryAsync();
+            _view.SetDiscardZoneArmed(true);
+            Vector2 screenPoint = UnflippedScreenPointFor(_discardZone.worldBound.center);
+
+            // WHEN
+            bool result = _view.IsScreenPointInDiscardZone(screenPoint);
+
+            // THEN
+            Assert.That(result, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator IsScreenPointInDiscardZone_NotArmed_ReturnsFalse()
+        {
+            // GIVEN — the same point IsScreenPointInDiscardZone_ScreenPointInsideTheZone_ReturnsTrue proves is
+            // inside the zone once armed, so the only variable here is the armed flag.
+            yield return SettleDiscardZoneGeometryAsync();
+            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_discardZone.worldBound.center);
+
+            // WHEN
+            bool result = _view.IsScreenPointInDiscardZone(screenPoint);
+
+            // THEN
+            Assert.That(result, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator CacheElements_PanelRebuiltMidDrag_NoLongerAcceptsAReleaseInTheDiscardZone()
+        {
+            // GIVEN — arms the zone as a live drag would, then disables and re-enables the view the way a panel
+            // rebuild mid-drag does. The UIDocument's own tree is left untouched, which isolates CacheElements'
+            // reset of _isDiscardZoneArmed from a real tree teardown.
+            yield return SettleDiscardZoneGeometryAsync();
+            _view.SetDiscardZoneArmed(true);
+            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_discardZone.worldBound.center);
+            Assert.That(_view.IsScreenPointInDiscardZone(screenPoint), Is.True, "Test setup expects the armed zone to accept the point before the rebuild.");
+
+            // WHEN
+            _view.enabled = false;
+            _view.enabled = true;
+
+            // THEN
+            Assert.That(_view.IsScreenPointInDiscardZone(screenPoint), Is.False);
         }
 
         [TestCaseSource(nameof(SelfIgnoringHudElementFactories))]
@@ -459,6 +648,135 @@ namespace GooGalaxy.Tests.PlayMode.UI
             yield return new TestCaseData((Func<VisualElement>)(() => new CountdownOverlayElement())).SetName("CountdownOverlayElement");
         }
 
+        // The screen point that, once IsScreenPointInDiscardZone applies its Y flip, converts to targetPanelPoint
+        // — computed by calibrating RuntimePanelUtils.ScreenToPanel's own scale from a reference conversion
+        // rather than assuming panel units equal screen pixels 1:1, which does not hold under every test
+        // runner's DPI scale (measured here at roughly 4.8:1). ScreenToPanel is the shared coordinate-space
+        // primitive both the production flip and this helper convert through; only the flip itself — mirroring
+        // across Screen.height — is the logic under test, and this helper never re-derives that half.
+        private Vector2 CorrectlyFlippedScreenPointFor(Vector2 targetPanelPoint)
+        {
+            Vector2 unflipped = UnflippedScreenPointFor(targetPanelPoint);
+
+            return new Vector2(unflipped.x, Screen.height - unflipped.y);
+        }
+
+        // The screen point an unflipped ScreenToPanel call reads straight through as targetPanelPoint — the
+        // coordinate an implementation missing the Y flip would treat as landing there.
+        private Vector2 UnflippedScreenPointFor(Vector2 targetPanelPoint)
+        {
+            IPanel panel = _document.rootVisualElement.panel;
+            Vector2 reference = RuntimePanelUtils.ScreenToPanel(panel, new Vector2(Screen.width, Screen.height));
+
+            return new Vector2(targetPanelPoint.x / (reference.x / Screen.width), targetPanelPoint.y / (reference.y / Screen.height));
+        }
+
+        // Gives the discard zone an absolutely-positioned, non-zero rect and waits for Yoga to resolve it, so
+        // the discard-zone tests can read a real worldBound back rather than assuming where the zone landed —
+        // its actual position depends on sibling content (topBar's label height, in particular) that this
+        // fixture's bare tree does not control the same way the authored USS and markup do.
+        private IEnumerator SettleDiscardZoneGeometryAsync()
+        {
+            _discardZone.style.position = Position.Absolute;
+            _discardZone.style.left = 0f;
+            _discardZone.style.top = 0f;
+            _discardZone.style.width = DiscardZoneTestWidth;
+            _discardZone.style.height = DiscardZoneTestHeight;
+
+            // Polls for two consecutive frames reporting the same non-zero width rather than for the literal
+            // DiscardZoneTestWidth: Yoga settles an absolutely-positioned box against this bare, unstyled tree at
+            // a resolved size that does not equal the requested one exactly, and the tests that follow read
+            // worldBound back rather than assuming the requested value, so settling is all this needs to prove.
+            float previousWidth = float.NaN;
+            int frameBudget = LayoutSettleFrameBudget;
+
+            while (frameBudget-- > 0)
+            {
+                yield return null;
+
+                float currentWidth = _discardZone.resolvedStyle.width;
+
+                if (!float.IsNaN(previousWidth) && Mathf.Approximately(currentWidth, previousWidth) && currentWidth > 0f)
+                {
+                    yield break;
+                }
+
+                previousWidth = currentWidth;
+            }
+
+            Assert.Fail("Test setup expects the discard zone's absolute geometry to have settled within the layout budget.");
+        }
+
+        // Waits for hand slot zero's own layout to settle to a non-zero area, so the HandSlotPressed tests below
+        // can compute a real worldBound to click into. An explicit height is forced first: this bare tree
+        // carries no stylesheet (per BuildHudTree's own remarks below), and a card-slot's height is entirely
+        // CSS-driven, so left alone the slot resolves to a real width but a zero-height rect — one no pointer
+        // position, however aimed, can ever land inside.
+        private IEnumerator SettleHandSlotLayoutAsync(CardSlotElement slot)
+        {
+            slot.style.height = HandSlotClickTestHeight;
+            int frameBudget = LayoutSettleFrameBudget;
+
+            while (((slot.resolvedStyle.width <= 0f) || (slot.resolvedStyle.height <= 0f)) && frameBudget-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.That(
+                (slot.resolvedStyle.width > 0f, slot.resolvedStyle.height > 0f),
+                Is.EqualTo((true, true)),
+                $"Test setup expects '{slot.name}' layout to have settled to a non-zero area before computing a click target."
+            );
+        }
+
+        // Adds the EventSystem + InputSystemUIInputModule that GOOM-17 found missing from both gameplay scenes.
+        // Left with no actions assigned, InputSystemUIInputModule.OnEnable assigns Unity's own built-in defaults
+        // (Point bound to <Pointer>/position, left-click bound to <Mouse>/leftButton) — the same shape
+        // GameplaySceneIntegrityTests proves the authored scenes carry, so this fixture needs no InputActionAsset
+        // of its own.
+        private void CreateEventSystem()
+        {
+            _eventSystemGO = new GameObject(nameof(EventSystem));
+            _eventSystemGO.AddComponent<EventSystem>();
+            _eventSystemGO.AddComponent<InputSystemUIInputModule>();
+            _mouse = InputSystem.AddDevice<Mouse>();
+        }
+
+        // Queues a move-then-press-then-release through the virtual mouse this fixture owns and lets
+        // EventSystem's own Process() pick it up, rather than calling MatchHudView's private pointer handler
+        // directly — a real PointerDownEvent traveling through the runtime dispatch pipeline is exactly what
+        // GOOM-17's shipped scenes could never deliver with no EventSystem present. Polls for the callback
+        // rather than a fixed frame count, and the bounded exit also covers the negative case: an empty slot is
+        // expected to leave _raisedHandSlotIndex null for the whole budget. The trailing release leaves the
+        // virtual device the way a real click always ends, rather than removing it mid-press in TearDown.
+        private IEnumerator LeftClickAtAsync(Vector2 screenPoint)
+        {
+            InputSystem.QueueStateEvent(_mouse, new MouseState { position = screenPoint });
+            InputSystem.Update();
+            yield return null;
+
+            InputSystem.QueueStateEvent(
+                _mouse,
+                new MouseState { position = screenPoint, buttons = 1 << (int)UnityEngine.InputSystem.LowLevel.MouseButton.Left }
+            );
+            InputSystem.Update();
+
+            int frameBudget = LayoutSettleFrameBudget;
+
+            while (!_raisedHandSlotIndex.HasValue && frameBudget-- > 0)
+            {
+                yield return null;
+            }
+
+            InputSystem.QueueStateEvent(_mouse, new MouseState { position = screenPoint });
+            InputSystem.Update();
+        }
+
+        private void HandleHandSlotPressed(int slotIndex)
+        {
+            _raisedHandSlotIndex = slotIndex;
+        }
+
         // Builds every element name and custom element type MatchHudView.uxml declares that CacheElements
         // actually resolves by name, directly onto the UIDocument's root, rather than cloning the authored
         // VisualTreeAsset: per Rule 6 in unity-testing.md, fixtures build in code unless the authored asset
@@ -499,6 +817,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
 
             var catchUpLine = new Label { name = HudSelectors.CatchUpLine };
             _energyGaugeElement = new EnergyGaugeElement { name = HudSelectors.EnergyGauge };
+            _discardZone = new VisualElement { name = HudSelectors.DiscardZone };
+            _discardZone.AddToClassList(HudSelectors.DiscardZoneBlock);
 
             var handStrip = new VisualElement { name = HudSelectors.HandStrip };
 
@@ -528,6 +848,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             bottomBar.Add(statusRow);
             bottomBar.Add(catchUpLine);
             bottomBar.Add(_energyGaugeElement);
+            bottomBar.Add(_discardZone);
             bottomBar.Add(handStrip);
 
             safeArea.Add(topBar);

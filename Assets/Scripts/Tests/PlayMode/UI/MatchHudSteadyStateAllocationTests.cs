@@ -152,6 +152,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
 
             var catchUpLine = new Label { name = HudSelectors.CatchUpLine };
             var energyGaugeElement = new EnergyGaugeElement { name = HudSelectors.EnergyGauge };
+            var discardZone = new VisualElement { name = HudSelectors.DiscardZone };
+            discardZone.AddToClassList(HudSelectors.DiscardZoneBlock);
 
             var handStrip = new VisualElement { name = HudSelectors.HandStrip };
 
@@ -170,6 +172,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             bottomBar.Add(statusRow);
             bottomBar.Add(catchUpLine);
             bottomBar.Add(energyGaugeElement);
+            bottomBar.Add(discardZone);
             bottomBar.Add(handStrip);
 
             safeArea.Add(topBar);

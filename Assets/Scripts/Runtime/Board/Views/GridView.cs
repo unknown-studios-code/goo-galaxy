@@ -35,6 +35,14 @@ namespace GooGalaxy.Runtime.Board.Views
 
         public IReadOnlyDictionary<HexCoordinates, CellView> CellViews => _cellViews;
 
+        /// <summary>The size the cells were projected at — center to corner vertex, in world units.</summary>
+        /// <remarks>
+        /// Exposed so anything inverting the projection — turning a screen point back into a hex — reads the
+        /// value the board was actually drawn with. A second authored copy of it would put every hit test on the
+        /// wrong hex the first time one of the two was retuned.
+        /// </remarks>
+        public float CellVisualSize => _cellVisualSize;
+
         protected void Awake()
         {
             Debug.Assert(_cellPrefab != null, BoardLogMessages.CellViewPrefabNotAssigned, this);
