@@ -73,6 +73,17 @@ namespace GooGalaxy.Runtime.Board.Presenters
         public Dictionary<int, GridUnit>.ValueCollection ActiveUnitValues => _activeUnits.Values;
 
         /// <summary>
+        /// The movement capability registered with each tracked unit, keyed by unit id. A unit registered with
+        /// none is present here with a null value, so a caller must null-check what it reads out.
+        /// </summary>
+        /// <remarks>
+        /// Exposed so a caller enumerating legal moves reads the registry the board will validate against
+        /// instead of rebuilding an equivalent one per tick. Look up by id — <c>foreach</c> over the interface
+        /// boxes the backing <c>Dictionary</c> enumerator, and nothing needs a whole-registry pass over it.
+        /// </remarks>
+        public IReadOnlyDictionary<int, IMoveCapable> Capabilities => _unitCapabilities;
+
+        /// <summary>
         /// Supplies the board this presenter moves units on, and the ledger every move is priced and paid through.
         /// </summary>
         /// <remarks>

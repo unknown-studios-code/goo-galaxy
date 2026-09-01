@@ -1,6 +1,8 @@
+using System;
 using GooGalaxy.Runtime.UI.Constants;
 using GooGalaxy.Runtime.UI.Models;
 using GooGalaxy.Runtime.UI.Views.Elements;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace GooGalaxy.Runtime.UI.Views
@@ -28,12 +30,21 @@ namespace GooGalaxy.Runtime.UI.Views
     /// not the play mode.
     /// </para>
     /// <para>
-    /// <b>Not one member here carries an XML doc.</b> Every public member implements
-    /// <see cref="IMatchHudView" />, which documents the whole contract; restating it would give the two
-    /// wordings somewhere to drift apart, which is what they had already started doing.
+    /// <b>No member here restates a contract.</b> Every public member implements <see cref="IMatchHudView" /> or
+    /// <see cref="IHandGestureSource" />, each of which documents its own contract, and restating either would
+    /// give the two wordings somewhere to drift apart, which is what they had already started doing. The one
+    /// exception is the <c>&lt;remarks&gt;</c> on <see cref="OnHandSlotPressed" />, which states an override
+    /// obligation neither interface can express.
+    /// </para>
+    /// <para>
+    /// <b>The gesture surface is a second, narrower interface rather than an addition to <see cref="IMatchHudView" />.</b>
+    /// That interface is documented as a pure sink of already-decided state, and a hand-slot press is the
+    /// opposite of that — an intent the view raises rather than a value it renders. Keeping the two contracts
+    /// apart keeps a presenter fixture built against <see cref="IMatchHudView" /> free of gesture concerns it
+    /// never asked for.
     /// </para>
     /// </remarks>
-    public class MatchHudView : UIToolkitView, IMatchHudView
+    public class MatchHudView : UIToolkitView, IMatchHudView, IHandGestureSource
     {
         // No catch-up window has been drawn. Negative, so the first real window always composes its line.
         private const int NoDrawnCatchUp = -1;
@@ -47,6 +58,7 @@ namespace GooGalaxy.Runtime.UI.Views
         private ScoreBadgeElement _localScore;
         private Label _catchUpLine;
         private EnergyGaugeElement _energyGauge;
+        private VisualElement _discardZone;
         private CardSlotElement _nextCardSlot;
         private VisualElement _countdownScrim;
         private CountdownOverlayElement _countdownOverlay;
@@ -55,6 +67,9 @@ namespace GooGalaxy.Runtime.UI.Views
         private Label _outcomeTitle;
         private Label _outcomeReason;
         private int _drawnCatchUpSeconds = NoDrawnCatchUp;
+        private bool _isDiscardZoneArmed;
+
+        public event Action<int> HandSlotPressed;
 
         public void SetHudVisible(bool isVisible)
         {
@@ -264,11 +279,52 @@ namespace GooGalaxy.Runtime.UI.Views
             SetElementVisible(_outcomeOverlay, false);
         }
 
+        public void SetDiscardZoneArmed(bool isArmed)
+        {
+            _isDiscardZoneArmed = isArmed;
+
+            if (!IsPanelReady || (_discardZone == null))
+            {
+                return;
+            }
+
+            _discardZone.EnableInClassList(HudSelectors.DiscardZoneArmed, isArmed);
+        }
+
+        public bool IsScreenPointInDiscardZone(Vector2 screenPosition)
+        {
+            if (!_isDiscardZoneArmed || !IsPanelReady || (_discardZone == null))
+            {
+                return false;
+            }
+
+            // Panel space is top-left origin and screen space is bottom-left, and ScreenToPanel does NOT
+            // reconcile them — measured against a live panel, it scales and nothing more: screen (0,0) comes
+            // back as panel (0,0), so the bottom of the screen lands on the top of the panel. The Y is flipped
+            // first for that reason. Without the flip this zone sits low on screen but tests high, so a drag into
+            // it never registers and a drag to the top of the screen discards instead.
+            //
+            // Deliberately a second copy of BoardPointerResolver.ToPanelPoint rather than a call to it: that
+            // method lives in Runtime.Input, which already references Runtime.UI, so reaching back for it would
+            // close a cycle. One line duplicated across an assembly boundary beats an edge that cannot exist —
+            // but the two must change together, so fix both or neither.
+            var flippedPosition = new Vector2(screenPosition.x, Screen.height - screenPosition.y);
+            Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(Root.panel, flippedPosition);
+
+            return _discardZone.worldBound.Contains(panelPosition);
+        }
+
         protected override void CacheElements(VisualElement root)
         {
             // Reset alongside the references, because the label that carried the drawn text is dropped on every
             // disable and the one cached here is a fresh, empty one.
             _drawnCatchUpSeconds = NoDrawnCatchUp;
+
+            // Reset here too, not left to the next arm/disarm call: a disable mid-drag leaves this true, and the
+            // freshly cloned tree below carries no --armed class, so a stale true would let
+            // IsScreenPointInDiscardZone accept a release the zone is not drawing. The caller re-arms through
+            // SetDiscardZoneArmed on the next drag, so dropping the flag here costs nothing real.
+            _isDiscardZoneArmed = false;
 
             _background = RequireElement<VisualElement>(root, HudSelectors.Background);
             _timerLabel = RequireElement<Label>(root, HudSelectors.MatchTimer);
@@ -277,6 +333,7 @@ namespace GooGalaxy.Runtime.UI.Views
             _localScore = RequireElement<ScoreBadgeElement>(root, HudSelectors.LocalScore);
             _catchUpLine = RequireElement<Label>(root, HudSelectors.CatchUpLine);
             _energyGauge = RequireElement<EnergyGaugeElement>(root, HudSelectors.EnergyGauge);
+            _discardZone = RequireElement<VisualElement>(root, HudSelectors.DiscardZone);
             _nextCardSlot = RequireElement<CardSlotElement>(root, HudSelectors.NextCardSlot);
             _countdownScrim = RequireElement<VisualElement>(root, HudSelectors.CountdownScrim);
             _countdownOverlay = RequireElement<CountdownOverlayElement>(root, HudSelectors.CountdownOverlay);
@@ -293,13 +350,24 @@ namespace GooGalaxy.Runtime.UI.Views
 
         protected override void RegisterCallbacks()
         {
-            // Nothing yet, deliberately: this task renders the HUD and raises no intent from it.
-            // TODO (GOOM-17): register the hand, emote and card-detail gestures here.
+            for (int i = 0; i < _handSlots.Length; i++)
+            {
+                _handSlots[i]?.RegisterCallback<PointerDownEvent>(HandleHandSlotPointerDown);
+            }
         }
 
         protected override void UnregisterCallbacks()
         {
-            // Symmetric with RegisterCallbacks, which registers nothing yet.
+            for (int i = 0; i < _handSlots.Length; i++)
+            {
+                _handSlots[i]?.UnregisterCallback<PointerDownEvent>(HandleHandSlotPointerDown);
+            }
+        }
+
+        /// <remarks>An override that skips this base call drops the event — no subscriber learns which slot was pressed.</remarks>
+        protected virtual void OnHandSlotPressed(int slotIndex)
+        {
+            HandSlotPressed?.Invoke(slotIndex);
         }
 
         private void SetElementVisible(VisualElement element, bool isVisible)
@@ -310,6 +378,27 @@ namespace GooGalaxy.Runtime.UI.Views
             }
 
             element.EnableInClassList(HudSelectors.IsHidden, !isVisible);
+        }
+
+        private void HandleHandSlotPointerDown(PointerDownEvent evt)
+        {
+            for (int i = 0; i < _handSlots.Length; i++)
+            {
+                if (!ReferenceEquals(evt.currentTarget, _handSlots[i]))
+                {
+                    continue;
+                }
+
+                // An empty slot has no card to play, so raising it would start a selection nothing could ever
+                // commit — a live CardSelected state with zero highlights that only a later press elsewhere
+                // would clear.
+                if (_handSlots[i].State.IsFilled)
+                {
+                    OnHandSlotPressed(i);
+                }
+
+                return;
+            }
         }
     }
 }

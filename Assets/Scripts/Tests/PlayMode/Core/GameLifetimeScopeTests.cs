@@ -12,6 +12,7 @@ using GooGalaxy.Runtime.Deck.Models;
 using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Models;
 using GooGalaxy.Runtime.Energy.Presenters;
+using GooGalaxy.Runtime.Input.Views;
 using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Match.Services;
@@ -20,9 +21,13 @@ using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.UI.Presenters;
+using GooGalaxy.Runtime.UI.Views;
 using GooGalaxy.Tests.PlayMode.UI;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 using VContainer;
 
 namespace GooGalaxy.Tests.PlayMode.Core
@@ -35,6 +40,8 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private const int ActingUnitId = 1;
         private const float Tolerance = 0.0001f;
         private const float CellVisualSize = 1f;
+        private const string MatchHudViewUxmlPath = "Assets/UI/UXML/MatchHudView.uxml";
+        private const string MatchInputActionsPath = "Assets/Settings/Input/MatchInput.inputactions";
 
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _jumpTarget = new(2, 0);
@@ -48,6 +55,10 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameObject _cellPrefabGO;
         private GameObject _unitPrefabGO;
         private GameObject _hudGO;
+        private GameObject _matchHudViewGO;
+        private GameObject _pointerInputViewGO;
+        private GameObject _boardCameraGO;
+        private PanelSettings _matchHudViewPanelSettings;
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
         private DeckPresenter _deckPresenter;
@@ -79,6 +90,26 @@ namespace GooGalaxy.Tests.PlayMode.Core
             if (_hudGO != null)
             {
                 Object.DestroyImmediate(_hudGO);
+            }
+
+            if (_matchHudViewGO != null)
+            {
+                Object.DestroyImmediate(_matchHudViewGO);
+            }
+
+            if (_matchHudViewPanelSettings != null)
+            {
+                Object.DestroyImmediate(_matchHudViewPanelSettings);
+            }
+
+            if (_pointerInputViewGO != null)
+            {
+                Object.DestroyImmediate(_pointerInputViewGO);
+            }
+
+            if (_boardCameraGO != null)
+            {
+                Object.DestroyImmediate(_boardCameraGO);
             }
 
             foreach (GameObject go in _autoScaffoldedGOs)
@@ -445,6 +476,9 @@ namespace GooGalaxy.Tests.PlayMode.Core
             presenterGO.SetActive(true);
 
             CreateHud();
+            CreateMatchHudView();
+            CreatePointerInputView();
+            CreateBoardCamera();
 
             return presenterGO;
         }
@@ -470,6 +504,72 @@ namespace GooGalaxy.Tests.PlayMode.Core
             MatchHudPresenter presenter = _hudGO.AddComponent<MatchHudPresenter>();
             presenter.SetViewForTests(new FakeMatchHudView());
             _hudGO.SetActive(true);
+        }
+
+        // GameLifetimeScope also registers MatchHudView itself — RegisterComponentInHierarchy<MatchHudView>()
+        // .AsSelf().As<IHandGestureSource>() — a separate registration from MatchHudPresenter above, which only
+        // ever sees MatchHudView through the IMatchHudView seam FakeMatchHudView stands in for. This registration
+        // resolves the component directly, so the fake cannot cover it. MatchHudView carries
+        // RequireComponent(typeof(UIDocument)), which is exactly the bespoke-setup-data case this fixture's own
+        // rule calls out for GridPresenter's grid layout: a bare auto-scaffolded UIDocument has no Source Asset,
+        // so CacheElements fails its very first RequireElement lookup. A real one, with the authored UXML
+        // assigned, is built here instead.
+        private void CreateMatchHudView()
+        {
+            _matchHudViewPanelSettings = ScriptableObject.CreateInstance<PanelSettings>();
+
+            // World space with a fixed size, matching MatchHudPortraitRatioTests.BuildPanelAsync — the one
+            // PanelSettings configuration that fixture found settles deterministically in Play Mode, unlike
+            // ScaleWithScreenSize behind a render-texture target.
+            _matchHudViewPanelSettings.renderMode = PanelRenderMode.WorldSpace;
+            _matchHudViewPanelSettings.scaleMode = PanelScaleMode.ConstantPixelSize;
+            _matchHudViewPanelSettings.scale = 1f;
+
+            _matchHudViewGO = new GameObject("MatchHudView_DI_Test");
+            _matchHudViewGO.SetActive(false);
+
+            UIDocument document = _matchHudViewGO.AddComponent<UIDocument>();
+            document.panelSettings = _matchHudViewPanelSettings;
+            document.worldSpaceSizeMode = UIDocument.WorldSpaceSizeMode.Fixed;
+            document.worldSpaceSize = new Vector2(1080f, 1920f);
+
+            VisualTreeAsset visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
+            Assert.That(visualTreeAsset, Is.Not.Null, $"Test setup expects '{MatchHudViewUxmlPath}' to exist and import as a VisualTreeAsset.");
+            document.visualTreeAsset = visualTreeAsset;
+
+            _matchHudViewGO.AddComponent<MatchHudView>();
+            _matchHudViewGO.SetActive(true);
+        }
+
+        // GameLifetimeScope also registers PointerInputView — RegisterComponentInHierarchy<PointerInputView>()
+        // .AsSelf().As<IPointerSource>(). Its Awake runs ResolveActions synchronously, which logs
+        // InputLogMessages.PointerActionAssetMissing the instant a bare auto-scaffolded instance finds no
+        // InputActionAsset assigned — the same class of bespoke-setup-data fault CreateMatchHudView solves for
+        // MatchHudView, solved the same way: assign the authored asset before this fixture's own scaffold ever
+        // gets the chance to build a bare one.
+        private void CreatePointerInputView()
+        {
+            InputActionAsset inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(MatchInputActionsPath);
+            Assert.That(inputActions, Is.Not.Null, $"Test setup expects '{MatchInputActionsPath}' to exist and import as an InputActionAsset.");
+
+            _pointerInputViewGO = new GameObject("PointerInputView_DI_Test");
+            _pointerInputViewGO.SetActive(false);
+            JsonUtility.FromJsonOverwrite(
+                $"{{\"_inputActions\":{{\"instanceID\":{inputActions.GetInstanceID()}}}}}",
+                _pointerInputViewGO.AddComponent<PointerInputView>()
+            );
+            _pointerInputViewGO.SetActive(true);
+        }
+
+        // GameLifetimeScope also registers MatchInputController, whose Awake logs
+        // InputLogMessages.BoardCameraMissing the instant a bare auto-scaffolded instance finds no camera tagged
+        // MainCamera — the scene this fixture builds has none otherwise, since board rendering is not what it
+        // exercises.
+        private void CreateBoardCamera()
+        {
+            _boardCameraGO = new GameObject("BoardCamera_DI_Test");
+            _boardCameraGO.AddComponent<Camera>();
+            _boardCameraGO.tag = "MainCamera";
         }
 
         private KitDataSO BuildKit()

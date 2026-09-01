@@ -21,6 +21,8 @@
   --color-surface-recessed: rgb(43, 45, 66);
   --color-surface-empty: rgba(43, 45, 66, 0.45);
   --color-scrim: rgba(0, 0, 0, 0.4);
+  /* Critical at low alpha, for a surface that has to read as active without competing with the text on it. */
+  --color-surface-critical: rgba(57, 255, 20, 0.18);
 
   /* Information and status */
   --color-info: rgb(255, 255, 255); /* 17.22:1 */

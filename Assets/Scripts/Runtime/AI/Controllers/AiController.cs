@@ -11,6 +11,7 @@ using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Cards.Presenters;
 using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Match.Models;
+using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
@@ -77,10 +78,14 @@ namespace GooGalaxy.Runtime.AI.Controllers
         // than floats. Finer than a player can perceive and coarse enough that the draw stays a small range.
         private const int ThinkIntervalTicksPerSecond = 100;
 
-        // Sized for a typical mid-match option set. A larger one grows the list once and never again.
-        private const int OptionCapacity = 512;
-
         private const int HandSlotCapacity = 4;
+
+        // Derived rather than guessed: each of the board's cells can be the target of at most one Deploy per hand
+        // slot, one Clone from each of its six neighbours, and one Jump from each of the twelve cells two rings out.
+        // Sized so a full board never grows the list, because the growth would land mid-match on a think tick.
+        private const int OptionCapacity =
+            BoardMetrics.DefaultBoardCellCount
+            * (HandSlotCapacity + BoardMetrics.NeighborsPerCell + (BoardMetrics.NeighborsPerCell * BoardMetrics.DefaultJumpDistance));
 
         private const int CardDefinitionCapacity = 8;
 
@@ -94,7 +99,6 @@ namespace GooGalaxy.Runtime.AI.Controllers
         private readonly List<CardDefinition> _handCards = new(HandSlotCapacity);
         private readonly List<HexCoordinates> _deployTargets = new(TroopTargetCount);
         private readonly Dictionary<CardId, CardDefinition> _cardDefinitions = new(CardDefinitionCapacity);
-        private readonly Dictionary<int, IMoveCapable> _capabilities = new(BoardMetrics.DefaultBoardCellCount);
         private readonly MoveOptionBuffers _buffers = new(HandSlotCapacity);
 
         private IMoveStrategy _strategy;
@@ -347,10 +351,19 @@ namespace GooGalaxy.Runtime.AI.Controllers
                 return;
             }
 
-            BuildCapabilityLookup();
             BuildHandLookup();
 
-            MoveOptionResolver.Resolve(_playerId, grid, _unitPresenter.ActiveUnits, _capabilities, _handCards, _energyLedger, ref _random, _buffers, _options);
+            MoveOptionResolver.Resolve(
+                _playerId,
+                grid,
+                _unitPresenter.ActiveUnits,
+                _unitPresenter.Capabilities,
+                _handCards,
+                _energyLedger,
+                ref _random,
+                _buffers,
+                _options
+            );
 
             if (_options.Count == 0)
             {
@@ -392,27 +405,6 @@ namespace GooGalaxy.Runtime.AI.Controllers
         private bool IsMatchInPlay()
         {
             return _matchController != null && _matchController.Phase is MatchPhase.Standard or MatchPhase.Overtime;
-        }
-
-        // Keyed by unit id and filled from the board's own registry rather than from card data, because that
-        // registry is what UnitPresenter will price and validate the move against. Filtering to the acting
-        // player here is a shortcut; the resolver refuses another player's unit again on its own.
-        private void BuildCapabilityLookup()
-        {
-            _capabilities.Clear();
-
-            foreach (GridUnit unit in _unitPresenter.ActiveUnitValues)
-            {
-                if (unit.PlayerId != _playerId)
-                {
-                    continue;
-                }
-
-                if (_unitPresenter.TryGetCapability(unit.UnitId, out IMoveCapable capability) && capability != null)
-                {
-                    _capabilities[unit.UnitId] = capability;
-                }
-            }
         }
 
         private void BuildHandLookup()

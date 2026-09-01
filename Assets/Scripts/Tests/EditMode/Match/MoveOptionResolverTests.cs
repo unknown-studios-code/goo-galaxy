@@ -1,19 +1,19 @@
 using System;
 using System.Collections.Generic;
-using GooGalaxy.Runtime.AI.Models;
-using GooGalaxy.Runtime.AI.Services;
 using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Services;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
+using GooGalaxy.Runtime.Match.Models;
+using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.Shared.Utils;
 using NUnit.Framework;
 
-namespace GooGalaxy.Tests.EditMode.AI
+namespace GooGalaxy.Tests.EditMode.Match
 {
     [TestFixture]
     public class MoveOptionResolverTests

@@ -20,7 +20,9 @@
     "GooGalaxy.Runtime.Deck",
     "GooGalaxy.Runtime.Match",
     "GooGalaxy.Runtime.UI",
-    "UnityEngine.TestRunner"
+    "GooGalaxy.Runtime.Input",
+    "UnityEngine.TestRunner",
+    "Unity.InputSystem"
   ],
   "versionDefines": [],
   "allowUnsafeCode": false,

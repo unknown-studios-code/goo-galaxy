@@ -1,6 +1,7 @@
 using System.Collections.Generic;
-using GooGalaxy.Runtime.AI.Models;
 using GooGalaxy.Runtime.AI.Services;
+using GooGalaxy.Runtime.Match.Models;
+using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 

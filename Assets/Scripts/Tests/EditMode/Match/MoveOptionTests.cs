@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using GooGalaxy.Runtime.AI.Models;
+using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Tests.EditMode.AI
+namespace GooGalaxy.Tests.EditMode.Match
 {
     [TestFixture]
     public class MoveOptionTests

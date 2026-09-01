@@ -1,15 +1,15 @@
 using System.Collections.Generic;
-using GooGalaxy.Runtime.AI.Models;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Services;
 using GooGalaxy.Runtime.Cards.Models;
+using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.Shared.Utils;
 
-namespace GooGalaxy.Runtime.AI.Services
+namespace GooGalaxy.Runtime.Match.Services
 {
     /// <summary>
     /// Enumerates every action one player could legally take against the board as it stands right now — every
@@ -48,11 +48,20 @@ namespace GooGalaxy.Runtime.AI.Services
     public static class MoveOptionResolver
     {
         /// <summary>
-        /// The machine player's non-selection stream, kept apart from the deck's so the two cannot correlate.
-        /// Candidate Protocol clusters are drawn from it here; its holder also draws the think interval and the
-        /// discard slot from the same generator, so those three share one sequence by design.
+        /// This enumerator's non-selection stream, kept apart from the deck's so the two cannot correlate.
+        /// Candidate Protocol clusters are drawn from it here.
         /// </summary>
-        /// <remarks>Negative on purpose — see <see cref="Xorshift32.DeriveSeed" /> for why, and for the rule that every stream id is distinct.</remarks>
+        /// <remarks>
+        /// <para>
+        /// Negative on purpose — see <see cref="Xorshift32.DeriveSeed" /> for why, and for the rule that every
+        /// stream id is distinct.
+        /// </para>
+        /// <para>
+        /// <b>Two holders, drawing for different reasons.</b> The machine player draws its think interval and its
+        /// discard slot from the same generator, so those share one sequence with the clusters by design. See
+        /// <c>MatchInputController.HandleMatchStarted</c> for why the input layer holds one too.
+        /// </para>
+        /// </remarks>
         public const int TargetStreamId = -2;
 
         /// <summary>Derives this enumerator's stream seed from the seed both peers agreed on.</summary>

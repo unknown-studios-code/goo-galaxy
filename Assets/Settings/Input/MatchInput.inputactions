@@ -1,0 +1,55 @@
+{
+    "version": 1,
+    "name": "MatchInput",
+    "maps": [
+        {
+            "name": "Match",
+            "id": "7c1e4a02-9d33-4c58-b6a1-1f0c2d5e8a41",
+            "actions": [
+                {
+                    "name": "PointerPosition",
+                    "type": "Value",
+                    "id": "3a9b6c15-2e47-4d80-9f52-6b8d0e1a7c34",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "PointerPress",
+                    "type": "Button",
+                    "id": "5d2f8e31-7a04-4b96-8c17-9e3a4f6b0d28",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "b48c1f70-3d6e-4a29-95b3-0c7f2a8e5d61",
+                    "path": "<Pointer>/position",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PointerPosition",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e07a5d94-6b21-4f38-a4d0-8f1c3b9e2a75",
+                    "path": "<Pointer>/press",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PointerPress",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
