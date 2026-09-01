@@ -47,6 +47,25 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private const int ReestablishFlipUnitIdB = 506;
         private const string TroopCardId = "troop_alpha";
 
+        // PERF: this fixture is bounded by wall-clock waits, not by work — it drives whole match lifecycles
+        // through phases that elapse in real time. Accelerating the clock takes it from 31.0s to 3.3s, measured.
+        //
+        // Shortening the authored durations instead was tried and rejected: it only reached 15.2s, because
+        // MatchController counts the countdown in whole ticks and awaits a hardcoded one second per tick, so no
+        // value of ShortCountdownSeconds below one changes anything. Time.timeScale reaches that wait too —
+        // Awaitable.WaitForSecondsAsync is scaled — which is the whole difference between the two approaches.
+        // The durations below are therefore left at the values that read naturally against the GDD.
+        //
+        // <b>Ten, not the hundred FuseControllerTests uses, and the difference is not caution.</b>
+        // Time.maximumDeltaTime clamps the *unscaled* frame delta and timeScale multiplies afterwards, so one
+        // frame advances up to 0.333 × timeScale simulated seconds. At 100 that is 33s in a single hitching
+        // frame, and an ordinary 16ms frame already advances 1.6s — more than half the two-second hold this
+        // fixture's most delicate test measures. That test failed exactly once in three full-suite runs at 100,
+        // by overrunning the whole overtime clock, and has passed three consecutive full-suite runs at 10, where
+        // an ordinary frame advances 0.16s and the hold is a dozen frames wide. Raising this back to 100 buys
+        // 2.8s of suite time and reintroduces a flake, which unity-testing.md Rule 15 does not permit.
+        private const float AcceleratedTimeScale = 10f;
+
         private const float ShortStandardDurationSeconds = 1f;
         private const float ShortCountdownSeconds = 1f;
         private const float ShortOvertimeDurationSeconds = 1f;
@@ -93,6 +112,8 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [SetUp]
         public void SetUp()
         {
+            Time.timeScale = AcceleratedTimeScale;
+
             _gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
             _gridLayout.SetAuthoredData(BoardRadius);
             _spawned.Add(_gridLayout);
@@ -128,6 +149,10 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [TearDown]
         public void TearDown()
         {
+            // Restored first, before anything here can throw: timeScale is global process state, so a fixture
+            // that left it accelerated would silently speed up every test that ran after it.
+            Time.timeScale = 1f;
+
             MatchEvents.ResetEvents();
 
             foreach (Object created in _spawned)
