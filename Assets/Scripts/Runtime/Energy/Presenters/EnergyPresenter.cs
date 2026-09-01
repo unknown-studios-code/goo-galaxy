@@ -43,23 +43,47 @@ namespace GooGalaxy.Runtime.Energy.Presenters
 
         private readonly Dictionary<int, EnergyState> _playerStates = new();
 
+        private MatchPhase _phase = MatchPhase.None;
+
+        // Regeneration is a property of play being open, not of a state existing. InitializeMatch seeds both
+        // players during Loading, several seconds before the countdown ends, so without this gate both start the
+        // match above their authored StartingEnergy by however long setup and the countdown took.
+        private bool IsRegenerationOpen => _phase is MatchPhase.Standard or MatchPhase.Overtime;
+
+        protected void OnEnable()
+        {
+            MatchEvents.MatchPhaseChanged += HandleMatchPhaseChanged;
+        }
+
         protected void Update()
         {
+            bool isRegenerating = IsRegenerationOpen;
             float deltaTime = Time.deltaTime;
 
             foreach (KeyValuePair<int, EnergyState> kvp in _playerStates)
             {
                 EnergyState state = kvp.Value;
 
-                float newEnergy = EnergyRegenerator.Tick(state.CurrentEnergy, deltaTime, state.EffectiveRegenRate, state.Config.MaxEnergy);
-
-                if (newEnergy != state.CurrentEnergy)
+                if (isRegenerating)
                 {
-                    state.SetEnergy(newEnergy);
+                    float newEnergy = EnergyRegenerator.Tick(state.CurrentEnergy, deltaTime, state.EffectiveRegenRate, state.Config.MaxEnergy);
+
+                    if (newEnergy != state.CurrentEnergy)
+                    {
+                        state.SetEnergy(newEnergy);
+                    }
                 }
 
+                // Flushed even while regeneration is closed: a spend refunded as a match ends still has a
+                // publication owed, and stranding it would leave the HUD showing a balance the ledger does not
+                // hold. Nothing regenerates on this path, so the flush only ever reports what a caller did.
                 FlushPendingPublications(kvp.Key, state);
             }
+        }
+
+        protected void OnDisable()
+        {
+            MatchEvents.MatchPhaseChanged -= HandleMatchPhaseChanged;
         }
 
         /// <summary>
@@ -314,6 +338,11 @@ namespace GooGalaxy.Runtime.Energy.Presenters
             {
                 MatchEvents.RaiseEnergySpent(playerId, state.CurrentEnergy, true);
             }
+        }
+
+        private void HandleMatchPhaseChanged(MatchPhase phase)
+        {
+            _phase = phase;
         }
     }
 }
