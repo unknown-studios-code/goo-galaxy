@@ -13,7 +13,6 @@ using GooGalaxy.Runtime.Deck.Data;
 using GooGalaxy.Runtime.Deck.Models;
 using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Match.Controllers;
-using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
@@ -193,6 +192,43 @@ namespace GooGalaxy.Tests.PlayMode.Match
         }
 
         [UnityTest]
+        public IEnumerator TryPlayCard_LegalTroopPlay_RaisesCardPlayAttemptedExactlyOnceWithTheSuccessPayload()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            PlaceAnchorUnit();
+            DeployController deployController = BuildDeployController(_troopCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (ActingPlayerId, new CardId(TroopCardIdValue), _deployTarget, TroopEnergyCost, CardPlayResult.Success) }));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_LegalTroopPlay_RaisesCardPlayAttemptedAfterTheHandHasAlreadyRotated()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            PlaceAnchorUnit();
+            DeployController deployController = BuildDeployController(_troopCard);
+            int handChangedBaseline = _handChangedCount;
+            int handChangedCountAtDispatch = -1;
+            void handleCardPlayAttempted(CardPlayAttempt attempt) => handChangedCountAtDispatch = _handChangedCount;
+            MatchEvents.CardPlayAttempted += handleCardPlayAttempted;
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN — a dispatch-time count still at the baseline would mean the event fired before the rotation.
+            Assert.That((handChangedCountAtDispatch - handChangedBaseline, _handChangedCount - handChangedBaseline), Is.EqualTo((1, 1)));
+        }
+
+        [UnityTest]
         public IEnumerator TryPlayCard_LegalProtocolPlay_ReturnsSuccess()
         {
             // GIVEN
@@ -254,6 +290,22 @@ namespace GooGalaxy.Tests.PlayMode.Match
         }
 
         [UnityTest]
+        public IEnumerator TryPlayCard_UnknownPlayer_RaisesCardPlayAttemptedWithEmptyCardAndZeroCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_troopCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(UnknownPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (UnknownPlayerId, CardId.Empty, _deployTarget, 0, CardPlayResult.UnknownPlayer) }));
+        }
+
+        [UnityTest]
         public IEnumerator TryPlayCard_OutOfRangeSlot_ReturnsSlotOutOfRange()
         {
             // GIVEN
@@ -269,6 +321,22 @@ namespace GooGalaxy.Tests.PlayMode.Match
         }
 
         [UnityTest]
+        public IEnumerator TryPlayCard_OutOfRangeSlot_RaisesCardPlayAttemptedWithEmptyCardAndZeroCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_troopCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, HandSize, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (ActingPlayerId, CardId.Empty, _deployTarget, 0, CardPlayResult.SlotOutOfRange) }));
+        }
+
+        [UnityTest]
         public IEnumerator TryPlayCard_CardNotRegisteredWithCardPresenter_ReturnsCardNotFound()
         {
             // GIVEN
@@ -281,6 +349,22 @@ namespace GooGalaxy.Tests.PlayMode.Match
 
             // THEN
             Assert.That(result, Is.EqualTo(CardPlayResult.CardNotFound));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_CardNotRegisteredWithCardPresenter_RaisesCardPlayAttemptedWithTheSlotsCardIdAndZeroCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_unknownCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (ActingPlayerId, new CardId(UnknownCardIdValue), _deployTarget, 0, CardPlayResult.CardNotFound) }));
         }
 
         [TestCase(MatchPhase.None)]
@@ -302,6 +386,21 @@ namespace GooGalaxy.Tests.PlayMode.Match
             Assert.That(_handChangedCount - handChangedBaseline, Is.EqualTo(0));
         }
 
+        [Test]
+        public void TryPlayCard_MatchInCountdown_RaisesCardPlayAttemptedWithEmptyCardAndZeroCost()
+        {
+            // GIVEN
+            MatchController matchController = BuildMatchController(MatchPhase.Countdown);
+            DeployController deployController = BuildDeployController(_troopCard, _ledger, matchController);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (ActingPlayerId, CardId.Empty, _deployTarget, 0, CardPlayResult.MatchNotInPlay) }));
+        }
+
         [UnityTest]
         public IEnumerator TryPlayCard_TroopWithInsufficientEnergy_ReturnsInsufficientEnergyAndPlacesNoUnit()
         {
@@ -318,6 +417,27 @@ namespace GooGalaxy.Tests.PlayMode.Match
             // THEN
             Assert.That(result, Is.EqualTo(CardPlayResult.InsufficientEnergy));
             Assert.That(_unitPresenter.ActiveUnits.Count, Is.EqualTo(1), "Only the anchor unit should be on the board.");
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_TroopWithInsufficientEnergy_RaisesCardPlayAttemptedWithTheCardAndItsEnergyCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            PlaceAnchorUnit();
+            DeployController deployController = BuildDeployController(_troopCard);
+            _ledger.NextPaymentSucceeds = false;
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(
+                attempts,
+                Is.EqualTo(new[] { (ActingPlayerId, new CardId(TroopCardIdValue), _deployTarget, TroopEnergyCost, CardPlayResult.InsufficientEnergy) })
+            );
         }
 
         [UnityTest]
@@ -340,9 +460,29 @@ namespace GooGalaxy.Tests.PlayMode.Match
         }
 
         [UnityTest]
+        public IEnumerator TryPlayCard_TroopWithTwoTargets_RaisesCardPlayAttemptedWithTheCardAndItsEnergyCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_troopCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget, _spellTarget });
+
+            // THEN
+            Assert.That(
+                attempts,
+                Is.EqualTo(new[] { (ActingPlayerId, new CardId(TroopCardIdValue), _deployTarget, TroopEnergyCost, CardPlayResult.InvalidTargetCount) })
+            );
+        }
+
+        [UnityTest]
         public IEnumerator TryPlayCard_IllegalDeployTarget_LeavesHandBoardAndEnergyUntouched()
         {
-            // GIVEN — no anchor unit placed, so the target is legal but adjacent to no owned territory.
+            // GIVEN — no anchor unit placed, so the target hex is empty and on the board but outside the
+            // player's territory.
             yield return ActivateBoard();
 
             DeployController deployController = BuildDeployController(_troopCard);
@@ -356,6 +496,48 @@ namespace GooGalaxy.Tests.PlayMode.Match
             Assert.That(_unitPresenter.ActiveUnits, Is.Empty);
             Assert.That(_ledger.PayCalls, Is.Empty);
             Assert.That(_handChangedCount - handChangedBaseline, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_IllegalDeployTarget_RaisesCardPlayAttemptedWithTheCardAndItsEnergyCost()
+        {
+            // GIVEN — no anchor unit placed, so the target hex is empty and on the board but outside the
+            // player's territory.
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_troopCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(
+                attempts,
+                Is.EqualTo(new[] { (ActingPlayerId, new CardId(TroopCardIdValue), _deployTarget, TroopEnergyCost, CardPlayResult.IllegalPlacement) })
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_MatchControllerNeverPushed_RaisesCardPlayAttemptedWithEmptyCardAndZeroCost()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            DeckPresenter deckPresenter = BuildDeckPresenter(_troopCard, HandSize);
+            var deployGO = new GameObject("DeployController_NoMatchController_Test");
+            deployGO.SetActive(false);
+            DeployController deployController = deployGO.AddComponent<DeployController>();
+            deployController.Construct(deckPresenter, _cardPresenter, _unitPresenter, _abilityController, _ledger);
+            deployGO.SetActive(true);
+            _spawned.Add(deployGO);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget });
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (ActingPlayerId, CardId.Empty, _deployTarget, 0, CardPlayResult.BoardUnavailable) }));
         }
 
         [UnityTest]
@@ -464,6 +646,69 @@ namespace GooGalaxy.Tests.PlayMode.Match
         }
 
         [UnityTest]
+        public IEnumerator TryPlayCard_ReentrantFromAbilityResolvedHandler_RaisesTheNestedResolverBusyEventBeforeTheOuterSuccessEvent()
+        {
+            // GIVEN — the latch is checked ahead of the slot read, so the nested play's own event carries an
+            // empty card and zero cost, exactly like every other rejection that never reaches the slot.
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_spellCard);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            void handleAbilityResolved(int playerId, AbilityResult result) =>
+                deployController.TryPlayCard(ActingPlayerId, 1, new List<HexCoordinates> { _secondSpellTarget });
+
+            MatchEvents.AbilityResolved += handleAbilityResolved;
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _spellTarget });
+
+            // THEN
+            Assert.That(
+                attempts,
+                Is.EqualTo(
+                    new[]
+                    {
+                        (ActingPlayerId, CardId.Empty, _secondSpellTarget, 0, CardPlayResult.ResolverBusy),
+                        (ActingPlayerId, new CardId(SpellCardIdValue), _spellTarget, SpellEnergyCost, CardPlayResult.Success),
+                    }
+                )
+            );
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_SubscriberToCardPlayAttemptedPlaysAnotherCard_IsServedRatherThanRefused()
+        {
+            // GIVEN — CardPlayAttempted is raised from TryPlayCard's finally, after the latch has already been
+            // lowered, so a subscriber to this event (unlike one on AbilityResolved, mid-resolution) reaches an
+            // idle resolver rather than a busy one.
+            yield return ActivateBoard();
+
+            DeployController deployController = BuildDeployController(_spellCard);
+            bool hasNested = false;
+            CardPlayResult nestedResult = CardPlayResult.ResolverBusy;
+
+            void handleCardPlayAttempted(CardPlayAttempt attempt)
+            {
+                if (hasNested)
+                {
+                    return;
+                }
+
+                hasNested = true;
+                nestedResult = deployController.TryPlayCard(ActingPlayerId, 1, new List<HexCoordinates> { _secondSpellTarget });
+            }
+
+            MatchEvents.CardPlayAttempted += handleCardPlayAttempted;
+
+            // WHEN
+            CardPlayResult outerResult = deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _spellTarget });
+
+            // THEN
+            Assert.That((outerResult, nestedResult), Is.EqualTo((CardPlayResult.Success, CardPlayResult.Success)));
+        }
+
+        [UnityTest]
         public IEnumerator TryPlayCard_SpellReentrantFromATroopLandingAbilityDispatch_ReturnsResolverBusyAndRefundsTheExactCharge()
         {
             // GIVEN — AbilityController._isResolvingAbilities is also raised by HandleLandingResolved, not only
@@ -504,6 +749,75 @@ namespace GooGalaxy.Tests.PlayMode.Match
         }
 
         [UnityTest]
+        public IEnumerator TryPlayCard_CardCycleThrows_RaisesCardPlayAttemptedWithBoardUnavailable()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            var go = new GameObject("DeployController_Throwing_Test");
+            go.SetActive(false);
+            DeployController deployController = go.AddComponent<DeployController>();
+            deployController.Construct(new FakeThrowingCardCycle(), _cardPresenter, _unitPresenter, _abilityController, _ledger);
+            deployController.SetMatchController(_matchController);
+            go.SetActive(true);
+            _spawned.Add(go);
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            // WHEN
+            Assert.Throws<InvalidOperationException>(() => deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget }));
+
+            // THEN
+            Assert.That(attempts, Is.EqualTo(new[] { (ActingPlayerId, CardId.Empty, _deployTarget, 0, CardPlayResult.BoardUnavailable) }));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_CardCycleThrows_LowersTheLatchSoTheNextCallIsNotRefusedWithResolverBusy()
+        {
+            // GIVEN
+            yield return ActivateBoard();
+
+            var go = new GameObject("DeployController_Throwing_Test");
+            go.SetActive(false);
+            DeployController deployController = go.AddComponent<DeployController>();
+            deployController.Construct(new FakeThrowingCardCycle(), _cardPresenter, _unitPresenter, _abilityController, _ledger);
+            deployController.SetMatchController(_matchController);
+            go.SetActive(true);
+            _spawned.Add(go);
+            Assert.Throws<InvalidOperationException>(() => deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget }));
+
+            // WHEN / THEN — a latch left raised would refuse this with ResolverBusy instead of reaching the
+            // same throwing card cycle a second time.
+            Assert.Throws<InvalidOperationException>(() => deployController.TryPlayCard(ActingPlayerId, 0, new List<HexCoordinates> { _deployTarget }));
+        }
+
+        [UnityTest]
+        public IEnumerator TryPlayCard_SubscriberRefillsTheCallersTargetsList_ReportedTargetIsUnaffected()
+        {
+            // GIVEN — the target is read into a local before the play resolves, so a subscriber that reuses
+            // the caller's buffer after the fact cannot retroactively change what was already reported.
+            yield return ActivateBoard();
+
+            PlaceAnchorUnit();
+            DeployController deployController = BuildDeployController(_troopCard);
+            var targets = new List<HexCoordinates> { _deployTarget };
+            List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> attempts = RecordCardPlayAttempts();
+
+            void handleCardPlayAttempted(CardPlayAttempt attempt)
+            {
+                targets.Clear();
+                targets.Add(_spellTarget);
+            }
+
+            MatchEvents.CardPlayAttempted += handleCardPlayAttempted;
+
+            // WHEN
+            deployController.TryPlayCard(ActingPlayerId, 0, targets);
+
+            // THEN
+            Assert.That(attempts[0].Target, Is.EqualTo(_deployTarget));
+        }
+
+        [UnityTest]
         [Category("Allocation")]
         public IEnumerator TryPlayCard_RepeatedRejectionsOfTheSameCard_AllocatesNoManagedMemoryAfterTheDefinitionIsMemoized()
         {
@@ -539,6 +853,14 @@ namespace GooGalaxy.Tests.PlayMode.Match
             card.SetAuthoredData(cardId, cardId, "Test description.", type, energyCost, false, false, false, false, 1, landingEffects);
 
             return card;
+        }
+
+        private static List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)> RecordCardPlayAttempts()
+        {
+            var attempts = new List<(int PlayerId, CardId Card, HexCoordinates Target, int EnergyCost, CardPlayResult Result)>();
+            MatchEvents.CardPlayAttempted += attempt => attempts.Add((attempt.PlayerId, attempt.CardId, attempt.Target, attempt.EnergyCost, attempt.Result));
+
+            return attempts;
         }
 
         private IEnumerator ActivateBoard()
@@ -692,6 +1014,28 @@ namespace GooGalaxy.Tests.PlayMode.Match
             public void RefundMove(int playerId, MoveType moveType, int unitEnergyCost)
             {
                 RefundCalls.Add((playerId, moveType, unitEnergyCost));
+            }
+        }
+
+        private sealed class FakeThrowingCardCycle : ICardCycle
+        {
+            public bool TryGetHand(int playerId, out IReadOnlyList<CardId> hand)
+            {
+                hand = Array.Empty<CardId>();
+
+                return true;
+            }
+
+            public bool TryGetSlot(int playerId, int slotIndex, out CardId card)
+            {
+                throw new InvalidOperationException("Fake card cycle failure.");
+            }
+
+            public bool TryAdvanceSlot(int playerId, int slotIndex, out CardId played)
+            {
+                played = default;
+
+                return false;
             }
         }
 

@@ -1,4 +1,8 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using GooGalaxy.Runtime.Analytics.Controllers;
+using GooGalaxy.Runtime.Analytics.Interfaces;
 using GooGalaxy.Runtime.Board.Controllers;
 using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Models;
@@ -29,13 +33,14 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using VContainer;
+using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.PlayMode.Core
 {
     [TestFixture]
     public class GameLifetimeScopeTests
     {
-        private const int MaxAutoScaffoldAttempts = 10;
+        private const int MaxAutoScaffoldAttempts = 12;
         private const int ActingPlayerId = 1;
         private const int ActingUnitId = 1;
         private const float Tolerance = 0.0001f;
@@ -63,10 +68,16 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private EnergyPresenter _energyPresenter;
         private DeckPresenter _deckPresenter;
         private KitDataSO _kit;
+        private string _analyticsOverrideDirectory;
 
         [TearDown]
         public void TearDown()
         {
+            if ((_analyticsOverrideDirectory != null) && Directory.Exists(_analyticsOverrideDirectory))
+            {
+                Directory.Delete(_analyticsOverrideDirectory, true);
+            }
+
             if (_presenterGO != null)
             {
                 Object.DestroyImmediate(_presenterGO);
@@ -435,11 +446,36 @@ namespace GooGalaxy.Tests.PlayMode.Core
             Assert.That(result, Is.EqualTo(CardPlayResult.MatchNotInPlay));
         }
 
+        [Test]
+        [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesAnalyticsControllerAndIAnalyticsSink()
+        {
+            // GIVEN — neither Flush nor a match end/pause/quit is triggered here, so the resolved JsonlFileSink
+            // never reaches its first Write and touches nothing under the real Application.persistentDataPath.
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(
+                (_scope.Container.Resolve<AnalyticsController>() != null, _scope.Container.Resolve<IAnalyticsSink>() != null),
+                Is.EqualTo((true, true))
+            );
+        }
+
+        // AnalyticsController closes its session — flushing to whatever IAnalyticsSink the container resolved —
+        // when it is destroyed, and TearDown destroys this scope on every test. Without this override, every
+        // test that reaches BuildContainer() would write a short session file under the real
+        // Application.persistentDataPath instead of a folder this fixture deletes afterward.
         private void CreateScope()
         {
             _scopeGO = new GameObject("LifetimeScopeTest");
             _scopeGO.SetActive(false);
             _scope = _scopeGO.AddComponent<GameLifetimeScope>();
+            _analyticsOverrideDirectory = Path.Combine(Application.temporaryCachePath, "GameLifetimeScopeTests_Analytics_" + Guid.NewGuid().ToString("N"));
+            _scope.AnalyticsDirectoryOverride = _analyticsOverrideDirectory;
         }
 
         // Creates the board GameObject carrying every registration that needs authored data before it wakes:
@@ -612,7 +648,9 @@ namespace GooGalaxy.Tests.PlayMode.Core
         // what data they require.
         private void BuildContainer()
         {
-            for (int attempt = 0; attempt < MaxAutoScaffoldAttempts; attempt++)
+            // <= rather than <: N missing types need N scaffolds plus one final build that actually succeeds,
+            // so the loop must attempt Build() one more time than it scaffolds.
+            for (int attempt = 0; attempt <= MaxAutoScaffoldAttempts; attempt++)
             {
                 try
                 {

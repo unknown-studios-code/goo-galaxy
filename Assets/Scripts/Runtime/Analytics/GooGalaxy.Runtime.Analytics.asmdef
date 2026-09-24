@@ -1,0 +1,17 @@
+{
+  "name": "GooGalaxy.Runtime.Analytics",
+  "rootNamespace": "GooGalaxy.Runtime.Analytics",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "VContainer"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

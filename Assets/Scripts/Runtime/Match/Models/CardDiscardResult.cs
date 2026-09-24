@@ -5,7 +5,7 @@ namespace GooGalaxy.Runtime.Match.Models
     /// feedback, AI, network reconciliation) can react without re-running validation.
     /// </summary>
     /// <remarks>
-    /// Values are explicit for the same reason <see cref="CardPlayResult" />'s are.
+    /// Values are explicit for the same reason <see cref="Shared.Types.CardPlayResult" />'s are.
     /// <para>
     /// Every non-<see cref="Success" /> code leaves the hand, the cycle and the player's balance exactly as
     /// they were, and publishes nothing on <c>MatchEvents</c> — a rejected discard is indistinguishable on the

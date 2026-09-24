@@ -1,4 +1,4 @@
-namespace GooGalaxy.Runtime.Match.Models
+namespace GooGalaxy.Runtime.Shared.Types
 {
     /// <summary>
     /// The outcome of playing a card from hand. Every rejection reason is a distinct code so callers
@@ -8,11 +8,13 @@ namespace GooGalaxy.Runtime.Match.Models
     /// Values are explicit because the code travels to the client as a rejection reason: adding a member is
     /// safe, renumbering or reordering one silently changes what an older peer reads.
     /// <para>
-    /// This enum exists so <c>Runtime.Deck</c> does not re-export <c>MovementResult</c> and <c>SpellResult</c> to
-    /// a HUD. A card play resolves down one of two very different paths, and a screen that had to know which of
-    /// the two board enums it was holding would be switching on card type — exactly the decision
-    /// <c>DeployController</c> exists to absorb. The board's codes are mapped into these in one place, so the
-    /// grouping is auditable and the HUD depends on the Deck assembly alone.
+    /// This enum exists so <c>Runtime.Match</c> does not re-export the board's <c>MovementResult</c> and
+    /// <c>SpellResult</c>. A card play resolves down one of two very different paths, and a caller that had to know
+    /// which of the two board enums it was holding would be switching on card type — exactly the decision
+    /// <c>DeployController</c> exists to absorb. The board's codes are mapped into these in one place, in
+    /// <c>DeployController</c>, so the grouping is auditable, and it lives in <c>Runtime.Shared</c> so a subscriber
+    /// to <see cref="Events.MatchEvents.CardPlayAttempted" /> needs only <c>Runtime.Shared</c> — see that event for
+    /// when each code is published.
     /// </para>
     /// <para>
     /// Every non-<see cref="Success" /> code leaves the hand exactly as it was. A rejected play costs the player

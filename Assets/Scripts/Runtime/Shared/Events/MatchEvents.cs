@@ -241,6 +241,36 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </remarks>
         public static event Action<int, CardId, int> CardDiscarded;
 
+        /// <summary>
+        /// Raised once for every attempt to play a card from hand, carrying who tried, which card, where, at what
+        /// Energy cost, and how the attempt ended.
+        /// </summary>
+        /// <remarks>
+        /// <b>Exactly once per <c>DeployController.TryPlayCard</c> call</b>, including one that ends in an exception
+        /// — that attempt publishes <see cref="CardPlayResult.BoardUnavailable" /> before the exception propagates.
+        /// It is published only once the outcome is final: a successful play publishes after the board has resolved
+        /// it and the hand has rotated, so every resolution event the play caused has already been dispatched. A play
+        /// attempted from inside another play's dispatch is refused with <see cref="CardPlayResult.ResolverBusy" />
+        /// and publishes its own event, which therefore arrives <b>before</b> the outer play's.
+        /// <para>
+        /// The re-entrancy latch has already been lowered when this is dispatched, so a subscriber that plays a card
+        /// from its handler is served, not refused with <see cref="CardPlayResult.ResolverBusy" />.
+        /// </para>
+        /// <para>
+        /// <see cref="CardPlayAttempt.CardId" /> is <see cref="CardId.Empty" /> for every rejection up to and including
+        /// <see cref="CardPlayResult.SlotOutOfRange" />, and <see cref="CardPlayAttempt.EnergyCost" /> is zero for every
+        /// rejection up to and including <see cref="CardPlayResult.CardNotFound" /> — so a
+        /// <see cref="CardPlayResult.CardNotFound" /> carries the card the slot named and a cost of zero.
+        /// <see cref="CardPlayAttempt.Target" /> is read before the play resolves, so a subscriber refilling the
+        /// caller's target buffer cannot change it; it is <c>default</c> when no targets were given, and a Protocol's
+        /// cluster centre otherwise.
+        /// </para>
+        /// <para>
+        /// The payload is a value type, so there is nothing for a subscriber to copy.
+        /// </para>
+        /// </remarks>
+        public static event Action<CardPlayAttempt> CardPlayAttempted;
+
         /// <summary>Publishes <see cref="MatchStarted"/>.</summary>
         /// <param name="config">The configuration the match runs with.</param>
         public static void RaiseMatchStarted(MatchConfiguration config)
@@ -425,6 +455,13 @@ namespace GooGalaxy.Runtime.Shared.Events
             CardDiscarded?.Invoke(playerId, discardedCard, slotIndex);
         }
 
+        /// <summary>Publishes <see cref="CardPlayAttempted"/>.</summary>
+        /// <param name="attempt">The attempt and how it ended.</param>
+        public static void RaiseCardPlayAttempted(in CardPlayAttempt attempt)
+        {
+            CardPlayAttempted?.Invoke(attempt);
+        }
+
         /// <summary>
         /// Drops every subscriber. Runs automatically on subsystem registration because domain reload is
         /// disabled, and is called by tests to isolate fixtures from one another.
@@ -449,6 +486,7 @@ namespace GooGalaxy.Runtime.Shared.Events
             FuseExpired = null;
             HandChanged = null;
             CardDiscarded = null;
+            CardPlayAttempted = null;
         }
     }
 }

@@ -5,7 +5,6 @@ using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Cards.Interfaces;
 using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Cards.Presenters;
-using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
@@ -58,8 +57,10 @@ namespace GooGalaxy.Runtime.Match.Controllers
 
         /// <remarks>
         /// True from the moment <see cref="TryPlayCard"/> clears its dependency checks, its phase gate and its
-        /// re-entrancy check until it returns, on every path including a rejection — a play refused for the
-        /// phase never raises it at all. Exists so a discard raised from an event subscriber
+        /// re-entrancy check until the play has resolved, on every path including a rejection — a play refused
+        /// for the phase never raises it at all. It is lowered <b>before</b>
+        /// <see cref="MatchEvents.CardPlayAttempted" /> is published, so a subscriber to that event that plays a card
+        /// is served rather than refused. Exists so a discard raised from an event subscriber
         /// cannot rotate the hand mid-play: <see cref="TryPlayCard"/> reads the slot at the top of its body and
         /// advances that same index at the bottom, and a rotation landing in between would advance a slot whose
         /// card is no longer the one that was played, cycling an extra card out of the hand. Assembly-internal
@@ -137,6 +138,10 @@ namespace GooGalaxy.Runtime.Match.Controllers
         /// player tapping during the countdown is told the match has not opened, not that the board is busy.
         /// </para>
         /// <para>
+        /// Every call publishes <see cref="MatchEvents.CardPlayAttempted" /> exactly once, including one that ends in
+        /// an exception; that event owns the contract for what the payload carries and when it is dispatched.
+        /// </para>
+        /// <para>
         /// Sits on the input path, once per player action, and allocates nothing after the first play of each
         /// distinct card.
         /// </para>
@@ -151,65 +156,24 @@ namespace GooGalaxy.Runtime.Match.Controllers
         /// the play was rejected.</returns>
         public CardPlayResult TryPlayCard(int playerId, int slotIndex, IReadOnlyList<HexCoordinates> targets)
         {
-            if (UnityReference.IsUnavailable(_cardCycle) || _matchController == null)
-            {
-                return CardPlayResult.BoardUnavailable;
-            }
-
-            if (_matchController.Phase is not (MatchPhase.Standard or MatchPhase.Overtime))
-            {
-                return CardPlayResult.MatchNotInPlay;
-            }
-
-            // Checked, not merely raised: a nested play from an event subscriber would otherwise clear this flag
-            // in its own finally while the outer play still sits between its slot read and its rotation, and a
-            // discard resolved in that window would rotate the hand out from under it.
-            if (_isResolving)
-            {
-                return CardPlayResult.ResolverBusy;
-            }
-
-            _isResolving = true;
+            // Read before the play resolves: the buffer is borrowed, and a subscriber that plays a card during the
+            // resolution may refill it before this call returns.
+            HexCoordinates firstTarget = (targets != null) && (targets.Count > 0) ? targets[0] : default;
+            CardId cardId = CardId.Empty;
+            int energyCost = 0;
+            CardPlayResult result = CardPlayResult.BoardUnavailable;
 
             try
             {
-                // Asked before the slot, and only for the player's existence, so an unknown player and an unknown
-                // slot stay distinguishable: TryGetSlot alone answers false for both.
-                if (!_cardCycle.TryGetHand(playerId, out _))
-                {
-                    return CardPlayResult.UnknownPlayer;
-                }
+                result = ResolvePlay(playerId, slotIndex, targets, ref cardId, ref energyCost);
 
-                if (!_cardCycle.TryGetSlot(playerId, slotIndex, out CardId cardId))
-                {
-                    return CardPlayResult.SlotOutOfRange;
-                }
-
-                if (_cardPresenter == null || !_cardPresenter.TryGetCard(cardId, out ICardData card))
-                {
-                    return CardPlayResult.CardNotFound;
-                }
-
-                // Troop is every branch but Spell, because CardType.Troop is zero and is therefore what an asset
-                // whose type was never authored deserializes to. A troop play is fully validated by the board, so a
-                // mis-authored card is rejected on the rules rather than on a type the HUD cannot see.
-                CardPlayResult result = card.Type == CardType.Spell ? PlaySpell(playerId, cardId, card, targets) : PlayTroop(playerId, cardId, card, targets);
-
-                if (result != CardPlayResult.Success)
-                {
-                    return result;
-                }
-
-                if (!_cardCycle.TryAdvanceSlot(playerId, slotIndex, out _))
-                {
-                    return CardPlayResult.BoardUnavailable;
-                }
-
-                return CardPlayResult.Success;
+                return result;
             }
             finally
             {
-                _isResolving = false;
+                // In a finally so an attempt that throws still publishes, reporting the BoardUnavailable it was
+                // initialised with.
+                MatchEvents.RaiseCardPlayAttempted(new CardPlayAttempt(playerId, cardId, firstTarget, energyCost, result));
             }
         }
 
@@ -258,6 +222,76 @@ namespace GooGalaxy.Runtime.Match.Controllers
                 SpellResult.ResolverBusy => CardPlayResult.ResolverBusy,
                 _ => CardPlayResult.IllegalPlacement,
             };
+        }
+
+        // Every return path of a play, kept apart from TryPlayCard so the attempt is published from exactly one
+        // place. The ref values are what that publish reports: they are filled as the checks get far enough to
+        // know them, and keep the caller's Empty and zero for a rejection that came first. Ref rather than out so
+        // the caller still holds whatever was filled when an exception escapes.
+        private CardPlayResult ResolvePlay(int playerId, int slotIndex, IReadOnlyList<HexCoordinates> targets, ref CardId cardId, ref int energyCost)
+        {
+            if (UnityReference.IsUnavailable(_cardCycle) || _matchController == null)
+            {
+                return CardPlayResult.BoardUnavailable;
+            }
+
+            if (_matchController.Phase is not (MatchPhase.Standard or MatchPhase.Overtime))
+            {
+                return CardPlayResult.MatchNotInPlay;
+            }
+
+            // Checked, not merely raised: a nested play from an event subscriber would otherwise clear this flag
+            // in its own finally while the outer play still sits between its slot read and its rotation, and a
+            // discard resolved in that window would rotate the hand out from under it.
+            if (_isResolving)
+            {
+                return CardPlayResult.ResolverBusy;
+            }
+
+            _isResolving = true;
+
+            try
+            {
+                // Asked before the slot, and only for the player's existence, so an unknown player and an unknown
+                // slot stay distinguishable: TryGetSlot alone answers false for both.
+                if (!_cardCycle.TryGetHand(playerId, out _))
+                {
+                    return CardPlayResult.UnknownPlayer;
+                }
+
+                if (!_cardCycle.TryGetSlot(playerId, slotIndex, out cardId))
+                {
+                    return CardPlayResult.SlotOutOfRange;
+                }
+
+                if (_cardPresenter == null || !_cardPresenter.TryGetCard(cardId, out ICardData card))
+                {
+                    return CardPlayResult.CardNotFound;
+                }
+
+                energyCost = card.EnergyCost;
+
+                // Troop is every branch but Spell, because CardType.Troop is zero and is therefore what an asset
+                // whose type was never authored deserializes to. A troop play is fully validated by the board, so a
+                // mis-authored card is rejected on the rules rather than on a type the HUD cannot see.
+                CardPlayResult result = card.Type == CardType.Spell ? PlaySpell(playerId, cardId, card, targets) : PlayTroop(playerId, cardId, card, targets);
+
+                if (result != CardPlayResult.Success)
+                {
+                    return result;
+                }
+
+                if (!_cardCycle.TryAdvanceSlot(playerId, slotIndex, out _))
+                {
+                    return CardPlayResult.BoardUnavailable;
+                }
+
+                return CardPlayResult.Success;
+            }
+            finally
+            {
+                _isResolving = false;
+            }
         }
 
         private CardPlayResult PlayTroop(int playerId, CardId cardId, ICardData card, IReadOnlyList<HexCoordinates> targets)
