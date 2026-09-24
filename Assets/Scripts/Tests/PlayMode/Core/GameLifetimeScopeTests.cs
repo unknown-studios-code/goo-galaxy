@@ -561,7 +561,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
             _pointerInputViewGO.SetActive(true);
         }
 
-        // GameLifetimeScope also registers MatchInputController, whose Awake logs
+        // GameLifetimeScope also registers MatchInputController, whose Start logs
         // InputLogMessages.BoardCameraMissing the instant a bare auto-scaffolded instance finds no camera tagged
         // MainCamera — the scene this fixture builds has none otherwise, since board rendering is not what it
         // exercises.

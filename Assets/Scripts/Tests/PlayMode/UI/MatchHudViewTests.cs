@@ -591,8 +591,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
         public void Constructor_ForEachSelfIgnoringHudElement_DefaultsToPickingModeIgnore(Func<VisualElement> createElement)
         {
             // GIVEN / WHEN — SafeAreaElement is excluded: it is marked picking-mode="Ignore" in the markup
-            // instead of its constructor. CardSlotElement is excluded too: it deliberately keeps Position so
-            // the GOOM-17 gesture work lands a touch on the slot rather than on its labels.
+            // instead of its constructor. CardSlotElement is excluded too: it deliberately keeps Position so a
+            // press lands on the slot rather than on its labels, where MatchHudView listens for PointerDownEvent.
             VisualElement element = createElement();
 
             // THEN
@@ -732,8 +732,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
         // Adds the EventSystem + InputSystemUIInputModule that GOOM-17 found missing from both gameplay scenes.
         // Left with no actions assigned, InputSystemUIInputModule.OnEnable assigns Unity's own built-in defaults
         // (Point bound to <Pointer>/position, left-click bound to <Mouse>/leftButton) — the same shape
-        // GameplaySceneIntegrityTests proves the authored scenes carry, so this fixture needs no InputActionAsset
-        // of its own.
+        // GameplaySceneInputWiringTests proves the authored scenes carry, so this fixture needs no
+        // InputActionAsset of its own.
         private void CreateEventSystem()
         {
             _eventSystemGO = new GameObject(nameof(EventSystem));

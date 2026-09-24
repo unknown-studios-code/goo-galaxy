@@ -8,13 +8,11 @@ namespace GooGalaxy.Runtime.Board.Utils
     /// directions.
     /// </summary>
     /// <remarks>
-    /// The code is unambiguously flat-top — <see cref="ProjectToWorldSpace" /> writes <c>x = 1.5 * size * q</c>,
-    /// which is the flat-top formula — while the GDD's prose describes a pointy-top board. That divergence is
-    /// known and deliberate, not a bug waiting to be fixed: this projection has been the drawn layout since the
-    /// board first rendered, and every authored layout and cell sprite is framed for it. The GDD is the side to
-    /// reconcile. Nothing outside this file may re-derive either direction of the projection — see
-    /// <see cref="ProjectToAxial" /> for why a second copy of the algebra is the failure mode this file exists
-    /// to prevent.
+    /// The projection is flat-top — <see cref="ProjectToWorldSpace" /> writes <c>x = 1.5 * size * q</c> —
+    /// matching the GDD and every authored layout and cell sprite. The GDD marks orientation as under open
+    /// analysis (GOOM-31), so a change of orientation starts there, not here. Nothing outside this file may
+    /// re-derive either direction of the projection — see <see cref="ProjectToAxial" /> for why a second copy
+    /// of the algebra is the failure mode this file exists to prevent.
     /// </remarks>
     public static class HexMathUtils
     {
@@ -47,9 +45,8 @@ namespace GooGalaxy.Runtime.Board.Utils
         /// <remarks>
         /// <para>
         /// The two live in one file so they cannot drift: the algebra below is <see cref="ProjectToWorldSpace" />
-        /// solved for <c>q</c> and <c>r</c>, and re-deriving it against the pointy-top orientation the GDD's
-        /// prose describes — rather than the flat-top one the board is actually drawn with — would move every
-        /// hit test off the cells on screen.
+        /// solved for <c>q</c> and <c>r</c>, and a copy derived for any other orientation would move every hit
+        /// test off the cells on screen.
         /// </para>
         /// <para>
         /// The Z component is ignored, matching the forward projection's flat XY board. The result is fractional

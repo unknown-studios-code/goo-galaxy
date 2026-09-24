@@ -41,15 +41,17 @@ namespace GooGalaxy.Runtime.Input.Controllers
     /// the enumerator has already answered that.
     /// </para>
     /// <para>
-    /// <b>It gates the match phase in two places, and covers a third by cancelling rather than gating.</b>
+    /// <b>Board moves have no domain gate, so this controller is the gate.</b>
     /// <see cref="DeployController.TryPlayCard" /> and <see cref="CardDiscardController.TryDiscardCard" /> both
     /// refuse every play outside <see cref="MatchPhase.Standard" /> and <see cref="MatchPhase.Overtime" />
-    /// already. Neither gate reaches a board move, though — <c>UnitPresenter.ResolveMove</c> checks no phase at
-    /// all, so a Clone or a Jump submitted during Countdown would land unopposed if one were ever submitted.
-    /// What actually protects that path is <see cref="HandleMatchPhaseChanged" />: a phase change out of play
-    /// cancels the live selection first, so the release that would otherwise commit instead finds
-    /// <see cref="InteractionState.Idle" /> and submits nothing. A commit that does reach the board is attempted
-    /// regardless of phase and the returned code is read rather than pre-empted.
+    /// already, but neither check reaches a board move — <c>UnitPresenter.ResolveMove</c> checks no phase at
+    /// all. This controller covers that gap on both sides of a selection's life: the private
+    /// <c>IsPlayOpen</c> refuses to <b>start</b> one outside <see cref="MatchPhase.Standard" /> and
+    /// <see cref="MatchPhase.Overtime" />, tested in <see cref="TrySelectUnitAt" /> and
+    /// <see cref="HandleHandSlotPressed" /> before anything highlights, and <see cref="HandleMatchPhaseChanged" />
+    /// cancels a selection that is already <b>live</b> when play closes, so a phase boundary crossed mid-gesture
+    /// cannot leave a stale selection standing to commit through. A commit that does reach the board is
+    /// attempted regardless of phase and the returned code is read rather than pre-empted.
     /// </para>
     /// <para>
     /// <b>Enumeration happens on three triggers, never per frame.</b> A pointer move re-tests membership of an
@@ -157,6 +159,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
         private int _localPlayerId = PlayerSlot.UnassignedId;
         private float _energy;
         private float _energyAtLastResolve;
+        private MatchPhase _phase = MatchPhase.None;
         private bool _isPointerDown;
         private bool _isCommitting;
 
@@ -174,6 +177,11 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
         /// <remarks>How many hexes the live selection currently offers. Zero whenever nothing is selected.</remarks>
         internal int TargetCount => _targets.Count;
+
+        // Board moves have no phase gate of their own (see the class remarks), so this is what stops a selection
+        // from being started outside play. The initial value is MatchPhase.None until the first
+        // MatchPhaseChanged arrives, so nothing can select before a match phase is even announced.
+        private bool IsPlayOpen => _phase is MatchPhase.Standard or MatchPhase.Overtime;
 
         /// <remarks>
         /// The three board and card presenters are taken concretely because none of the interfaces the board
@@ -245,8 +253,8 @@ namespace GooGalaxy.Runtime.Input.Controllers
         }
 
         // Camera.main walks the scene by tag, which is a scene-dependent lookup and therefore belongs in Start
-        // rather than Awake. Both scenes wire _boardCamera explicitly today, so this fallback and the resolver
-        // it feeds are only ever exercised by a scene that omitted the Inspector reference.
+        // rather than Awake. MatchRoot.prefab wires _boardCamera to its own camera, so this fallback only runs
+        // for an instance that lost the reference.
         protected void Start()
         {
             if (_boardCamera == null)
@@ -357,6 +365,11 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
         private void TrySelectUnitAt(HexCoordinates coordinates)
         {
+            if (!IsPlayOpen)
+            {
+                return;
+            }
+
             HexGrid grid = GetGrid();
 
             if (grid == null || _unitPresenter == null || !grid.TryGetCell(coordinates, out HexCell cell))
@@ -435,7 +448,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
             if (result != CardPlayResult.Success)
             {
-                Debug.Log(string.Format(InputLogMessages.CardPlayRejectedFormat, _localPlayerId, option.SlotIndex, result), this);
+                LogCardPlayRejected(option.SlotIndex, result);
             }
         }
 
@@ -451,7 +464,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
             if (result != MovementResult.Success)
             {
-                Debug.Log(string.Format(InputLogMessages.MoveRejectedFormat, _localPlayerId, option.MoveType, result), this);
+                LogMoveRejected(option.MoveType, result);
             }
         }
 
@@ -472,7 +485,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
                 if (result != CardDiscardResult.Success)
                 {
-                    Debug.Log(string.Format(InputLogMessages.CardDiscardRejectedFormat, _localPlayerId, slotIndex, result), this);
+                    LogCardDiscardRejected(slotIndex, result);
                 }
             }
             finally
@@ -481,6 +494,31 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
                 CancelSelection();
             }
+        }
+
+        // PERF: each formats and logs only in the Editor or a development build. Debug.Log boxes its enum and
+        // int arguments, builds a string and captures a stack trace on every call, so a match played at speed —
+        // where ResolverBusy and TargetOccupied are ordinary contention, not faults — would otherwise pay that
+        // cost in a release build for a line nobody can read.
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void LogCardPlayRejected(int slotIndex, CardPlayResult result)
+        {
+            Debug.Log(string.Format(InputLogMessages.CardPlayRejectedFormat, _localPlayerId, slotIndex, result), this);
+        }
+
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void LogMoveRejected(MoveType moveType, MovementResult result)
+        {
+            Debug.Log(string.Format(InputLogMessages.MoveRejectedFormat, _localPlayerId, moveType, result), this);
+        }
+
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void LogCardDiscardRejected(int slotIndex, CardDiscardResult result)
+        {
+            Debug.Log(string.Format(InputLogMessages.CardDiscardRejectedFormat, _localPlayerId, slotIndex, result), this);
         }
 
         private void BuildHandLookup()
@@ -668,12 +706,22 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
             PointerGesture gesture = GestureClassifier.ClassifyRelease(_pressOrigin, position, _dragThresholdInDp, isOverDiscardZone || isOverTarget);
 
-            // A release that never travelled settles nothing: it leaves the selection live so the player can tap
-            // a highlighted hex next, which is the whole of the tap-then-tap path. Every abandonment the design
-            // lists — off the grid, an unhighlighted hex, back over the HUD — is a release that travelled and
-            // landed on none of the targets, which is what Cancel below covers.
+            // A tap off the grid is cancelled on its press, in HandlePointerPressed. A release that travelled and
+            // landed on no target is cancelled below, by the general Cancel branch. What lands here is a release
+            // that never travelled past the threshold: while the selection is still a bare tap-select
+            // (CardSelected or UnitSelected) that settles nothing, leaving it live so the player can tap a
+            // highlighted hex next — the whole of the tap-then-tap path. Once a drag has begun, though, the same
+            // short release is a drag that returned home rather than a tap-then-tap step, and the zone or preview
+            // it armed on the way out must be torn down the same as any other abandonment.
             if (gesture == PointerGesture.Tap)
             {
+                if (_stateMachine.State is InteractionState.CardSelected or InteractionState.UnitSelected)
+                {
+                    return;
+                }
+
+                CancelSelection();
+
                 return;
             }
 
@@ -696,6 +744,11 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
         private void HandleHandSlotPressed(int slotIndex)
         {
+            if (!IsPlayOpen)
+            {
+                return;
+            }
+
             InteractionSource source = _stateMachine.Source;
             bool isSecondPressOnSource = source.Kind == InteractionSourceKind.HandSlot && source.SlotIndex == slotIndex;
 
@@ -740,7 +793,9 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
         private void HandleMatchPhaseChanged(MatchPhase phase)
         {
-            if (phase is MatchPhase.Standard or MatchPhase.Overtime)
+            _phase = phase;
+
+            if (IsPlayOpen)
             {
                 return;
             }

@@ -8,14 +8,15 @@ using UnityEngine.UIElements;
 namespace GooGalaxy.Runtime.UI.Views
 {
     /// <summary>
-    /// The in-match HUD's rendering surface: it caches every element the panel declares and exposes one typed
-    /// setter per thing the screen can show.
+    /// The in-match HUD's rendering and gesture surface: it caches every element the panel declares, exposes one
+    /// typed setter per thing the screen can show, and reports which filled hand slot was pressed.
     /// </summary>
     /// <remarks>
-    /// <b>It decides nothing.</b> No match event reaches it, no domain type beyond <c>Shared.Types</c> is named
-    /// in its signatures, and every rule about which phase shows what lives in <c>MatchHudPresenter</c>. What
-    /// looks like a decision here — skipping a text write whose value is unchanged — is redraw suppression, and
-    /// it changes what is drawn in no case.
+    /// <b>It decides no rule.</b> No match event reaches it, no domain type beyond <c>Shared.Types</c> is named
+    /// in its signatures, and every rule about which phase shows what lives in <c>MatchHudPresenter</c>. The one
+    /// filter it applies is dropping a press on an empty slot, which has nothing to select. What looks like a
+    /// decision elsewhere here — skipping a text write whose value is unchanged — is redraw suppression, and it
+    /// changes what is drawn in no case.
     /// <para>
     /// <b>Every setter is safe before the panel exists.</b> A presenter placed ahead of this component by
     /// execution order will call into it during its own <c>OnEnable</c>; those calls are dropped, and the

@@ -13,10 +13,11 @@ namespace GooGalaxy.Runtime.Input.Presenters
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Only the difference is applied.</b> A pointer dragged across the board asks for a new target set many
-    /// times a second, and clearing all 61 cells and re-setting the handful that are legal would write a colour
-    /// into every <c>SpriteRenderer</c> on the board on every one of those passes. Diffing against the previous
-    /// set turns that into the two or three writes that actually changed.
+    /// <b>Only the difference is applied.</b> A target set arrives on selection, on a landing that changes the
+    /// board, and on an affordability edge — never on every pointer move, since a drag only tests membership of
+    /// the set already computed — and clearing all 61 cells and re-setting the handful that are legal on each of
+    /// those would still write a colour into every <c>SpriteRenderer</c> on the board for no reason. Diffing
+    /// against the previous set turns that into the two or three writes that actually changed.
     /// </para>
     /// <para>
     /// <b>Two sets, swapped rather than rebuilt.</b> The pass fills the spare set, diffs it against the live

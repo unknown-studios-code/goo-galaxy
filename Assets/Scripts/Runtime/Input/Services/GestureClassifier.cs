@@ -36,10 +36,7 @@ namespace GooGalaxy.Runtime.Input.Services
         public const float FallbackScreenDpi = 160f;
 
         /// <summary>Converts a density-independent distance into the screen pixels it covers on this device.</summary>
-        /// <remarks>
-        /// Exposed so a caller that classifies several times against one threshold can convert once. Reads
-        /// <see cref="Screen.dpi" /> on every call, which is a cached native value rather than a measurement.
-        /// </remarks>
+        /// <remarks>Reads <see cref="Screen.dpi" /> on every call, which is a cached native value rather than a measurement.</remarks>
         /// <param name="distanceInDp">The distance in density-independent pixels. Negative values pass through.</param>
         /// <returns>The same distance in screen pixels.</returns>
         public static float ConvertDpToPixels(float distanceInDp)
@@ -86,11 +83,10 @@ namespace GooGalaxy.Runtime.Input.Services
         }
 
         /// <remarks>
-        /// Test-only seam: takes the reported DPI as a parameter instead of reading <see cref="Screen.dpi" />
-        /// directly. <see cref="Screen.dpi" /> is machine-specific — this Editor reports 458, never 0 — so the
-        /// zero-dpi fallback this method substitutes <see cref="FallbackScreenDpi" /> for is otherwise
-        /// unreachable from a fixture on any real display. Applies the same fallback substitution the public
-        /// overload uses.
+        /// Every production classification runs through this overload too — the public one just supplies
+        /// <see cref="Screen.dpi" />. A reported DPI of zero or less is replaced by <see cref="FallbackScreenDpi" />;
+        /// taking the DPI as a parameter is what lets a fixture pin it to a literal instead of depending on
+        /// whatever the current display reports.
         /// </remarks>
         internal static float ConvertDpToPixels(float distanceInDp, float reportedDpi)
         {
@@ -100,12 +96,11 @@ namespace GooGalaxy.Runtime.Input.Services
         }
 
         /// <remarks>
-        /// Test-only seam: takes the reported DPI as a parameter for the same reason the matching
-        /// <see cref="ConvertDpToPixels(float, float)" /> overload does. <see cref="Screen.dpi" /> is
-        /// machine-specific and never 0 on a real display, so a fixture pins it here to a literal — both to
-        /// exercise the threshold boundary deterministically and to reach the zero-dpi fallback
-        /// <see cref="ConvertDpToPixels(float, float)" /> substitutes <see cref="FallbackScreenDpi" /> for, which
-        /// is otherwise unreachable.
+        /// Every production classification runs through this overload too, for the same reason the matching
+        /// <see cref="ConvertDpToPixels(float, float)" /> overload does — taking the DPI as a parameter is what
+        /// lets a fixture pin it to a literal, both to exercise the threshold boundary deterministically and to
+        /// reach the zero-dpi fallback <see cref="ConvertDpToPixels(float, float)" /> substitutes
+        /// <see cref="FallbackScreenDpi" /> for.
         /// </remarks>
         internal static bool HasLeftThreshold(Vector2 pressOrigin, Vector2 currentPosition, float dragThresholdInDp, float reportedDpi)
         {

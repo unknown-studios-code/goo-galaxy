@@ -53,7 +53,7 @@ namespace GooGalaxy.Tests.EditMode.Shared
         [Test]
         public void TryResolve_NeitherSeatIsLocalHuman_ReturnsFalseButStillFillsBothOutputs()
         {
-            // GIVEN — a machine-versus-machine debug match, where neither seat is driven locally.
+            // GIVEN — Machine versus RemoteHuman, where neither seat is driven locally.
             var config = new MatchConfiguration(
                 0,
                 new PlayerSlot(PlayerOneId, PlayerControl.Machine),

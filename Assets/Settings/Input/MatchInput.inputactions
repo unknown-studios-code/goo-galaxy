@@ -8,7 +8,7 @@
             "actions": [
                 {
                     "name": "PointerPosition",
-                    "type": "Value",
+                    "type": "PassThrough",
                     "id": "3a9b6c15-2e47-4d80-9f52-6b8d0e1a7c34",
                     "expectedControlType": "Vector2",
                     "processors": "",

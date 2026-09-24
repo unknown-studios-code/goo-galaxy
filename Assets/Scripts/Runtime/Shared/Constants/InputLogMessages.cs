@@ -20,7 +20,7 @@ namespace GooGalaxy.Runtime.Shared.Constants
     {
         public const string PointerActionAssetMissing =
             "PointerInputView has no InputActionAsset assigned, so no finger reaches the board and the match cannot be played. "
-            + "Assign the match Input Actions asset in the Inspector on the input object.";
+            + "Assign the match Input Actions asset in the Inspector on the MatchInput object in MatchRoot.prefab.";
 
         public const string PointerActionMapMissingFormat =
             "PointerInputView found no action map named '{0}' in the assigned asset, so no pointer action can be enabled and the match "
@@ -32,7 +32,7 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string BoardCameraMissing =
             "MatchInputController has no board camera assigned and no camera is tagged MainCamera, so no screen point can be turned into a "
-            + "hex and every tap is discarded. Assign the board camera in the Inspector on the input object.";
+            + "hex and every tap is discarded. Assign the board camera in the Inspector on the MatchInput object in MatchRoot.prefab.";
 
         public const string MatchInputGridPresenterMissing =
             "MatchInputController was not injected with a GridPresenter, so it cannot read the board and every tap is discarded. "
@@ -68,11 +68,11 @@ namespace GooGalaxy.Runtime.Shared.Constants
 
         public const string MatchInputPointerSourceMissing =
             "MatchInputController was not injected with a pointer source, so no finger reaches it and the match cannot be played. "
-            + "Register PointerInputView in GameLifetimeScope and keep it in the scene.";
+            + "Register PointerInputView in GameLifetimeScope and keep it on the MatchInput object in MatchRoot.prefab.";
 
         public const string MatchInputHighlightPresenterMissing =
             "MatchInputController was not injected with a TargetHighlightPresenter, so legal targets are never shown and the player is "
-            + "guessing. Register TargetHighlightPresenter in GameLifetimeScope and keep it in the scene.";
+            + "guessing. Register TargetHighlightPresenter in GameLifetimeScope and keep it on the MatchInput object in MatchRoot.prefab.";
 
         public const string MatchInputHandGestureSourceMissing =
             "MatchInputController was not injected with a hand gesture source, so pressing a card in hand does nothing and only board units "

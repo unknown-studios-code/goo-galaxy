@@ -73,12 +73,11 @@ namespace GooGalaxy.Runtime.Input.Services
 
         /// <summary>Finds the option a release onto <paramref name="target" /> should commit, for the live selection <paramref name="source" />.</summary>
         /// <remarks>
-        /// Scanned rather than looked up, because the option set is small and keying it by target would need a
-        /// dictionary rebuilt on every enumeration. The first match wins, and the enumerator adds a unit's Clone
-        /// options ahead of its Jump options — so a hex both could reach commits as the Clone. That is this input
-        /// layer's own tie-break, not one the GDD states a preference on: a Clone nets +1 unit against a Jump's
-        /// net +0, which is the GDD-backed reason to favor it, but which of two equally legal landings a bare tap
-        /// should prefer is a choice this layer is making, not one it is reading off the rules.
+        /// Scanned rather than keyed by target, so no dictionary is rebuilt per enumeration. The first match
+        /// wins, and the enumerator adds a unit's Clone options ahead of its Jump options. The two can only
+        /// share a target when a capability authors equal Clone and Jump distances — never at the defaults of 1
+        /// and 2 — and then the Clone commits. That tie-break is this layer's choice (a Clone nets +1 unit
+        /// against a Jump's +0), not one the GDD states.
         /// </remarks>
         /// <param name="options">The resolved option set to search.</param>
         /// <param name="source">The live selection the found option must match.</param>

@@ -19,7 +19,7 @@ namespace GooGalaxy.Runtime.Input.Services
     /// </para>
     /// <para>
     /// <b>The camera arrives once and is held.</b> <c>Camera.main</c> walks the scene by tag, so it is never
-    /// read on a pointer path; the owner resolves it at wake and hands it over. A resolver holding a camera
+    /// read on a pointer path; the owner resolves it in <c>Start</c> and hands it over. A resolver holding a camera
     /// Unity has destroyed answers false rather than throwing, which is what a scene unload mid-gesture looks
     /// like. Its <see cref="Transform" /> is cached alongside it at construction for the same reason —
     /// <c>Camera.transform</c> is itself an extern property fetch, and this is a 60–240 Hz path — so the one

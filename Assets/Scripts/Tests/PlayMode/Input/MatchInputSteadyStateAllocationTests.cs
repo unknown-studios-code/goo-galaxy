@@ -41,12 +41,18 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private const int TroopEnergyCost = 2;
         private const string TroopCardIdValue = "alloc_troop_card";
 
-        // A press-drag-release cycle that never commits, so the board never changes and the same cycle can
+        // Shared by every cycle below: none of them ever commits, so the board never changes and each is safe to
         // repeat any number of times without running out of empty targets to drag toward.
         private const int WarmUpIterations = 3;
         private const int MeasuredIterations = 500;
 
         private static readonly HexCoordinates _anchorHex = new(0, 0);
+
+        // Distance 1 from the anchor, matching MatchInputControllerTests._cloneTargetHex: a legal Clone target
+        // for the anchor unit's capability and, since it is empty and adjacent to that unit, a legal Deploy
+        // target for the hand-slot cycle too.
+        private static readonly HexCoordinates _targetHex = new(1, 0);
+
         private static readonly Vector2 _offGridScreenPosition = new(1_000_000f, 1_000_000f);
 
         private readonly List<Object> _spawned = new();
@@ -69,6 +75,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private GameObject _presenterGO;
         private MatchInputController _presenter;
         private Vector2 _anchorScreenPosition;
+        private Vector2 _targetScreenPosition;
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -85,6 +92,17 @@ namespace GooGalaxy.Tests.PlayMode.Input
                 new MatchConfiguration(0, new PlayerSlot(LocalPlayerId, PlayerControl.LocalHuman), new PlayerSlot(2, PlayerControl.Machine), 0f, 0f, 0f)
             );
 
+            // MatchController.SetPhaseForTests only mutates MatchState, so nothing here raises this event on its
+            // own — and without it, _phase stays MatchPhase.None and IsPlayOpen refuses every press below, which
+            // would leave the measured cycle allocation-free for the wrong reason: because it never runs.
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
+
+            // GridView subscribes to this in OnEnable and builds CellViews from it. Without it,
+            // TargetHighlightPresenter.SetCellHighlight finds no cell for any coordinate and returns before ever
+            // touching a SpriteRenderer, so the measured cycles below would never price the write this component
+            // makes on every selection and every preview begin/end.
+            MatchEvents.RaiseGridInitialized(_gridPresenter.HexGrid);
+
             // MatchInputController resolves its board camera and builds its pointer resolver in Start, which
             // Unity defers to the first frame update following BuildInputSourcesAndPresenter's SetActive(true)
             // rather than running synchronously with it. Without this frame, every press below would silently
@@ -93,6 +111,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             yield return null;
 
             _anchorScreenPosition = ScreenPositionForHex(_anchorHex);
+            _targetScreenPosition = ScreenPositionForHex(_targetHex);
         }
 
         [TearDown]
@@ -115,9 +134,16 @@ namespace GooGalaxy.Tests.PlayMode.Input
         [Category("Allocation")]
         public void SteadyState_RepeatedPressDragRelease_AllocatesNoManagedMemory()
         {
-            // GIVEN — warmed up ahead of the measurement so the first ResolveTargets pass (dictionary growth,
-            // JIT, the board-wide enumeration buffers) never lands inside the delegate NotAllocatingGCMemory()
-            // measures.
+            // GIVEN — proof the cycle actually reaches a selection before anything is warmed up or measured, so
+            // a regression that blocks the press earlier (the phase gate, for one) fails this setup check rather
+            // than passing the zero-GC assertion below for the wrong reason — an inert path that allocates
+            // nothing because it never runs.
+            _pointerSource.RaisePressed(_anchorScreenPosition);
+            Assert.That(_presenter.State, Is.Not.EqualTo(InteractionState.Idle), "Test setup expects the press to start a selection.");
+            Assert.That(_presenter.TargetCount, Is.GreaterThan(0), "Test setup expects the anchor unit to highlight at least one target.");
+            _pointerSource.RaiseMoved(_offGridScreenPosition);
+            _pointerSource.RaiseReleased(_offGridScreenPosition);
+
             for (int i = 0; i < WarmUpIterations; i++)
             {
                 RunPressDragReleaseCycle();
@@ -125,6 +151,47 @@ namespace GooGalaxy.Tests.PlayMode.Input
 
             // WHEN / THEN — the act is the delegate itself, which the constraint both runs and measures.
             Assert.That(RunPressDragReleaseCycle, NotAllocatingGCMemory());
+        }
+
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedPressDragOntoAHighlightedTargetAndOff_AllocatesNoManagedMemory()
+        {
+            // GIVEN — the target must actually be highlighted, or the drag below would never reach
+            // TryBeginPreview/TryEndPreview and this would measure the same inert path as a plain off-grid drag.
+            _pointerSource.RaisePressed(_anchorScreenPosition);
+            Assert.That(_highlightPresenter.IsHighlighted(_targetHex), Is.True, "Test setup expects the target hex to be a highlighted Clone target.");
+            _pointerSource.RaiseMoved(_offGridScreenPosition);
+            _pointerSource.RaiseReleased(_offGridScreenPosition);
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunPressDragOntoTargetAndOffCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunPressDragOntoTargetAndOffCycle, NotAllocatingGCMemory());
+        }
+
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedHandSlotPressDragRelease_AllocatesNoManagedMemory()
+        {
+            // GIVEN — the pointer press lands off-grid first, so it selects nothing of its own and the hand-slot
+            // press that follows starts a clean CardSelected selection rather than cancelling one already live.
+            _pointerSource.RaisePressed(_offGridScreenPosition);
+            _handGestureSource.RaiseHandSlotPressed(0);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.CardSelected), "Test setup expects the hand slot press to select a card.");
+            _pointerSource.RaiseMoved(_targetScreenPosition);
+            _pointerSource.RaiseReleased(_offGridScreenPosition);
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunHandSlotDragCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunHandSlotDragCycle, NotAllocatingGCMemory());
         }
 
         private static CardDataSO CreateTroopCard()
@@ -153,6 +220,35 @@ namespace GooGalaxy.Tests.PlayMode.Input
             {
                 _pointerSource.RaisePressed(_anchorScreenPosition);
                 _pointerSource.RaiseMoved(_offGridScreenPosition);
+                _pointerSource.RaiseReleased(_offGridScreenPosition);
+            }
+        }
+
+        // One full gesture that drags onto a highlighted Clone target and back off before releasing off-grid, so
+        // TargetHighlightPresenter.IsHighlighted is tested true and then false and the preview begins and ends —
+        // paths RunPressDragReleaseCycle's straight-off-grid drag never reaches. The release still lands
+        // off-grid, so the board never changes and the cycle is safe to repeat.
+        private void RunPressDragOntoTargetAndOffCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                _pointerSource.RaisePressed(_anchorScreenPosition);
+                _pointerSource.RaiseMoved(_targetScreenPosition);
+                _pointerSource.RaiseMoved(_offGridScreenPosition);
+                _pointerSource.RaiseReleased(_offGridScreenPosition);
+            }
+        }
+
+        // One full hand-slot gesture: the press lands off-grid first so it selects nothing of its own, the
+        // hand-slot press selects the card cleanly, and the drag onto the target arms the discard zone before
+        // the release — off-grid and at the press origin — disarms it again through the ordinary cancel path.
+        private void RunHandSlotDragCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                _pointerSource.RaisePressed(_offGridScreenPosition);
+                _handGestureSource.RaiseHandSlotPressed(0);
+                _pointerSource.RaiseMoved(_targetScreenPosition);
                 _pointerSource.RaiseReleased(_offGridScreenPosition);
             }
         }

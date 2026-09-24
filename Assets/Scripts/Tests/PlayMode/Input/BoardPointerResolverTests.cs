@@ -18,11 +18,10 @@ namespace GooGalaxy.Tests.PlayMode.Input
     {
         private const int BoardRadius = 4;
         private const float CellVisualSize = 1f;
+        private const int LayoutSettleFrameBudget = 10;
 
         private static readonly HexCoordinates _knownHex = new(2, -1);
         private static readonly Vector2 _offGridScreenPosition = new(1_000_000f, 1_000_000f);
-
-        private const int LayoutSettleFrameBudget = 10;
 
         private readonly List<Object> _spawned = new();
 

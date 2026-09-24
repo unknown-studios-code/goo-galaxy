@@ -160,8 +160,10 @@ namespace GooGalaxy.Tests.EditMode.Input
         [Test]
         public void TryFindOptionForTarget_CloneAndJumpBothReachTheTarget_ReturnsTheCloneOption()
         {
-            // GIVEN — the documented tie-break: the enumerator adds Clone options ahead of Jump options, so the
-            // first match for a shared target is the Clone.
+            // GIVEN — the documented tie-break, for a capability whose authored Clone and Jump distances happen
+            // to be equal (never true at the defaults of 1 and 2, where the two rings cannot share a target):
+            // the enumerator adds Clone options ahead of Jump options, so the first match for a shared target is
+            // the Clone.
             var options = new List<MoveOption> { MoveOption.ForClone(OwnUnitId, _unitHex, _target), MoveOption.ForJump(OwnUnitId, _unitHex, _target) };
             var source = InteractionSource.ForBoardUnit(OwnUnitId, _unitHex);
 

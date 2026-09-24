@@ -172,8 +172,7 @@ namespace GooGalaxy.Runtime.Input.Views
 
         private PointerSample BuildSample(PointerPhase phase)
         {
-            // Unscaled, so a paused match freezes the board without freezing the gesture the player is mid-way
-            // through — the tap-versus-drag line is a property of the finger, not of match time.
+            // Unscaled, so a paused match freezes the board without freezing the gesture the player is mid-way through.
             return new PointerSample(_currentScreenPosition, phase, Time.unscaledTime);
         }
 

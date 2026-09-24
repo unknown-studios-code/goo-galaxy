@@ -100,6 +100,35 @@ namespace GooGalaxy.Tests.PlayMode.Input
         }
 
         [UnityTest]
+        public IEnumerator OnDisable_DuringAPress_ClearsIsPointerDown()
+        {
+            // GIVEN
+            ActivateView();
+            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+
+            // WHEN
+            _view.enabled = false;
+
+            // THEN
+            Assert.That(_view.IsPointerDown, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator OnDisable_DuringAPress_DoesNotRaisePointerReleased()
+        {
+            // GIVEN
+            ActivateView();
+            _view.PointerReleased += HandlePointerReleased;
+            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+
+            // WHEN
+            _view.enabled = false;
+
+            // THEN
+            Assert.That(_lastReleasedSample, Is.Null);
+        }
+
+        [UnityTest]
         public IEnumerator PointerPressed_OnAPress_ReportsThePressedPositionAndPhase()
         {
             // GIVEN
@@ -195,35 +224,6 @@ namespace GooGalaxy.Tests.PlayMode.Input
 
             // THEN
             Assert.That(_view.IsPointerDown, Is.False);
-        }
-
-        [UnityTest]
-        public IEnumerator OnDisable_DuringAPress_ClearsIsPointerDown()
-        {
-            // GIVEN
-            ActivateView();
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
-
-            // WHEN
-            _view.enabled = false;
-
-            // THEN
-            Assert.That(_view.IsPointerDown, Is.False);
-        }
-
-        [UnityTest]
-        public IEnumerator OnDisable_DuringAPress_DoesNotRaisePointerReleased()
-        {
-            // GIVEN
-            ActivateView();
-            _view.PointerReleased += HandlePointerReleased;
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
-
-            // WHEN
-            _view.enabled = false;
-
-            // THEN
-            Assert.That(_lastReleasedSample, Is.Null);
         }
 
         private static IEnumerator SendPointerStateAsync(Mouse mouse, Vector2 position, bool isPressed)

@@ -106,6 +106,11 @@ namespace GooGalaxy.Tests.PlayMode.Input
                 )
             );
 
+            // MatchController.SetPhaseForTests only mutates MatchState, so nothing here raises this event on its
+            // own — and without it, _phase stays MatchPhase.None and IsPlayOpen refuses every selection this
+            // fixture starts.
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
+
             // MatchInputController resolves its board camera and builds its pointer resolver in Start, which
             // Unity defers to the first frame update following the SetActive(true) above rather than running
             // synchronously with it — a plain synchronous SetUp returns before that frame ever ticks, and every
@@ -150,8 +155,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
         [Test]
         public void HandlePointerPressed_SecondTapOnTheSelectedUnitsOwnHex_CancelsWithoutReselecting()
         {
-            // GIVEN — deliberate decision #1: a re-tap on the selection's own source cancels rather than being
-            // read as a fresh tap on that same unit, which TrySelectUnitAt would otherwise immediately re-select.
+            // GIVEN — a re-tap on the selection's own source cancels rather than being read as a fresh tap on
+            // that same unit, which TrySelectUnitAt would otherwise immediately re-select.
             Vector2 anchorScreen = ScreenPositionForHex(_anchorHex);
             _pointerSource.RaisePressed(anchorScreen);
             _pointerSource.RaiseReleased(anchorScreen);
@@ -167,7 +172,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
         [Test]
         public void HandleHandSlotPressed_SecondPressOnTheSameSlot_CancelsWithoutReselecting()
         {
-            // GIVEN — the hand-slot equivalent of deliberate decision #1.
+            // GIVEN — the hand-slot equivalent: a re-tap on the selection's own hand slot cancels rather than
+            // being read as a fresh press that would re-select it.
             Vector2 pressScreen = ScreenPositionForHex(_anchorHex);
             _pointerSource.RaisePressed(pressScreen);
             _handGestureSource.RaiseHandSlotPressed(0);
@@ -241,6 +247,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             Vector2 anchorScreen = ScreenPositionForHex(_anchorHex);
             Vector2 unhighlightedScreen = ScreenPositionForHex(_unhighlightedHex);
             _pointerSource.RaisePressed(anchorScreen);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.UnitSelected), "Test setup expects the press to select the anchor unit.");
 
             // WHEN
             _pointerSource.RaiseMoved(unhighlightedScreen);
@@ -288,8 +295,13 @@ namespace GooGalaxy.Tests.PlayMode.Input
             _pointerSource.RaisePressed(pressScreen);
             _handGestureSource.RaiseHandSlotPressed(0);
 
-            // THEN
-            Assert.That((_presenter.TargetCount, _highlightPresenter.HighlightedCount, _handChangedCount - handChangedBaseline), Is.EqualTo((0, 0, 0)));
+            // THEN — CardSelected proves the press reached ResolveTargets rather than having been blocked
+            // earlier (by the phase gate, for instance), so the zero counts are the ledger's refusal and not a
+            // selection that never started.
+            Assert.That(
+                (_presenter.State, _presenter.TargetCount, _highlightPresenter.HighlightedCount, _handChangedCount - handChangedBaseline),
+                Is.EqualTo((InteractionState.CardSelected, 0, 0, 0))
+            );
         }
 
         [Test]
@@ -433,6 +445,106 @@ namespace GooGalaxy.Tests.PlayMode.Input
 
             // THEN
             Assert.That(_presenter.TargetCount, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void HandlePointerPressed_TappingAnOwnedUnitDuringCountdown_SelectsNothing()
+        {
+            // GIVEN — regression: board moves have no phase gate of their own (UnitPresenter.ResolveMove checks
+            // no phase at all), so this controller must refuse to start a selection outside Standard and Overtime.
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
+            Vector2 anchorScreen = ScreenPositionForHex(_anchorHex);
+
+            // WHEN
+            _pointerSource.RaisePressed(anchorScreen);
+
+            // THEN
+            Assert.That((_presenter.State, _highlightPresenter.HighlightedCount), Is.EqualTo((InteractionState.Idle, 0)));
+        }
+
+        [Test]
+        public void TapThenTapOnACloneTarget_DuringCountdown_LeavesTheBoardUnchanged()
+        {
+            // GIVEN — the same regression, read from the board rather than from the presenter's own state: even
+            // a tap-then-tap sequence that would clone the unit in Standard must leave nothing changed here.
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
+            Vector2 anchorScreen = ScreenPositionForHex(_anchorHex);
+            Vector2 targetScreen = ScreenPositionForHex(_cloneTargetHex);
+            _pointerSource.RaisePressed(anchorScreen);
+            _pointerSource.RaiseReleased(anchorScreen);
+
+            // WHEN
+            _pointerSource.RaisePressed(targetScreen);
+
+            // THEN
+            Assert.That((_unitPresenter.ActiveUnits.Count, GetOccupant(_cloneTargetHex)), Is.EqualTo((3, false)));
+        }
+
+        [Test]
+        public void HandlePointerPressed_TappingAnOwnedUnitAfterMatchEnded_SelectsNothing()
+        {
+            // GIVEN — the same phase gate, on the other side of a match: MatchEnded alone does not move _phase,
+            // so this asserts the presenter reads MatchPhaseChanged(Ended) rather than the outcome event.
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Ended);
+            Vector2 anchorScreen = ScreenPositionForHex(_anchorHex);
+
+            // WHEN
+            _pointerSource.RaisePressed(anchorScreen);
+
+            // THEN
+            Assert.That((_presenter.State, _highlightPresenter.HighlightedCount), Is.EqualTo((InteractionState.Idle, 0)));
+        }
+
+        [Test]
+        public void HandleHandSlotPressed_DuringCountdown_SelectsNothing()
+        {
+            // GIVEN — the hand-slot equivalent of the phase-gate regression above.
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
+
+            // WHEN
+            _handGestureSource.RaiseHandSlotPressed(0);
+
+            // THEN
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.Idle));
+        }
+
+        [Test]
+        public void HandleHandSlotPressed_DraggedPastThresholdAndBackToTheOrigin_CancelsAndDisarmsTheDiscardZone()
+        {
+            // GIVEN — regression for the stuck-drag fix: before it, a release that travelled out past the
+            // threshold and back within it left the state at Dragging with the discard zone still armed, instead
+            // of tearing down what the drag had armed on the way out.
+            Vector2 pressScreen = ScreenPositionForHex(_anchorHex);
+            _pointerSource.RaisePressed(pressScreen);
+            _handGestureSource.RaiseHandSlotPressed(0);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.CardSelected), "Test setup expects the hand slot press to select a card.");
+            _pointerSource.RaiseMoved(_offGridScreenPosition);
+            Assert.That(_handGestureSource.IsDiscardZoneArmed, Is.True, "Test setup expects the drag past the threshold to arm the discard zone.");
+
+            // WHEN
+            _pointerSource.RaiseMoved(pressScreen);
+            _pointerSource.RaiseReleased(pressScreen);
+
+            // THEN
+            Assert.That((_presenter.State, _handGestureSource.IsDiscardZoneArmed), Is.EqualTo((InteractionState.Idle, false)));
+        }
+
+        [Test]
+        public void HandlePointerPressed_DraggedPastThresholdAndBackToTheOrigin_CancelsToIdle()
+        {
+            // GIVEN — the board-unit equivalent of the stuck-drag fix above.
+            Vector2 anchorScreen = ScreenPositionForHex(_anchorHex);
+            _pointerSource.RaisePressed(anchorScreen);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.UnitSelected), "Test setup expects the press to select the anchor unit.");
+            _pointerSource.RaiseMoved(_offGridScreenPosition);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.Dragging), "Test setup expects the drag past the threshold to begin.");
+
+            // WHEN
+            _pointerSource.RaiseMoved(anchorScreen);
+            _pointerSource.RaiseReleased(anchorScreen);
+
+            // THEN
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.Idle));
         }
 
         private static CardDataSO CreateTroopCard()

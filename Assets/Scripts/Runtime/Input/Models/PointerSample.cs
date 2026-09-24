@@ -14,8 +14,8 @@ namespace GooGalaxy.Runtime.Input.Models
     /// <para>
     /// <see cref="ScreenPosition" /> is in screen space — pixels, origin bottom-left — which is the space the
     /// board resolver and <c>IHandGestureSource.IsScreenPointInDiscardZone</c> both accept, and is <b>not</b>
-    /// panel space. <see cref="TimestampSeconds" /> is unscaled, so a paused match does not freeze the gesture
-    /// clock along with the board.
+    /// panel space. <see cref="TimestampSeconds" /> is unscaled seconds since startup; nothing reads it yet and
+    /// no gesture is classified on it — <c>GestureClassifier</c> classifies by distance alone.
     /// </para>
     /// <para>Carries only value types, so building one allocates nothing and none of its fields box.</para>
     /// </remarks>
@@ -24,7 +24,7 @@ namespace GooGalaxy.Runtime.Input.Models
         /// <summary>Builds one reading of the pointer.</summary>
         /// <param name="screenPosition">Where the pointer was, in screen pixels with the origin bottom-left.</param>
         /// <param name="phase">What the pointer was doing.</param>
-        /// <param name="timestampSeconds">Unscaled seconds since startup, as the gesture clock reads them.</param>
+        /// <param name="timestampSeconds">Unscaled seconds since startup. Nothing classifies on it yet.</param>
         public PointerSample(Vector2 screenPosition, PointerPhase phase, float timestampSeconds)
         {
             ScreenPosition = screenPosition;

@@ -17,7 +17,8 @@ namespace GooGalaxy.Runtime.Input.Interfaces
     /// <para>
     /// <b>One pointer, never two.</b> An implementation reports the first pointer that went down and ignores
     /// every other until it comes up, so a second finger can neither start a second selection nor move a live
-    /// one. A subscriber may therefore treat a press as always following a release.
+    /// one. A subscriber may therefore treat a press as always following a release — except across a disable of
+    /// the source, which clears the latched pointer without raising <see cref="PointerReleased" />.
     /// </para>
     /// <para>
     /// Positions are in screen space — pixels, origin bottom-left. Every event carries the position that
