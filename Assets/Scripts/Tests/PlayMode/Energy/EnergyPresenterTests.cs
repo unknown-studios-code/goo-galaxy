@@ -84,6 +84,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
             // GIVEN
             var config = new EnergyConfig(10.0f, 2.0f, 1.0f);
             _presenter.InitializePlayer(1, config);
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
             _changedCount = 0;
 
             // WHEN
@@ -95,6 +96,44 @@ namespace GooGalaxy.Tests.PlayMode.Energy
             Assert.That(_changedCount >= 1, Is.True);
             Assert.That(_lastChangedPlayerId, Is.EqualTo(1));
             Assert.That(_lastChangedEnergy, Is.EqualTo(currentEnergy).Within(EnergyPublishQuantum));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator Update_BeforePlayOpens_DoesNotRegenerate()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10.0f, 2.0f, 1.0f);
+            _presenter.InitializePlayer(1, config);
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
+            _changedCount = 0;
+
+            // WHEN
+            yield return _waitForHalfSecond;
+
+            // THEN
+            Assert.That(_presenter.GetEnergy(1), Is.EqualTo(1.0f).Within(Tolerance), "Energy must not accrue before the countdown ends.");
+            Assert.That(_changedCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator Update_WhenPlayOpensAfterTheCountdown_ResumesFromTheStartingEnergy()
+        {
+            // GIVEN
+            var config = new EnergyConfig(10.0f, 2.0f, 1.0f);
+            _presenter.InitializePlayer(1, config);
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
+            yield return _waitForHalfSecond;
+
+            // WHEN
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
+            yield return _waitForHalfSecond;
+
+            // THEN — the countdown half-second contributed nothing, so the whole gain belongs to the played half.
+            float energy = _presenter.GetEnergy(1);
+            Assert.That(energy, Is.GreaterThan(1.0f));
+            Assert.That(energy, Is.LessThan(2.5f), "Energy accrued during the countdown as well as after it.");
         }
 
         [UnityTest]
@@ -153,6 +192,7 @@ namespace GooGalaxy.Tests.PlayMode.Energy
             var config = new EnergyConfig(10.0f, 1.0f, 1.0f);
             _presenter.InitializePlayer(1, config);
             _presenter.SetOvertime(true);
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Overtime);
 
             // WHEN
             yield return _waitForHalfSecond;

@@ -19,6 +19,12 @@ namespace GooGalaxy.Editor.Automation
 
         private const int SdkGeneratorStyle = 1;
 
+        // game-ci's CLI (unity-builder v6+) validates a build by scraping the Editor's output for this exact
+        // text, which its own build reporter prints on success. A method that replaces the build never prints
+        // it, so without it an exit code of zero is still reported as "There was an error building the
+        // project". See game-ci/cli src/model/unity/build-validation/unity-build-validation.ts.
+        private const string BuildSucceededMarker = "Build succeeded!";
+
         /// <summary>
         /// Imports pending asset changes, writes every generated project file, then quits the Editor —
         /// with a non-zero code when no solution was produced.
@@ -61,6 +67,7 @@ namespace GooGalaxy.Editor.Automation
 
             int projectCount = Directory.GetFiles(projectRoot, "*.csproj").Length;
             Debug.Log($"SolutionSync: wrote '{Path.GetFileName(solutions[0])}' and {projectCount} project files to '{projectRoot}'.");
+            Debug.Log(BuildSucceededMarker);
             EditorApplication.Exit(0);
         }
 

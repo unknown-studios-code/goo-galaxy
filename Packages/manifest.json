@@ -69,5 +69,8 @@
         "jp.hadashikick.vcontainer"
       ]
     }
+  ],
+  "testables": [
+    "com.unity.inputsystem"
   ]
 }

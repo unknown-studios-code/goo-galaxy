@@ -37,6 +37,9 @@
           class="energy-gauge"
           picking-mode="Ignore"
         />
+        <ui:VisualElement name="discard-zone" class="discard-zone" picking-mode="Ignore">
+          <ui:Label class="discard-zone__label" text="DISCARD" picking-mode="Ignore" />
+        </ui:VisualElement>
         <ui:VisualElement name="hand-strip" class="hand-strip" picking-mode="Ignore">
           <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement name="hand-slot-0" class="card-slot" />
           <GooGalaxy.Runtime.UI.Views.Elements.CardSlotElement name="hand-slot-1" class="card-slot" />

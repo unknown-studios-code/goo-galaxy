@@ -35,6 +35,14 @@ namespace GooGalaxy.Runtime.Board.Views
 
         public IReadOnlyDictionary<HexCoordinates, CellView> CellViews => _cellViews;
 
+        /// <summary>The size the cells were projected at — center to corner vertex, in world units.</summary>
+        /// <remarks>
+        /// Exposed so anything inverting the projection — turning a screen point back into a hex — reads the
+        /// value the board was actually drawn with. A second authored copy of it would put every hit test on the
+        /// wrong hex the first time one of the two was retuned.
+        /// </remarks>
+        public float CellVisualSize => _cellVisualSize;
+
         protected void Awake()
         {
             Debug.Assert(_cellPrefab != null, BoardLogMessages.CellViewPrefabNotAssigned, this);
@@ -71,7 +79,11 @@ namespace GooGalaxy.Runtime.Board.Views
             {
                 Vector3 worldPos = HexMathUtils.ProjectToWorldSpace(cell.Coordinates, _cellVisualSize);
 
-                CellView tileInstance = Instantiate(_cellPrefab, worldPos, Quaternion.identity, transform);
+                // The prefab's own rotation, not identity: whatever orientation the cell sprite is authored at
+                // lives on the prefab transform, and identity silently discards it. It is zero today, since the
+                // sprite and HexMathUtils.ProjectToWorldSpace are both flat-top — but the correction for any
+                // future mismatch belongs on the prefab, and this is the line that would apply it.
+                CellView tileInstance = Instantiate(_cellPrefab, worldPos, _cellPrefab.transform.rotation, transform);
                 tileInstance.InitializeCell(cell.Coordinates);
 
                 Color color = cell.IsBlocked ? _blockedCellColor : _defaultCellColor;

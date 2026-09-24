@@ -4,10 +4,15 @@ using GooGalaxy.Runtime.Board.Views;
 using GooGalaxy.Runtime.Cards.Presenters;
 using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Presenters;
+using GooGalaxy.Runtime.Input.Controllers;
+using GooGalaxy.Runtime.Input.Interfaces;
+using GooGalaxy.Runtime.Input.Presenters;
+using GooGalaxy.Runtime.Input.Views;
 using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.UI.Presenters;
+using GooGalaxy.Runtime.UI.Views;
 using VContainer;
 using VContainer.Unity;
 
@@ -53,6 +58,10 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<GridView>().AsSelf();
             builder.RegisterComponentInHierarchy<UnitView>().AsSelf();
             builder.RegisterComponentInHierarchy<MatchHudPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<MatchHudView>().AsSelf().As<IHandGestureSource>();
+            builder.RegisterComponentInHierarchy<PointerInputView>().AsSelf().As<IPointerSource>();
+            builder.RegisterComponentInHierarchy<TargetHighlightPresenter>().AsSelf();
+            builder.RegisterComponentInHierarchy<MatchInputController>().AsSelf();
         }
     }
 }

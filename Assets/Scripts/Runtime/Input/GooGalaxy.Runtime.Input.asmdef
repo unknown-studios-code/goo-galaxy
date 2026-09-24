@@ -1,0 +1,23 @@
+{
+  "name": "GooGalaxy.Runtime.Input",
+  "rootNamespace": "GooGalaxy.Runtime.Input",
+  "defineConstraints": [],
+  "excludePlatforms": [],
+  "includePlatforms": [],
+  "precompiledReferences": [],
+  "references": [
+    "GooGalaxy.Runtime.Shared",
+    "GooGalaxy.Runtime.Board",
+    "GooGalaxy.Runtime.Match",
+    "GooGalaxy.Runtime.Cards",
+    "GooGalaxy.Runtime.Deck",
+    "GooGalaxy.Runtime.UI",
+    "Unity.InputSystem",
+    "VContainer"
+  ],
+  "versionDefines": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false,
+  "overrideReferences": false
+}

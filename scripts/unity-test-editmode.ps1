@@ -28,9 +28,15 @@ if (-not (Invoke-UnityRecompileGate)) {
 $scope = if ($Filter) { "EditMode -- filter '$Filter'" } else { 'EditMode' }
 Write-UnityHeader "unity run_tests -- $scope"
 
+# A whole-suite run is scoped to this project's own test assembly. Packages listed under
+# "testables" in Packages/manifest.json (com.unity.inputsystem, for InputTestFixture) put their
+# own tests in the runner too, and one of them rewrites the active input backend in Player
+# Settings. A name filter can still reach those tests if it happens to match one.
 $commandArgs = @('--mode', 'editor')
 if ($Filter) { $commandArgs += @('--filter', $Filter) }
-else { Write-Host '      running (about 12s for 519 tests; the Editor must stay open)...' -ForegroundColor DarkGray }
+else { $commandArgs += @('--filter', 'GooGalaxy.Tests.EditMode', '--filter_type', 'assembly') }
+
+Write-Host '      dispatched; running synchronously...' -ForegroundColor DarkGray
 
 $sw = [Diagnostics.Stopwatch]::StartNew()
 $envelope = Invoke-UnityCommand -Command 'run_tests' -Arguments $commandArgs -TimeoutSeconds 900
@@ -40,7 +46,7 @@ if (-not (Test-UnityEnvelope -Envelope $envelope -What "run_tests ($scope)")) { 
 
 $result = $envelope.data.result
 if ($null -eq $result -or -not $result.PSObject.Properties['Summary']) {
-    Write-Host 'FAIL  response carried no Summary -- refusing to report a result.' -ForegroundColor Red
+    Write-Host 'FAIL  the result carried no summary -- refusing to report a result.' -ForegroundColor Red
     exit 1
 }
 
@@ -51,8 +57,8 @@ $summary = $result.Summary
 if ($summary.Total -le 0) {
     if ($Filter) {
         Write-Host "FAIL  no test matched '$Filter'." -ForegroundColor Red
-        Write-Host '      The filter is a partial match on the full test name, e.g. Board.HexTests'
-        Write-Host '      or HexTests.Neighbours_AtEdge_ReturnsThree. List candidates with:'
+        Write-Host '      The filter is a partial match on the full test name, e.g. HexMathUtilsTests.'
+        Write-Host '      List candidates with:'
         Write-Host '        unity cmd list_tests --mode editor --no-banner --json'
     }
     else {

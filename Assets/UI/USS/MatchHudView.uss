@@ -200,6 +200,58 @@
   border-left-color: var(--color-urgent);
 }
 
+/* Discard zone. Positioned out of flow so arming it never reflows the bottom bar: toggling display, as this
+   used to, puts the element into layout and shoves the hand strip down from under whatever finger is mid-drag
+   on a card the instant a drag starts, and leaves worldBound stale for the first frame after arming — long
+   enough for a fast drag-and-release to miss the zone entirely. Absolute positioning removes both problems at
+   once, since the box is computed once, up front, and never moves: it is anchored from the bottom of the
+   bottom bar's padding box by the hand strip's own height plus the same gap the strip sits below it, which is
+   exactly where the zone used to land back in flow. The hit test is screen-space math against worldBound,
+   never picking, so this element carries no interaction of its own — the lime border is Radioactive Lime, the
+   palette's critical-UI colour, standing in for the box-shadow glow USS cannot express. */
+/* Fills the whole bar above the hand rather than sitting as a band inside it. The zone only exists for the
+   couple of seconds a card is in the air, so occluding the score, the emote button and the gauge costs nothing
+   — and a target the width and height of the bar is one a thumb mid-drag cannot miss. A 48dp band left the
+   upper half of the bar looking droppable while rejecting every release into it. */
+.discard-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: var(--size-card-slot-height);
+  margin-bottom: var(--space-xs);
+  visibility: hidden;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-surface-critical);
+  border-top-width: var(--border-thick);
+  border-right-width: var(--border-thick);
+  border-bottom-width: var(--border-thick);
+  border-left-width: var(--border-thick);
+  border-top-color: var(--color-critical);
+  border-right-color: var(--color-critical);
+  border-bottom-color: var(--color-critical);
+  border-left-color: var(--color-critical);
+  border-radius: var(--radius-m);
+}
+
+/* Named rather than left as a bare tinted box: the zone only exists for the seconds a card is in the air, so it
+   has to be readable at a glance with a finger already over it. Critical Lime is this palette's Energy colour,
+   which is also what the discard actually costs. */
+.discard-zone__label {
+  font-size: var(--font-size-body);
+  color: var(--color-critical);
+  -unity-font-style: bold;
+  -unity-text-align: middle-center;
+}
+
+/* Visibility only — never display. The box already exists at rest so worldBound is correct on the very frame
+   this class is added, and toggling it moves nothing else in the bottom bar because the zone was never in
+   flow to begin with. */
+.discard-zone--armed {
+  visibility: visible;
+}
+
 /* Hand */
 .hand-strip {
   flex-direction: row;

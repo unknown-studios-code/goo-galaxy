@@ -57,7 +57,7 @@ runs:
 
     - name: Build Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac != 'true' }}
-      uses: game-ci/unity-builder@d829bfc901f2347c8fe18898f06712b66916ef42 # v5
+      uses: game-ci/unity-builder@eb1b9fba120c6e62c9fb7a7a81d6c107ce004c45 # v6.0.0
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
@@ -66,10 +66,13 @@ runs:
         targetPlatform: ${{ inputs.target-platform }}
         unityVersion: ${{ inputs.unity-version }}
         versioning: None
+        # Pinned, not 'latest': resolving 'latest' calls the GitHub API unauthenticated, and shared
+        # macOS runners exhaust that rate limit (403). Review it when unity-builder is bumped.
+        cliVersion: v0.1.69
 
     - name: Build Android player
       if: ${{ inputs.android-export-type != '' }}
-      uses: game-ci/unity-builder@d829bfc901f2347c8fe18898f06712b66916ef42 # v5
+      uses: game-ci/unity-builder@eb1b9fba120c6e62c9fb7a7a81d6c107ce004c45 # v6.0.0
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
@@ -79,10 +82,11 @@ runs:
         unityVersion: ${{ inputs.unity-version }}
         androidExportType: ${{ inputs.android-export-type }}
         versioning: None
+        cliVersion: v0.1.69
 
     - name: Build macOS-backed Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac == 'true' }}
-      uses: game-ci/unity-builder@d829bfc901f2347c8fe18898f06712b66916ef42 # v5
+      uses: game-ci/unity-builder@eb1b9fba120c6e62c9fb7a7a81d6c107ce004c45 # v6.0.0
       env:
         UNITY_LICENSE: ${{ inputs.unity-license }}
         UNITY_EMAIL: ${{ inputs.unity-email }}
@@ -92,6 +96,7 @@ runs:
         unityVersion: ${{ inputs.unity-version }}
         cacheUnityInstallationOnMac: true
         versioning: None
+        cliVersion: v0.1.69
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v7

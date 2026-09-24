@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using GooGalaxy.Runtime.AI.Models;
+using GooGalaxy.Runtime.Match.Models;
 
 namespace GooGalaxy.Runtime.AI.Interfaces
 {

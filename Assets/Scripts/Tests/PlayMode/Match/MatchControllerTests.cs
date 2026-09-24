@@ -38,6 +38,16 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private const int PollFrameBudget = 20000;
         private const string TroopCardId = "troop_alpha";
 
+        // PERF: this fixture is bounded by wall-clock waits, not by work — every test drives a countdown and/or
+        // a Standard clock through real elapsed time. Mirrors MatchOvertimeTests' own acceleration and its choice
+        // of 10 rather than 100: Time.maximumDeltaTime clamps the *unscaled* frame delta before timeScale
+        // multiplies it, so a higher factor risks a single hitching frame overshooting a tick boundary. Every
+        // wait in this fixture is either an exact whole-second countdown tick (safe under any factor, since each
+        // tick is its own discrete one-second await rather than an accumulated threshold) or a plain "eventually"
+        // poll, so nothing here carries MatchOvertimeTests' own reason to stop short of 100 — 10 is kept anyway,
+        // for the same margin and so a future test added here does not have to re-derive the reasoning.
+        private const float AcceleratedTimeScale = 10f;
+
         private readonly List<Object> _spawned = new();
 
         private GameObject _boardGO;
@@ -54,6 +64,8 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [SetUp]
         public void SetUp()
         {
+            Time.timeScale = AcceleratedTimeScale;
+
             _gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
             _gridLayout.SetAuthoredData(BoardRadius);
             _spawned.Add(_gridLayout);
@@ -85,6 +97,10 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [TearDown]
         public void TearDown()
         {
+            // Restored first, before anything here can throw: timeScale is global process state, so a fixture
+            // that left it accelerated would silently speed up every test that ran after it.
+            Time.timeScale = 1f;
+
             MatchEvents.ResetEvents();
 
             foreach (Object created in _spawned)
