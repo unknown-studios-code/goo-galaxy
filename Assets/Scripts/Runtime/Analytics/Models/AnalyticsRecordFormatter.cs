@@ -43,6 +43,7 @@ namespace GooGalaxy.Runtime.Analytics.Models
         public const string AbilityResolvedEventName = "ability_resolved";
         public const string CardDiscardedEventName = "card_discarded";
         public const string PhaseChangedEventName = "phase_changed";
+        public const string MoveExecutedEventName = "move_executed";
 
         private const string VersionKey = "v";
         private const string TimestampKey = "t";
@@ -63,6 +64,10 @@ namespace GooGalaxy.Runtime.Analytics.Models
         private const string DestroyedKey = "destroyed";
         private const string SlotKey = "slot";
         private const string PhaseKey = "phase";
+        private const string MoveKey = "move";
+        private const string SourceHexQKey = "sq";
+        private const string SourceHexRKey = "sr";
+        private const string UnitKey = "unit";
         private const string WinnerKey = "winner";
         private const string PlayerOneScoreKey = "p1_score";
         private const string PlayerTwoScoreKey = "p2_score";
@@ -109,6 +114,7 @@ namespace GooGalaxy.Runtime.Analytics.Models
                 AnalyticsEventType.AbilityResolved => AbilityResolvedEventName,
                 AnalyticsEventType.CardDiscarded => CardDiscardedEventName,
                 AnalyticsEventType.PhaseChanged => PhaseChangedEventName,
+                AnalyticsEventType.MoveExecuted => MoveExecutedEventName,
                 _ => null,
             };
         }
@@ -225,6 +231,16 @@ namespace GooGalaxy.Runtime.Analytics.Models
                 case AnalyticsEventType.PhaseChanged:
                     AppendEnumField(builder, PhaseKey, GetName((MatchPhase)record.SlotA), record.SlotA);
                     break;
+
+                case AnalyticsEventType.MoveExecuted:
+                    AppendIntegerField(builder, PlayerKey, record.PlayerId);
+                    AppendEnumField(builder, MoveKey, GetName((MoveType)record.SlotA), record.SlotA);
+                    AppendIntegerField(builder, SourceHexQKey, record.SourceHex.Q);
+                    AppendIntegerField(builder, SourceHexRKey, record.SourceHex.R);
+                    AppendIntegerField(builder, HexQKey, record.Hex.Q);
+                    AppendIntegerField(builder, HexRKey, record.Hex.R);
+                    AppendIntegerField(builder, UnitKey, record.SlotB);
+                    break;
             }
         }
 
@@ -283,6 +299,17 @@ namespace GooGalaxy.Runtime.Analytics.Models
                 CardPlayResult.BoardUnavailable => nameof(CardPlayResult.BoardUnavailable),
                 CardPlayResult.ResolverBusy => nameof(CardPlayResult.ResolverBusy),
                 CardPlayResult.MatchNotInPlay => nameof(CardPlayResult.MatchNotInPlay),
+                _ => null,
+            };
+        }
+
+        private static string GetName(MoveType value)
+        {
+            return value switch
+            {
+                MoveType.Deploy => nameof(MoveType.Deploy),
+                MoveType.Clone => nameof(MoveType.Clone),
+                MoveType.Jump => nameof(MoveType.Jump),
                 _ => null,
             };
         }

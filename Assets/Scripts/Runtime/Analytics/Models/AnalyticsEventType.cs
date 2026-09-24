@@ -46,5 +46,11 @@ namespace GooGalaxy.Runtime.Analytics.Models
 
         /// <summary>The match entered a new phase. Carries the phase.</summary>
         PhaseChanged = 11,
+
+        /// <summary>
+        /// A unit already on the board executed a Clone or a Jump. Carries the move type, the source and target
+        /// hexes, and the unit that moved. A Deploy is not captured here — see <see cref="CardDeployed" />.
+        /// </summary>
+        MoveExecuted = 12,
     }
 }

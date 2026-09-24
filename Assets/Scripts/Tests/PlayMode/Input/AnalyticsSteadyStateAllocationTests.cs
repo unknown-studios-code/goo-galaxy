@@ -18,6 +18,7 @@ using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Input.Controllers;
 using GooGalaxy.Runtime.Input.Presenters;
 using GooGalaxy.Runtime.Match.Controllers;
+using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
@@ -31,10 +32,12 @@ using Object = UnityEngine.Object;
 namespace GooGalaxy.Tests.PlayMode.Input
 {
     // Flow-named per Rule 2's PlayMode exception in unity-testing.md: no single public method is under test.
-    // Two distinct claims are measured here, so the fixture covers both. The gesture cycle proves that a
+    // Three distinct claims are measured here, so the fixture covers all three. The gesture cycle proves that a
     // subscribed AnalyticsController's mere presence does not make the input path allocate — that gesture
     // cancels and never reaches capture. The card-play cycle proves the opposite direction: that the capture
     // path AnalyticsController.HandleCardPlayAttempted actually runs is allocation-free once it genuinely fires.
+    // The move-executed cycle proves the same for AnalyticsController.HandleMoveExecuted, raised directly on the
+    // bus with a reused command and coordinate list so only the handler's own capture is measured.
     [TestFixture]
     public class AnalyticsSteadyStateAllocationTests
     {
@@ -74,6 +77,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private AnalyticsController _analyticsController;
         private FakeAnalyticsSink _analyticsSink;
         private Vector2 _anchorScreenPosition;
+        private MoveCommand _moveExecutedCommand;
+        private List<HexCoordinates> _moveExecutedAffectedCoordinates;
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -164,6 +169,25 @@ namespace GooGalaxy.Tests.PlayMode.Input
             Assert.That(_analyticsSink.WrittenRecords.Count, Is.GreaterThanOrEqualTo(MeasuredIterations));
         }
 
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedMoveExecutedWithAnalyticsControllerSubscribed_AllocatesNoManagedMemory()
+        {
+            // GIVEN — a reused Jump command and a reused affected-coordinates list, raised directly on the bus so
+            // only AnalyticsController.HandleMoveExecuted's own capture is measured, independent of the board and
+            // input harness the other two cycles in this fixture exercise.
+            _moveExecutedCommand = new MoveCommand(MoveType.Jump, _anchorHex, new HexCoordinates(1, 0), LocalPlayerId, AnchorUnitId);
+            _moveExecutedAffectedCoordinates = new List<HexCoordinates> { _anchorHex, new(1, 0) };
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunMoveExecutedCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunMoveExecutedCycle, NotAllocatingGCMemory());
+        }
+
         private static CardDataSO CreateTroopCard()
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
@@ -202,6 +226,16 @@ namespace GooGalaxy.Tests.PlayMode.Input
             for (int i = 0; i < MeasuredIterations; i++)
             {
                 _deployController.TryPlayCard(LocalPlayerId, 0, Array.Empty<HexCoordinates>());
+            }
+        }
+
+        // Raised directly rather than through a real move, since only AnalyticsController's own handler is under
+        // measurement here; the command and list are built once in the test and reused every iteration.
+        private void RunMoveExecutedCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                MatchEvents.RaiseMoveExecuted(_moveExecutedCommand, _moveExecutedAffectedCoordinates);
             }
         }
 

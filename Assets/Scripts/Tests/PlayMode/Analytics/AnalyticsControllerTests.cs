@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using GooGalaxy.Runtime.Analytics.Controllers;
 using GooGalaxy.Runtime.Analytics.Models;
+using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
@@ -132,6 +133,79 @@ namespace GooGalaxy.Tests.PlayMode.Analytics
 
             // WHEN
             MatchEvents.RaiseMatchStarted(new MatchConfiguration(1));
+            controller.Flush();
+
+            // THEN
+            Assert.That((sink.OpenedSessions.Count, sink.WrittenRecords.Count), Is.EqualTo((0, 0)));
+        }
+
+        [Test]
+        public void HandleMoveExecuted_CloneRaised_CapturesRecordWithCorrectFields()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildEnabledController();
+            var command = new MoveCommand(MoveType.Clone, new HexCoordinates(0, 0), new HexCoordinates(1, -1), LocalPlayerId, 5);
+            var affectedCoordinates = new List<HexCoordinates> { command.Target };
+
+            // WHEN
+            MatchEvents.RaiseMoveExecuted(command, affectedCoordinates);
+            controller.Flush();
+
+            // THEN
+            AnalyticsRecord moveRecord = sink.WrittenRecords.Single(record => record.Type == AnalyticsEventType.MoveExecuted);
+            Assert.That(
+                (moveRecord.PlayerId, moveRecord.SlotA, moveRecord.SlotB, moveRecord.Hex, moveRecord.SourceHex),
+                Is.EqualTo((LocalPlayerId, (int)MoveType.Clone, 5, command.Target, command.Source))
+            );
+        }
+
+        [Test]
+        public void HandleMoveExecuted_JumpRaised_CapturesRecordWithCorrectFields()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildEnabledController();
+            var command = new MoveCommand(MoveType.Jump, new HexCoordinates(0, 0), new HexCoordinates(2, -1), LocalPlayerId, 7);
+            var affectedCoordinates = new List<HexCoordinates> { command.Source, command.Target };
+
+            // WHEN
+            MatchEvents.RaiseMoveExecuted(command, affectedCoordinates);
+            controller.Flush();
+
+            // THEN
+            AnalyticsRecord moveRecord = sink.WrittenRecords.Single(record => record.Type == AnalyticsEventType.MoveExecuted);
+            Assert.That(
+                (moveRecord.PlayerId, moveRecord.SlotA, moveRecord.SlotB, moveRecord.Hex, moveRecord.SourceHex),
+                Is.EqualTo((LocalPlayerId, (int)MoveType.Jump, 7, command.Target, command.Source))
+            );
+        }
+
+        [Test]
+        public void HandleMoveExecuted_DeployRaised_DoesNotCaptureARecord()
+        {
+            // GIVEN — Deploy is already reported by card_deployed; recording it again here would double-count
+            // every troop placement in the session.
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildEnabledController();
+            var command = MoveCommand.ForDeploy(new HexCoordinates(0, 0), LocalPlayerId);
+            var affectedCoordinates = new List<HexCoordinates> { command.Target };
+
+            // WHEN
+            MatchEvents.RaiseMoveExecuted(command, affectedCoordinates);
+            controller.Flush();
+
+            // THEN
+            Assert.That(sink.WrittenRecords.Any(record => record.Type == AnalyticsEventType.MoveExecuted), Is.False);
+        }
+
+        [Test]
+        public void MoveExecuted_IsEnabledFalse_NothingReachesTheSink()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildDisabledController();
+            var command = new MoveCommand(MoveType.Jump, new HexCoordinates(0, 0), new HexCoordinates(1, 0), LocalPlayerId, 5);
+            var affectedCoordinates = new List<HexCoordinates> { command.Target };
+
+            // WHEN
+            MatchEvents.RaiseMoveExecuted(command, affectedCoordinates);
             controller.Flush();
 
             // THEN

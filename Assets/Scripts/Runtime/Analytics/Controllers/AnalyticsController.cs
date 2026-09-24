@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using GooGalaxy.Runtime.Analytics.Interfaces;
 using GooGalaxy.Runtime.Analytics.Models;
+using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Types;
@@ -39,7 +40,19 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
     /// <para>
     /// Gameplay assemblies never reference this one; the dependency runs only from here to <c>Runtime.Shared</c>.
     /// </para>
+    /// <para>
+    /// <b>It subscribes ahead of the board controllers that resolve a move's consequences.</b> A Clone or Jump's
+    /// <c>MatchEvents.MoveExecuted</c> is dispatched to every subscriber in registration order, and the board's own
+    /// <c>ConversionController</c> is one of them — its handler resolves conversions and raises
+    /// <c>ConversionResolved</c>/<c>LandingResolved</c> synchronously, from inside that same dispatch, before
+    /// <c>MoveExecuted</c> returns to its next subscriber. Left at the default execution order, this component could
+    /// be enabled after <c>ConversionController</c> and would then capture <c>conversion_event</c> before
+    /// <c>move_executed</c> for the very same move — the session file would read the cause after its effect. The
+    /// execution order below is what keeps <c>HandleMoveExecuted</c> first in that invocation list, the same
+    /// technique <c>MatchHudPresenter</c> uses to guarantee it sees <c>MatchStarted</c> before anything else does.
+    /// </para>
     /// </remarks>
+    [DefaultExecutionOrder(-100)]
     [DisallowMultipleComponent]
     public class AnalyticsController : MonoBehaviour
     {
@@ -106,6 +119,7 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
             MatchEvents.ScoreChanged += HandleScoreChanged;
             MatchEvents.MatchEnded += HandleMatchEnded;
             MatchEvents.EnergySpent += HandleEnergySpent;
+            MatchEvents.MoveExecuted += HandleMoveExecuted;
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
             MatchEvents.CardDiscarded += HandleCardDiscarded;
@@ -119,6 +133,7 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
             MatchEvents.ScoreChanged -= HandleScoreChanged;
             MatchEvents.MatchEnded -= HandleMatchEnded;
             MatchEvents.EnergySpent -= HandleEnergySpent;
+            MatchEvents.MoveExecuted -= HandleMoveExecuted;
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
             MatchEvents.CardDiscarded -= HandleCardDiscarded;
@@ -334,6 +349,24 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
             }
 
             Capture(AnalyticsRecord.ForEnergySpent(GetTimestamp(), _matchOrdinal, playerId, energyAfter, wasSuccessful));
+        }
+
+        // A Deploy is not captured here: card_deployed already reports it, with the card and cost this event does
+        // not carry, and a Deploy has no source hex or acting unit of its own to name. Only the two moves a unit
+        // already on the board can make — Clone and Jump — are recorded through this handler.
+        private void HandleMoveExecuted(MoveCommand command, IReadOnlyList<HexCoordinates> affectedCoordinates)
+        {
+            if (!IsCapturing)
+            {
+                return;
+            }
+
+            if (command.Type == MoveType.Deploy)
+            {
+                return;
+            }
+
+            Capture(AnalyticsRecord.ForMoveExecuted(GetTimestamp(), _matchOrdinal, in command));
         }
 
         private void HandleConversionResolved(int actingPlayerId, ConversionResult result)

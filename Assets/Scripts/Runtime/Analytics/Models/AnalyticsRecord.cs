@@ -1,3 +1,4 @@
+using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Types;
 
 namespace GooGalaxy.Runtime.Analytics.Models
@@ -33,6 +34,7 @@ namespace GooGalaxy.Runtime.Analytics.Models
             long durationMs = 0L,
             CardId card = default,
             HexCoordinates hex = default,
+            HexCoordinates sourceHex = default,
             bool flag = false
         )
         {
@@ -49,6 +51,7 @@ namespace GooGalaxy.Runtime.Analytics.Models
             DurationMs = durationMs;
             Card = card;
             Hex = hex;
+            SourceHex = sourceHex;
             Flag = flag;
         }
 
@@ -82,6 +85,9 @@ namespace GooGalaxy.Runtime.Analytics.Models
         internal CardId Card { get; }
 
         internal HexCoordinates Hex { get; }
+
+        /// <remarks>The source hex of a <see cref="AnalyticsEventType.MoveExecuted" />; <c>default</c> for every other event.</remarks>
+        internal HexCoordinates SourceHex { get; }
 
         internal bool Flag { get; }
 
@@ -247,6 +253,30 @@ namespace GooGalaxy.Runtime.Analytics.Models
         public static AnalyticsRecord ForPhaseChanged(long timestampMs, int matchOrdinal, MatchPhase phase)
         {
             return new AnalyticsRecord(AnalyticsEventType.PhaseChanged, timestampMs, matchOrdinal, 0, slotA: (int)phase);
+        }
+
+        /// <summary>Builds the record for a Clone or a Jump executed by a unit already on the board.</summary>
+        /// <remarks>
+        /// Not used for a Deploy: <see cref="ForCardDeployed" /> already reports card plays, and a Deploy's source
+        /// equals its target — see <see cref="MoveCommand.ForDeploy" /> — so it has nothing distinct to report here.
+        /// <see cref="Controllers.AnalyticsController" /> is what tells the two apart
+        /// before calling either factory.
+        /// </remarks>
+        /// <param name="timestampMs">Milliseconds since the session opened.</param>
+        /// <param name="matchOrdinal">The ordinal of the match being played.</param>
+        /// <param name="command">The move that was executed.</param>
+        public static AnalyticsRecord ForMoveExecuted(long timestampMs, int matchOrdinal, in MoveCommand command)
+        {
+            return new AnalyticsRecord(
+                AnalyticsEventType.MoveExecuted,
+                timestampMs,
+                matchOrdinal,
+                command.PlayerId,
+                slotA: (int)command.Type,
+                slotB: command.UnitId,
+                hex: command.Target,
+                sourceHex: command.Source
+            );
         }
     }
 }

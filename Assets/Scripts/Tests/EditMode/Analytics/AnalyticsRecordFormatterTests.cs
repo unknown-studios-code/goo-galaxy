@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using GooGalaxy.Runtime.Analytics.Models;
+using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
@@ -207,6 +208,60 @@ namespace GooGalaxy.Tests.EditMode.Analytics
 
             // THEN
             Assert.That(builder.ToString(), Is.EqualTo("{\"v\":1,\"t\":10000,\"m\":1,\"e\":\"phase_changed\",\"phase\":\"Overtime\"}\n"));
+        }
+
+        [Test]
+        public void TryAppendLine_MoveExecutedClone_WritesExactGoldenLine()
+        {
+            // GIVEN
+            var builder = new StringBuilder();
+            var command = new MoveCommand(MoveType.Clone, new HexCoordinates(0, 0), new HexCoordinates(1, -1), 1, 5);
+            var record = AnalyticsRecord.ForMoveExecuted(11000L, 1, in command);
+
+            // WHEN
+            AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
+
+            // THEN
+            Assert.That(
+                builder.ToString(),
+                Is.EqualTo("{\"v\":1,\"t\":11000,\"m\":1,\"e\":\"move_executed\",\"p\":1,\"move\":\"Clone\",\"sq\":0,\"sr\":0,\"q\":1,\"r\":-1,\"unit\":5}\n")
+            );
+        }
+
+        [Test]
+        public void TryAppendLine_MoveExecutedJump_WritesExactGoldenLine()
+        {
+            // GIVEN
+            var builder = new StringBuilder();
+            var command = new MoveCommand(MoveType.Jump, new HexCoordinates(0, 0), new HexCoordinates(2, -1), 1, 7);
+            var record = AnalyticsRecord.ForMoveExecuted(12345L, 1, in command);
+
+            // WHEN
+            AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
+
+            // THEN
+            Assert.That(
+                builder.ToString(),
+                Is.EqualTo("{\"v\":1,\"t\":12345,\"m\":1,\"e\":\"move_executed\",\"p\":1,\"move\":\"Jump\",\"sq\":0,\"sr\":0,\"q\":2,\"r\":-1,\"unit\":7}\n")
+            );
+        }
+
+        [Test]
+        public void TryAppendLine_MoveExecutedOutOfRangeMoveType_WritesTheBareNumber()
+        {
+            // GIVEN
+            var builder = new StringBuilder();
+            var command = new MoveCommand((MoveType)999, default, default, 0, 0);
+            var record = AnalyticsRecord.ForMoveExecuted(0L, 0, in command);
+
+            // WHEN
+            AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
+
+            // THEN
+            Assert.That(
+                builder.ToString(),
+                Is.EqualTo("{\"v\":1,\"t\":0,\"m\":0,\"e\":\"move_executed\",\"p\":0,\"move\":999,\"sq\":0,\"sr\":0,\"q\":0,\"r\":0,\"unit\":0}\n")
+            );
         }
 
         [Test]
