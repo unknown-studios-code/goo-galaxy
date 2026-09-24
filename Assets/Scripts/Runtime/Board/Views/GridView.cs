@@ -79,7 +79,11 @@ namespace GooGalaxy.Runtime.Board.Views
             {
                 Vector3 worldPos = HexMathUtils.ProjectToWorldSpace(cell.Coordinates, _cellVisualSize);
 
-                CellView tileInstance = Instantiate(_cellPrefab, worldPos, Quaternion.identity, transform);
+                // The prefab's own rotation, not identity: whatever orientation the cell sprite is authored at
+                // lives on the prefab transform, and identity silently discards it. It is zero today, since the
+                // sprite and HexMathUtils.ProjectToWorldSpace are both flat-top — but the correction for any
+                // future mismatch belongs on the prefab, and this is the line that would apply it.
+                CellView tileInstance = Instantiate(_cellPrefab, worldPos, _cellPrefab.transform.rotation, transform);
                 tileInstance.InitializeCell(cell.Coordinates);
 
                 Color color = cell.IsBlocked ? _blockedCellColor : _defaultCellColor;

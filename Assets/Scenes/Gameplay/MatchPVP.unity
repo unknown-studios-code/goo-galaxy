@@ -217,80 +217,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.InputActionReference
   m_Asset: {fileID: -944628639613478452, guid: 0d09fd0f37b619748b140e1337161d9a, type: 3}
   m_ActionId: 0489e84a-4833-4c40-bfae-cea84b696689
---- !u!1 &1423994324
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1423994325}
-  - component: {fileID: 1423994326}
-  - component: {fileID: 1423994327}
-  - component: {fileID: 1423994328}
-  m_Layer: 0
-  m_Name: MatchInput
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1423994325
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1423994324}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 8417368693333397524}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1423994326
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1423994324}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 536ca779ab72b7043a6101f8cc20775b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GooGalaxy.Runtime.Input::GooGalaxy.Runtime.Input.Views.PointerInputView
-  _inputActions: {fileID: -944628639613478452, guid: 6a186fe078a0e664c8a4ecabe847b26e, type: 3}
---- !u!114 &1423994327
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1423994324}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8ebe6716464898145bf76d01dfafa4c4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GooGalaxy.Runtime.Input::GooGalaxy.Runtime.Input.Presenters.TargetHighlightPresenter
---- !u!114 &1423994328
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1423994324}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1a258a8778b837e4e899411878944535, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: GooGalaxy.Runtime.Input::GooGalaxy.Runtime.Input.Presenters.MatchInputPresenter
-  _boardCamera: {fileID: 8417368693333397526}
-  _hudDocument: {fileID: 8417368693333397525}
-  _dragThresholdInDp: 8
 --- !u!114 &1454665941
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -466,33 +392,9 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 5027721480659943343, guid: f1ac57d7220f22045b06e970d8b480fc, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1423994325}
+    m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f1ac57d7220f22045b06e970d8b480fc, type: 3}
---- !u!4 &8417368693333397524 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 5027721480659943343, guid: f1ac57d7220f22045b06e970d8b480fc, type: 3}
-  m_PrefabInstance: {fileID: 8417368693333397523}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &8417368693333397525 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4503376799778139099, guid: f1ac57d7220f22045b06e970d8b480fc, type: 3}
-  m_PrefabInstance: {fileID: 8417368693333397523}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: 
-  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
---- !u!20 &8417368693333397526 stripped
-Camera:
-  m_CorrespondingSourceObject: {fileID: 7719816221845921434, guid: f1ac57d7220f22045b06e970d8b480fc, type: 3}
-  m_PrefabInstance: {fileID: 8417368693333397523}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

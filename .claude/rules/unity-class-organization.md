@@ -42,6 +42,8 @@ This file establishes the file layout and a strict, predictable member order for
 
 Within fields and methods, order by accessibility: `public` → `internal` → `protected` → `private`. Static members precede instance members of the same accessibility. `override` and `partial` are not accessibility levels — order them by their declared accessibility, and keep an override immediately after the members it relates to. Explicit interface implementations go last among methods, just before nested types.
 
+Overloads are not an exception. Overloads of one name that differ in accessibility each sit in their own accessibility block rather than side by side, so the order stays mechanical enough for an auditor to check without judgment. `GestureClassifier` is the worked case: its two `internal` test-seam overloads, which take the DPI as a parameter instead of reading `Screen.dpi`, sit apart from the `public` and `private` overloads they share a name with.
+
 ### Rule 2 — MonoBehaviour
 
 1. Constants and `static readonly` fields (shader IDs, cached hashes)

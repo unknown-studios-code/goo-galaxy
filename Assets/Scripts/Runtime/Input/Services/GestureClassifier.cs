@@ -1,3 +1,4 @@
+using GooGalaxy.Runtime.Input.Models;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Input.Services
@@ -117,24 +118,5 @@ namespace GooGalaxy.Runtime.Input.Services
         {
             return HasLeftThreshold(pressOrigin, currentPosition, dragThresholdInDp, Screen.dpi);
         }
-    }
-
-    /// <summary>What a pointer reading means for the live selection.</summary>
-    public enum PointerGesture
-    {
-        /// <summary>Nothing to act on.</summary>
-        None = 0,
-
-        /// <summary>The pointer has not travelled far enough to be a drag. A selection it ends stays live.</summary>
-        Tap = 1,
-
-        /// <summary>The pointer has travelled past the threshold and is carrying the selection.</summary>
-        Drag = 2,
-
-        /// <summary>The pointer came up over something the selection can commit onto.</summary>
-        Commit = 3,
-
-        /// <summary>The pointer came up somewhere the selection cannot commit onto, abandoning it.</summary>
-        Cancel = 4,
     }
 }

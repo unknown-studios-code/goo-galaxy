@@ -91,8 +91,9 @@ namespace GooGalaxy.Runtime.Input.Views
 
         protected void OnDisable()
         {
-            _matchMap?.Disable();
-
+            // Unsubscribed before the map is disabled, not after: disabling a map cancels any press still in
+            // progress, and a HandlePressCanceled still listening would raise the PointerReleased this type
+            // promises OnDisable never raises.
             if (_pointerPressAction != null)
             {
                 _pointerPressAction.started -= HandlePressStarted;
@@ -103,6 +104,8 @@ namespace GooGalaxy.Runtime.Input.Views
             {
                 _pointerPositionAction.performed -= HandlePositionPerformed;
             }
+
+            _matchMap?.Disable();
 
             // A finger still down when the component goes away would otherwise leave the latch set, and the
             // first press of the next enable would be dropped as a second finger.

@@ -44,6 +44,15 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private const int SettleFrameBudget = 60;
         private const string TroopCardId = "troop_alpha";
 
+        // PERF: this fixture is bounded by wall-clock waits, not by work — every test drives a countdown and/or
+        // a Standard clock through real elapsed time before a catch-up window can even open. Mirrors
+        // MatchOvertimeTests' own acceleration and its choice of 10 rather than 100, for the same margin against
+        // Time.maximumDeltaTime clamping the *unscaled* frame delta before timeScale multiplies it. Every wait
+        // here is a level check against an accumulating event list (WaitForCatchUpEvent scans the whole history,
+        // not just what arrived this frame) rather than an exact tick count, so compressing an open-then-close
+        // pair into fewer frames changes nothing this fixture asserts.
+        private const float AcceleratedTimeScale = 10f;
+
         // Short enough to actually run the Standard clock out inside a fixture's timeout. BuildConfig's fixed
         // 60s Standard phase, used by every other test in this file, starts a match already inside Standard and
         // never waits for its clock to expire.
@@ -95,6 +104,8 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [SetUp]
         public void SetUp()
         {
+            Time.timeScale = AcceleratedTimeScale;
+
             _gridLayout = ScriptableObject.CreateInstance<GridLayoutSO>();
             _gridLayout.SetAuthoredData(BoardRadius);
             _spawned.Add(_gridLayout);
@@ -130,6 +141,10 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [TearDown]
         public void TearDown()
         {
+            // Restored first, before anything here can throw: timeScale is global process state, so a fixture
+            // that left it accelerated would silently speed up every test that ran after it.
+            Time.timeScale = 1f;
+
             MatchEvents.ResetEvents();
 
             foreach (Object created in _spawned)

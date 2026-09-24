@@ -41,20 +41,4 @@ namespace GooGalaxy.Runtime.Input.Models
         /// <summary>Unscaled seconds since startup at which this reading was taken.</summary>
         public float TimestampSeconds { get; }
     }
-
-    /// <summary>What the pointer was doing when a <see cref="PointerSample" /> was taken.</summary>
-    public enum PointerPhase
-    {
-        /// <summary>The pointer is not down. What a default-constructed sample carries.</summary>
-        None = 0,
-
-        /// <summary>The pointer has just gone down.</summary>
-        Pressed = 1,
-
-        /// <summary>The pointer has moved while down.</summary>
-        Moved = 2,
-
-        /// <summary>The pointer has just come up.</summary>
-        Released = 3,
-    }
 }

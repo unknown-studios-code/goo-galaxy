@@ -32,6 +32,7 @@ Transform:
   - {fileID: 2110493677433849232}
   - {fileID: 9123632441512416536}
   - {fileID: 4628674685021782712}
+  - {fileID: 4569341703446735556}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4451200285573538336
@@ -117,6 +118,80 @@ MonoBehaviour:
   m_EditorClassIdentifier: GooGalaxy.Runtime.UI::GooGalaxy.Runtime.UI.Presenters.MatchHudPresenter
   _view: {fileID: 5351570870918039144}
   _isOpponentScoreShown: 1
+--- !u!1 &4537850980624683173
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4569341703446735556}
+  - component: {fileID: 1198937223071129156}
+  - component: {fileID: 3044191910144589792}
+  - component: {fileID: 6032937800185769786}
+  m_Layer: 0
+  m_Name: MatchInput
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4569341703446735556
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4537850980624683173}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5027721480659943343}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1198937223071129156
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4537850980624683173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 536ca779ab72b7043a6101f8cc20775b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Input::GooGalaxy.Runtime.Input.Views.PointerInputView
+  _inputActions: {fileID: -944628639613478452, guid: 6a186fe078a0e664c8a4ecabe847b26e, type: 3}
+--- !u!114 &3044191910144589792
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4537850980624683173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ebe6716464898145bf76d01dfafa4c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Input::GooGalaxy.Runtime.Input.Presenters.TargetHighlightPresenter
+--- !u!114 &6032937800185769786
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4537850980624683173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a258a8778b837e4e899411878944535, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Input::GooGalaxy.Runtime.Input.Controllers.MatchInputController
+  _boardCamera: {fileID: 7719816221845921434}
+  _hudDocument: {fileID: 4503376799778139099}
+  _dragThresholdInDp: 8
 --- !u!1 &4773588180273311662
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,10 +1,17 @@
+using System;
+using System.Collections.Generic;
+using GooGalaxy.Runtime.Input.Controllers;
+using GooGalaxy.Runtime.Input.Presenters;
+using GooGalaxy.Runtime.Input.Views;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.EditMode.Core
 {
@@ -22,6 +29,15 @@ namespace GooGalaxy.Tests.EditMode.Core
     /// <see cref="EventSystem" /> owns, so without one no <c>PointerDownEvent</c> reaches any element: the HUD
     /// rendered perfectly and every card in the hand was inert. The whole PlayMode suite passed throughout,
     /// because every other fixture builds its own GameObjects and none of them ever opens a shipped scene.
+    /// </para>
+    /// <para>
+    /// <b>Scenes are discovered, not listed.</b> <c>MatchInput</c> — carrying <see cref="PointerInputView" />,
+    /// <see cref="TargetHighlightPresenter" /> and <see cref="MatchInputController" /> — moved out of both
+    /// gameplay scenes and into <c>MatchRoot.prefab</c>, so a scene now earns the input checks below by
+    /// referencing that prefab rather than by being named in a hardcoded array. A gameplay scene added later
+    /// inherits every check here the moment it drags the prefab in, which is the defect class this fixture
+    /// exists to catch: one a brand-new scene reproduces most easily by omitting a piece of wiring nobody
+    /// remembered to add by hand.
     /// </para>
     /// <para>
     /// <b>EditMode, not PlayMode, and that is the point.</b> The question is static — does this asset contain
@@ -44,13 +60,49 @@ namespace GooGalaxy.Tests.EditMode.Core
 
         private const string MatchPvpScenePath = "Assets/Scenes/Gameplay/MatchPVP.unity";
 
-        // Every scene a player can be dropped into. A gameplay scene added later inherits all three checks by
-        // being listed here, which is the point — the defect this fixture exists for is one a brand-new scene
-        // reproduces most easily.
-        private static readonly string[] _gameplayScenePaths = { MatchPveScenePath, MatchPvpScenePath };
+        private const string GameplayScenesFolder = "Assets/Scenes";
+
+        private const string MatchRootPrefabPath = "Assets/Prefabs/Match/MatchRoot.prefab";
 
         [Test]
-        public void GameplayScene_EveryAuthoredScene_CarriesExactlyOneEventSystem([ValueSource(nameof(_gameplayScenePaths))] string scenePath)
+        public void DiscoverGameplayScenePaths_Always_IsNotEmpty()
+        {
+            // GIVEN
+
+            // WHEN
+            string[] discovered = DiscoverGameplayScenePaths();
+
+            // THEN — an empty ValueSource below would produce zero test cases and a silent green, so the
+            // discovery mechanism itself needs a test that fails loudly instead.
+            Assert.That(discovered, Is.Not.Empty);
+        }
+
+        [Test]
+        public void DiscoverGameplayScenePaths_Always_ContainsMatchPve()
+        {
+            // GIVEN
+
+            // WHEN
+            string[] discovered = DiscoverGameplayScenePaths();
+
+            // THEN
+            Assert.That(discovered, Does.Contain(MatchPveScenePath));
+        }
+
+        [Test]
+        public void DiscoverGameplayScenePaths_Always_ContainsMatchPvp()
+        {
+            // GIVEN
+
+            // WHEN
+            string[] discovered = DiscoverGameplayScenePaths();
+
+            // THEN
+            Assert.That(discovered, Does.Contain(MatchPvpScenePath));
+        }
+
+        [Test]
+        public void GameplayScene_EveryDiscoveredScene_CarriesExactlyOneEventSystem([ValueSource(nameof(DiscoverGameplayScenePaths))] string scenePath)
         {
             // GIVEN
             Scene scene = OpenSceneForInspection(scenePath, out bool wasAlreadyOpen);
@@ -70,7 +122,9 @@ namespace GooGalaxy.Tests.EditMode.Core
         }
 
         [Test]
-        public void GameplayScene_EveryAuthoredScene_DrivesItsEventSystemWithTheInputSystemModule([ValueSource(nameof(_gameplayScenePaths))] string scenePath)
+        public void GameplayScene_EveryDiscoveredScene_DrivesItsEventSystemWithTheInputSystemModule(
+            [ValueSource(nameof(DiscoverGameplayScenePaths))] string scenePath
+        )
         {
             // GIVEN
             Scene scene = OpenSceneForInspection(scenePath, out bool wasAlreadyOpen);
@@ -91,7 +145,9 @@ namespace GooGalaxy.Tests.EditMode.Core
         }
 
         [Test]
-        public void GameplayScene_EveryAuthoredScene_ResolvesThePointAndClickActionsItsModuleNeeds([ValueSource(nameof(_gameplayScenePaths))] string scenePath)
+        public void GameplayScene_EveryDiscoveredScene_ResolvesThePointAndClickActionsItsModuleNeeds(
+            [ValueSource(nameof(DiscoverGameplayScenePaths))] string scenePath
+        )
         {
             // GIVEN
             Scene scene = OpenSceneForInspection(scenePath, out bool wasAlreadyOpen);
@@ -132,7 +188,7 @@ namespace GooGalaxy.Tests.EditMode.Core
         }
 
         [Test]
-        public void GameplayScene_EveryAuthoredScene_CarriesAUIDocumentWithMarkupAssigned([ValueSource(nameof(_gameplayScenePaths))] string scenePath)
+        public void GameplayScene_EveryDiscoveredScene_CarriesAUIDocumentWithMarkupAssigned([ValueSource(nameof(DiscoverGameplayScenePaths))] string scenePath)
         {
             // GIVEN
             Scene scene = OpenSceneForInspection(scenePath, out bool wasAlreadyOpen);
@@ -151,6 +207,134 @@ namespace GooGalaxy.Tests.EditMode.Core
             {
                 CloseSceneIfOpenedHere(scene, wasAlreadyOpen);
             }
+        }
+
+        [Test]
+        public void GameplayScene_EveryDiscoveredScene_CarriesExactlyOneOfEachInputComponent([ValueSource(nameof(DiscoverGameplayScenePaths))] string scenePath)
+        {
+            // GIVEN
+            Scene scene = OpenSceneForInspection(scenePath, out bool wasAlreadyOpen);
+
+            try
+            {
+                // WHEN — the three components MatchInput carries, now arriving through the MatchRoot.prefab
+                // instance rather than being hand-placed in the scene.
+                (int pointerViews, int highlightPresenters, int inputControllers) counts = (
+                    FindComponentsInScene<PointerInputView>(scene).Length,
+                    FindComponentsInScene<TargetHighlightPresenter>(scene).Length,
+                    FindComponentsInScene<MatchInputController>(scene).Length
+                );
+
+                // THEN
+                Assert.That(
+                    counts,
+                    Is.EqualTo((1, 1, 1)),
+                    $"'{scenePath}' must carry exactly one PointerInputView, TargetHighlightPresenter and MatchInputController."
+                );
+            }
+            finally
+            {
+                CloseSceneIfOpenedHere(scene, wasAlreadyOpen);
+            }
+        }
+
+        [Test]
+        public void MatchRootPrefab_Always_CarriesExactlyOneOfEachInputComponent()
+        {
+            // GIVEN
+            GameObject prefabRoot = LoadMatchRootPrefab();
+
+            // WHEN
+            (int pointerViews, int highlightPresenters, int inputControllers) counts = (
+                prefabRoot.GetComponentsInChildren<PointerInputView>(true).Length,
+                prefabRoot.GetComponentsInChildren<TargetHighlightPresenter>(true).Length,
+                prefabRoot.GetComponentsInChildren<MatchInputController>(true).Length
+            );
+
+            // THEN
+            Assert.That(
+                counts,
+                Is.EqualTo((1, 1, 1)),
+                $"'{MatchRootPrefabPath}' must carry exactly one PointerInputView, TargetHighlightPresenter and MatchInputController."
+            );
+        }
+
+        [Test]
+        public void MatchRootPrefab_MatchInputController_HasBoardCameraAssignedToACameraInsideThePrefab()
+        {
+            // GIVEN
+            GameObject prefabRoot = LoadMatchRootPrefab();
+            MatchInputController controller = prefabRoot.GetComponentInChildren<MatchInputController>(true);
+            Assert.That(controller, Is.Not.Null, $"Precondition: '{MatchRootPrefabPath}' must carry a MatchInputController.");
+            var serializedController = new SerializedObject(controller);
+
+            // WHEN
+            Object boardCamera = serializedController.FindProperty("_boardCamera").objectReferenceValue;
+
+            // THEN
+            Assert.That(
+                IsComponentInsidePrefab(boardCamera, prefabRoot),
+                Is.True,
+                $"'{MatchRootPrefabPath}' must assign MatchInputController._boardCamera to a camera inside the prefab."
+            );
+        }
+
+        [Test]
+        public void MatchRootPrefab_MatchInputController_HasHudDocumentAssignedToADocumentInsideThePrefab()
+        {
+            // GIVEN
+            GameObject prefabRoot = LoadMatchRootPrefab();
+            MatchInputController controller = prefabRoot.GetComponentInChildren<MatchInputController>(true);
+            Assert.That(controller, Is.Not.Null, $"Precondition: '{MatchRootPrefabPath}' must carry a MatchInputController.");
+            var serializedController = new SerializedObject(controller);
+
+            // WHEN
+            Object hudDocument = serializedController.FindProperty("_hudDocument").objectReferenceValue;
+
+            // THEN
+            Assert.That(
+                IsComponentInsidePrefab(hudDocument, prefabRoot),
+                Is.True,
+                $"'{MatchRootPrefabPath}' must assign MatchInputController._hudDocument to a UIDocument inside the prefab."
+            );
+        }
+
+        [Test]
+        public void MatchRootPrefab_PointerInputView_HasInputActionsAssigned()
+        {
+            // GIVEN
+            GameObject prefabRoot = LoadMatchRootPrefab();
+            PointerInputView view = prefabRoot.GetComponentInChildren<PointerInputView>(true);
+            Assert.That(view, Is.Not.Null, $"Precondition: '{MatchRootPrefabPath}' must carry a PointerInputView.");
+            var serializedView = new SerializedObject(view);
+
+            // WHEN
+            Object inputActions = serializedView.FindProperty("_inputActions").objectReferenceValue;
+
+            // THEN
+            Assert.That(inputActions, Is.Not.Null, $"'{MatchRootPrefabPath}' must assign PointerInputView._inputActions.");
+        }
+
+        // Every scene under Assets/Scenes that drags MatchRoot.prefab in, directly or through a nested prefab —
+        // the defect this fixture exists for is one a brand-new scene reproduces most easily, and a scene earns
+        // every check below by referencing the prefab rather than by being named here.
+        private static string[] DiscoverGameplayScenePaths()
+        {
+            string[] sceneGuids = AssetDatabase.FindAssets("t:Scene", new[] { GameplayScenesFolder });
+            var matchingScenePaths = new List<string>();
+
+            for (int i = 0; i < sceneGuids.Length; i++)
+            {
+                string scenePath = AssetDatabase.GUIDToAssetPath(sceneGuids[i]);
+                string[] dependencies = AssetDatabase.GetDependencies(scenePath, true);
+
+                if (Array.IndexOf(dependencies, MatchRootPrefabPath) >= 0)
+                {
+                    matchingScenePaths.Add(scenePath);
+                }
+            }
+
+            return matchingScenePaths.ToArray();
         }
 
         // Additive rather than single, so a scene the developer already had open is not closed underneath them.
@@ -178,7 +362,7 @@ namespace GooGalaxy.Tests.EditMode.Core
         private static T[] FindComponentsInScene<T>(Scene scene)
             where T : Component
         {
-            var found = new System.Collections.Generic.List<T>();
+            var found = new List<T>();
 
             foreach (GameObject root in scene.GetRootGameObjects())
             {
@@ -186,6 +370,22 @@ namespace GooGalaxy.Tests.EditMode.Core
             }
 
             return found.ToArray();
+        }
+
+        private static GameObject LoadMatchRootPrefab()
+        {
+            GameObject prefabRoot = AssetDatabase.LoadAssetAtPath<GameObject>(MatchRootPrefabPath);
+            Assert.That(prefabRoot, Is.Not.Null, $"Test setup expects '{MatchRootPrefabPath}' to exist and import as a prefab.");
+
+            return prefabRoot;
+        }
+
+        // A serialized reference is "inside the prefab" when the object it points at is a Component whose
+        // transform lives under the prefab's own root — as opposed to null, or a reference into a different
+        // asset or scene entirely.
+        private static bool IsComponentInsidePrefab(Object candidate, GameObject prefabRoot)
+        {
+            return (candidate is Component component) && component.transform.IsChildOf(prefabRoot.transform);
         }
     }
 }

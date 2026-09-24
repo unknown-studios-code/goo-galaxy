@@ -66,9 +66,10 @@ namespace GooGalaxy.Runtime.Input.Controllers
     /// before anything is highlighted, because cluster targeting is out of scope for the MVP —
     /// <see cref="InteractionState.SpellTargeting" /> is the seam it attaches to. That filter is also what makes
     /// retaining <see cref="_options" /> across frames safe despite <see cref="MoveOption.TargetCluster" />'s own
-    /// warning against it: <see cref="IsOptionForSource" /> drops every Protocol option before anything reads
-    /// one, and a board move carries a null cluster, so the borrowed buffer a re-enumeration may have already
-    /// cleared is never dereferenced. Admitting Protocol options here later would make that retention a live bug.
+    /// warning against it: <see cref="SelectionTargetResolver.IsOptionForSource" /> drops every Protocol option
+    /// before anything reads one, and a board move carries a null cluster, so the borrowed buffer a
+    /// re-enumeration may have already cleared is never dereferenced. Admitting Protocol options here later
+    /// would make that retention a live bug.
     /// </para>
     /// <para>
     /// <b>Which seat it accepts input for.</b> Read from <c>MatchEvents.MatchStarted</c> through
@@ -288,28 +289,6 @@ namespace GooGalaxy.Runtime.Input.Controllers
             CancelSelection();
         }
 
-        // The Protocol filter and the per-path filter in one place, so the set that is highlighted and the set a
-        // commit is looked up in cannot drift apart.
-        private static bool IsOptionForSource(in MoveOption option, in InteractionSource source)
-        {
-            if (option.Kind != MoveOptionKind.BoardMove)
-            {
-                return false;
-            }
-
-            if (source.Kind == InteractionSourceKind.BoardUnit)
-            {
-                return option.UnitId == source.UnitId;
-            }
-
-            if (source.Kind == InteractionSourceKind.HandSlot)
-            {
-                return option.MoveType == MoveType.Deploy && option.SlotIndex == source.SlotIndex;
-            }
-
-            return false;
-        }
-
         private void CancelSelection()
         {
             _stateMachine.Cancel();
@@ -361,15 +340,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
                 _options
             );
 
-            for (int i = 0; i < _options.Count; i++)
-            {
-                MoveOption option = _options[i];
-
-                if (IsOptionForSource(in option, in source))
-                {
-                    _targets.Add(option.Target);
-                }
-            }
+            SelectionTargetResolver.CollectTargets(_options, in source, _targets);
 
             ApplyTargets();
         }
@@ -411,38 +382,11 @@ namespace GooGalaxy.Runtime.Input.Controllers
             ResolveTargets();
         }
 
-        // Scanned rather than looked up, because the option set is small and keying it by target would need a
-        // dictionary rebuilt on every enumeration. The first match wins, and the enumerator adds a unit's Clone
-        // options ahead of its Jump options — so a hex both could reach commits as the Clone. That is this input
-        // layer's own tie-break, not one the GDD states a preference on: a Clone nets +1 unit against a Jump's
-        // net +0, which is the GDD-backed reason to favor it, but which of two equally legal landings a bare tap
-        // should prefer is a choice this layer is making, not one it is reading off the rules.
-        private bool TryFindOptionForTarget(HexCoordinates target, out MoveOption option)
-        {
-            option = default;
-
-            InteractionSource source = _stateMachine.Source;
-
-            for (int i = 0; i < _options.Count; i++)
-            {
-                MoveOption candidate = _options[i];
-
-                if (candidate.Target != target || !IsOptionForSource(in candidate, in source))
-                {
-                    continue;
-                }
-
-                option = candidate;
-
-                return true;
-            }
-
-            return false;
-        }
-
         private void CommitTarget(HexCoordinates target)
         {
-            if (!TryFindOptionForTarget(target, out MoveOption option))
+            InteractionSource source = _stateMachine.Source;
+
+            if (!SelectionTargetResolver.TryFindOptionForTarget(_options, in source, target, out MoveOption option))
             {
                 CancelSelection();
 

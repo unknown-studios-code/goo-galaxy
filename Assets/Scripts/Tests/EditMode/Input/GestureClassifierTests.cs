@@ -1,3 +1,4 @@
+using GooGalaxy.Runtime.Input.Models;
 using GooGalaxy.Runtime.Input.Services;
 using NUnit.Framework;
 using UnityEngine;
