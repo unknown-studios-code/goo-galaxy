@@ -23,6 +23,7 @@
     "VContainer",
     "UnityEngine.TestRunner",
     "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework",
     "UnityEngine.UI"
   ],
   "versionDefines": [],

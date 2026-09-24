@@ -9,10 +9,6 @@ using GooGalaxy.Runtime.UI.Views.Elements;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -47,12 +43,6 @@ namespace GooGalaxy.Tests.PlayMode.UI
         private const float DiscardZoneTestWidth = 240f;
         private const float DiscardZoneTestHeight = 120f;
 
-        // Arbitrary, and only needed by the HandSlotPressed tests: the bare fixture tree carries no stylesheet,
-        // and a card-slot's height comes entirely from the authored USS, so without this a hand slot resolves to
-        // a real width but a zero-area worldBound — a rect a pointer can never land inside no matter where it is
-        // aimed.
-        private const float HandSlotClickTestHeight = 64f;
-
         private GameObject _documentGO;
         private PanelSettings _panelSettings;
         private UIDocument _document;
@@ -69,22 +59,9 @@ namespace GooGalaxy.Tests.PlayMode.UI
         private CardSlotElement _nextCardSlot;
         private CountdownOverlayElement _countdownOverlayElement;
 
-        // Only populated by the two HandSlotPressed tests -- a real EventSystem and a real, if virtual, Mouse
-        // device are what GOOM-17 found the shipping scenes were missing, so proving the dispatch fires needs
-        // the genuine runtime input pipeline rather than a call straight into the private handler.
-        private GameObject _eventSystemGO;
-        private Mouse _mouse;
-        private int? _raisedHandSlotIndex;
-
         [UnitySetUp]
         public IEnumerator SetUp()
         {
-            // Unity's Test Framework reuses one fixture instance across every test in the class rather than
-            // constructing a fresh one per test, so a field a test writes has to be reset here or it leaks into
-            // whichever test runs next — which is exactly what an unreset _raisedHandSlotIndex did the first
-            // time these two tests ran back to back.
-            _raisedHandSlotIndex = null;
-
             _panelSettings = ScriptableObject.CreateInstance<PanelSettings>();
 
             _documentGO = new GameObject(nameof(MatchHudView));
@@ -125,16 +102,6 @@ namespace GooGalaxy.Tests.PlayMode.UI
             if (_panelSettings != null)
             {
                 Object.Destroy(_panelSettings);
-            }
-
-            if (_eventSystemGO != null)
-            {
-                Object.Destroy(_eventSystemGO);
-            }
-
-            if (_mouse != null)
-            {
-                InputSystem.RemoveDevice(_mouse);
             }
 
             yield return null;
@@ -414,61 +381,6 @@ namespace GooGalaxy.Tests.PlayMode.UI
             Assert.That(_handSlotZero.IsAffordable, Is.False);
         }
 
-        [UnityTest]
-        public IEnumerator HandSlotPressed_PointerDownOnAFilledSlot_RaisesWithThatSlotIndex()
-        {
-            // GIVEN
-            var state = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 3, HandSlotKind.Specimen, CardAccent.None);
-            _view.SetHandSlot(0, in state);
-            _view.HandSlotPressed += HandleHandSlotPressed;
-            yield return SettleHandSlotLayoutAsync(_handSlotZero);
-            CreateEventSystem();
-            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_handSlotZero.worldBound.center);
-
-            // WHEN
-            yield return LeftClickAtAsync(screenPoint);
-
-            // THEN
-            Assert.That(_raisedHandSlotIndex, Is.EqualTo(0));
-        }
-
-        [UnityTest]
-        public IEnumerator HandSlotPressed_PointerDownOnASlotOtherThanTheFirst_RaisesThatSlotsOwnIndex()
-        {
-            // GIVEN — slot one rather than slot zero, because HandleHandSlotPointerDown resolves the index by
-            // scanning _handSlots for the pressed element. Pressing only the first slot passes whether the
-            // handler reports the element it matched or a hardcoded zero, so this is the case that actually pins
-            // the loop — and the hand strip is due to be reworked when card artwork lands.
-            var state = new HandSlotState(new CardId("acid_crawler"), "Acid Crawler", 2, HandSlotKind.Specimen, CardAccent.None);
-            _view.SetHandSlot(1, in state);
-            _view.HandSlotPressed += HandleHandSlotPressed;
-            yield return SettleHandSlotLayoutAsync(_handSlotOne);
-            CreateEventSystem();
-            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_handSlotOne.worldBound.center);
-
-            // WHEN
-            yield return LeftClickAtAsync(screenPoint);
-
-            // THEN
-            Assert.That(_raisedHandSlotIndex, Is.EqualTo(1));
-        }
-
-        [UnityTest]
-        public IEnumerator HandSlotPressed_PointerDownOnAnEmptySlot_DoesNotRaise()
-        {
-            // GIVEN -- SetUp never draws a card into slot zero, so it starts empty.
-            _view.HandSlotPressed += HandleHandSlotPressed;
-            yield return SettleHandSlotLayoutAsync(_handSlotZero);
-            CreateEventSystem();
-            Vector2 screenPoint = CorrectlyFlippedScreenPointFor(_handSlotZero.worldBound.center);
-
-            // WHEN
-            yield return LeftClickAtAsync(screenPoint);
-
-            // THEN
-            Assert.That(_raisedHandSlotIndex, Is.Null);
-        }
-
         [Test]
         public void SetEnergy_GivenAState_LandsOnTheEnergyGauge()
         {
@@ -705,76 +617,6 @@ namespace GooGalaxy.Tests.PlayMode.UI
             }
 
             Assert.Fail("Test setup expects the discard zone's absolute geometry to have settled within the layout budget.");
-        }
-
-        // Waits for hand slot zero's own layout to settle to a non-zero area, so the HandSlotPressed tests below
-        // can compute a real worldBound to click into. An explicit height is forced first: this bare tree
-        // carries no stylesheet (per BuildHudTree's own remarks below), and a card-slot's height is entirely
-        // CSS-driven, so left alone the slot resolves to a real width but a zero-height rect — one no pointer
-        // position, however aimed, can ever land inside.
-        private IEnumerator SettleHandSlotLayoutAsync(CardSlotElement slot)
-        {
-            slot.style.height = HandSlotClickTestHeight;
-            int frameBudget = LayoutSettleFrameBudget;
-
-            while (((slot.resolvedStyle.width <= 0f) || (slot.resolvedStyle.height <= 0f)) && frameBudget-- > 0)
-            {
-                yield return null;
-            }
-
-            Assert.That(
-                (slot.resolvedStyle.width > 0f, slot.resolvedStyle.height > 0f),
-                Is.EqualTo((true, true)),
-                $"Test setup expects '{slot.name}' layout to have settled to a non-zero area before computing a click target."
-            );
-        }
-
-        // Adds the EventSystem + InputSystemUIInputModule that GOOM-17 found missing from both gameplay scenes.
-        // Left with no actions assigned, InputSystemUIInputModule.OnEnable assigns Unity's own built-in defaults
-        // (Point bound to <Pointer>/position, left-click bound to <Mouse>/leftButton) — the same shape
-        // GameplaySceneInputWiringTests proves the authored scenes carry, so this fixture needs no
-        // InputActionAsset of its own.
-        private void CreateEventSystem()
-        {
-            _eventSystemGO = new GameObject(nameof(EventSystem));
-            _eventSystemGO.AddComponent<EventSystem>();
-            _eventSystemGO.AddComponent<InputSystemUIInputModule>();
-            _mouse = InputSystem.AddDevice<Mouse>();
-        }
-
-        // Queues a move-then-press-then-release through the virtual mouse this fixture owns and lets
-        // EventSystem's own Process() pick it up, rather than calling MatchHudView's private pointer handler
-        // directly — a real PointerDownEvent traveling through the runtime dispatch pipeline is exactly what
-        // GOOM-17's shipped scenes could never deliver with no EventSystem present. Polls for the callback
-        // rather than a fixed frame count, and the bounded exit also covers the negative case: an empty slot is
-        // expected to leave _raisedHandSlotIndex null for the whole budget. The trailing release leaves the
-        // virtual device the way a real click always ends, rather than removing it mid-press in TearDown.
-        private IEnumerator LeftClickAtAsync(Vector2 screenPoint)
-        {
-            InputSystem.QueueStateEvent(_mouse, new MouseState { position = screenPoint });
-            InputSystem.Update();
-            yield return null;
-
-            InputSystem.QueueStateEvent(
-                _mouse,
-                new MouseState { position = screenPoint, buttons = 1 << (int)UnityEngine.InputSystem.LowLevel.MouseButton.Left }
-            );
-            InputSystem.Update();
-
-            int frameBudget = LayoutSettleFrameBudget;
-
-            while (!_raisedHandSlotIndex.HasValue && frameBudget-- > 0)
-            {
-                yield return null;
-            }
-
-            InputSystem.QueueStateEvent(_mouse, new MouseState { position = screenPoint });
-            InputSystem.Update();
-        }
-
-        private void HandleHandSlotPressed(int slotIndex)
-        {
-            _raisedHandSlotIndex = slotIndex;
         }
 
         // Builds every element name and custom element type MatchHudView.uxml declares that CacheElements

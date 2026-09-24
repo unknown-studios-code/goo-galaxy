@@ -6,14 +6,13 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.PlayMode.Input
 {
     [TestFixture]
-    public class PointerInputViewTests
+    public class PointerInputViewTests : InputTestFixture
     {
         private const string MatchInputAssetPath = "Assets/Settings/Input/MatchInput.inputactions";
         private const string InputActionsFieldName = "_inputActions";
@@ -29,9 +28,10 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private PointerSample? _lastMovedSample;
         private PointerSample? _lastReleasedSample;
 
-        [SetUp]
-        public void SetUp()
+        public override void Setup()
         {
+            base.Setup();
+
             // Unity's PlayMode test runner reuses one fixture instance across every test in the class, so every
             // field a test can write is reset here rather than relying on a fresh instance per test.
             _lastPressedSample = null;
@@ -53,8 +53,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             serializedView.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        [TearDown]
-        public void TearDown()
+        public override void TearDown()
         {
             if (_viewGO != null)
             {
@@ -70,6 +69,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
             {
                 InputSystem.RemoveDevice(_mouse);
             }
+
+            base.TearDown();
         }
 
         [Test]
@@ -104,7 +105,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
         {
             // GIVEN
             ActivateView();
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // WHEN
             _view.enabled = false;
@@ -119,7 +120,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             // GIVEN
             ActivateView();
             _view.PointerReleased += HandlePointerReleased;
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // WHEN
             _view.enabled = false;
@@ -136,7 +137,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             _view.PointerPressed += HandlePointerPressed;
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // THEN
             Assert.That((_lastPressedSample.Value.ScreenPosition, _lastPressedSample.Value.Phase), Is.EqualTo((_pressPoint, PointerPhase.Pressed)));
@@ -148,10 +149,10 @@ namespace GooGalaxy.Tests.PlayMode.Input
             // GIVEN
             ActivateView();
             _view.PointerMoved += HandlePointerMoved;
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _movePoint, isPressed: true);
+            yield return SendPointerStateAsync(_movePoint, isPressed: true);
 
             // THEN
             Assert.That((_lastMovedSample.Value.ScreenPosition, _lastMovedSample.Value.Phase), Is.EqualTo((_movePoint, PointerPhase.Moved)));
@@ -165,7 +166,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             _view.PointerMoved += HandlePointerMoved;
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _movePoint, isPressed: false);
+            yield return SendPointerStateAsync(_movePoint, isPressed: false);
 
             // THEN
             Assert.That(_lastMovedSample, Is.Null);
@@ -178,7 +179,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             ActivateView();
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _movePoint, isPressed: false);
+            yield return SendPointerStateAsync(_movePoint, isPressed: false);
 
             // THEN
             Assert.That(_view.CurrentScreenPosition, Is.EqualTo(_movePoint));
@@ -190,10 +191,10 @@ namespace GooGalaxy.Tests.PlayMode.Input
             // GIVEN
             ActivateView();
             _view.PointerReleased += HandlePointerReleased;
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: false);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: false);
 
             // THEN
             Assert.That(_lastReleasedSample.Value.Phase, Is.EqualTo(PointerPhase.Released));
@@ -206,7 +207,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             ActivateView();
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // THEN
             Assert.That(_view.IsPointerDown, Is.True);
@@ -217,18 +218,33 @@ namespace GooGalaxy.Tests.PlayMode.Input
         {
             // GIVEN
             ActivateView();
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: true);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
 
             // WHEN
-            yield return SendPointerStateAsync(_mouse, _pressPoint, isPressed: false);
+            yield return SendPointerStateAsync(_pressPoint, isPressed: false);
 
             // THEN
             Assert.That(_view.IsPointerDown, Is.False);
         }
 
-        private static IEnumerator SendPointerStateAsync(Mouse mouse, Vector2 position, bool isPressed)
+        // Drives the fixture's own isolated Mouse through InputTestFixture's Set/Press/Release helpers instead of
+        // a hand-rolled MouseState event: both the position and the button move within one InputSystem.Update()
+        // call, matching the single combined state the production device would report for one physical move-
+        // or-click. [UnityTest] forces every InputTestFixture.Set call to queue rather than update immediately
+        // (see InputTestFixture.Set's IsUnityTest branch), so the Update() below is what actually applies them.
+        private IEnumerator SendPointerStateAsync(Vector2 position, bool isPressed)
         {
-            InputSystem.QueueStateEvent(mouse, new MouseState { position = position, buttons = (ushort)(isPressed ? (1 << (int)MouseButton.Left) : 0) });
+            Set(_mouse.position, position);
+
+            if (isPressed)
+            {
+                Press(_mouse.leftButton);
+            }
+            else
+            {
+                Release(_mouse.leftButton);
+            }
+
             InputSystem.Update();
             yield return null;
         }

@@ -189,6 +189,9 @@ jobs:
           targetPlatform: StandaloneLinux64
           buildMethod: GooGalaxy.Editor.Automation.SolutionSync.Sync
           versioning: None
+          # Pinned, not 'latest': resolving 'latest' calls the GitHub API unauthenticated, and shared
+          # macOS runners exhaust that rate limit (403). Review it when unity-builder is bumped.
+          cliVersion: v0.1.69
           allowDirtyBuild: true
 
       - name: Resolve the Unity editor image

@@ -66,6 +66,10 @@ runs:
         githubToken: ${{ inputs.github-token }}
         checkName: ${{ inputs.check-name }}
         coverageOptions: ${{ inputs.coverage-options }}
+        # Only this project's tests. com.unity.inputsystem is a testable (Packages/manifest.json) so its
+        # InputTestFixture compiles, which also puts the package's own tests in the runner, and one of
+        # them rewrites the active input backend in Player Settings.
+        customParameters: -assemblyNames ${{ inputs.test-mode == 'editmode' && 'GooGalaxy.Tests.EditMode' || 'GooGalaxy.Tests.PlayMode' }}
 
     - name: Upload test results
       uses: actions/upload-artifact@v7

@@ -66,6 +66,9 @@ runs:
         targetPlatform: ${{ inputs.target-platform }}
         unityVersion: ${{ inputs.unity-version }}
         versioning: None
+        # Pinned, not 'latest': resolving 'latest' calls the GitHub API unauthenticated, and shared
+        # macOS runners exhaust that rate limit (403). Review it when unity-builder is bumped.
+        cliVersion: v0.1.69
 
     - name: Build Android player
       if: ${{ inputs.android-export-type != '' }}
@@ -79,6 +82,7 @@ runs:
         unityVersion: ${{ inputs.unity-version }}
         androidExportType: ${{ inputs.android-export-type }}
         versioning: None
+        cliVersion: v0.1.69
 
     - name: Build macOS-backed Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac == 'true' }}
@@ -92,6 +96,7 @@ runs:
         unityVersion: ${{ inputs.unity-version }}
         cacheUnityInstallationOnMac: true
         versioning: None
+        cliVersion: v0.1.69
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v7
