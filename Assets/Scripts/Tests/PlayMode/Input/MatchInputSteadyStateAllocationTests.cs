@@ -20,6 +20,7 @@ using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -149,8 +150,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
                 RunPressDragReleaseCycle();
             }
 
-            // WHEN / THEN — the act is the delegate itself, which the constraint both runs and measures.
-            Assert.That(RunPressDragReleaseCycle, NotAllocatingGCMemory());
+            // WHEN / THEN
+            Assert.That(RunPressDragReleaseCycle, new AllocatesNothingConstraint());
         }
 
         [Test]
@@ -170,7 +171,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             }
 
             // WHEN / THEN
-            Assert.That(RunPressDragOntoTargetAndOffCycle, NotAllocatingGCMemory());
+            Assert.That(RunPressDragOntoTargetAndOffCycle, new AllocatesNothingConstraint());
         }
 
         [Test]
@@ -191,7 +192,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             }
 
             // WHEN / THEN
-            Assert.That(RunHandSlotDragCycle, NotAllocatingGCMemory());
+            Assert.That(RunHandSlotDragCycle, new AllocatesNothingConstraint());
         }
 
         private static CardDataSO CreateTroopCard()
@@ -200,15 +201,6 @@ namespace GooGalaxy.Tests.PlayMode.Input
             card.SetAuthoredData(TroopCardIdValue, TroopCardIdValue, "Test description.", CardType.Troop, TroopEnergyCost, true, true, false, false, 1, null);
 
             return card;
-        }
-
-        // Fully qualified rather than reached through a `using UnityEngine.TestTools.Constraints;`, which would
-        // shadow NUnit.Framework.Is (used unqualified throughout this fixture) — see
-        // MatchHudSteadyStateAllocationTests.NotAllocatingGCMemory for the .ApplyTo() pitfall this static form
-        // sidesteps.
-        private static UnityEngine.TestTools.Constraints.AllocatingGCMemoryConstraint NotAllocatingGCMemory()
-        {
-            return UnityEngine.TestTools.Constraints.ConstraintExtensions.AllocatingGCMemory(Is.Not);
         }
 
         // One full gesture: press selects the anchor unit and highlights its Clone and Jump targets, the drag
