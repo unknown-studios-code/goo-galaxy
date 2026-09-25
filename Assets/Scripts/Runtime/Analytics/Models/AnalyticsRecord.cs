@@ -212,14 +212,16 @@ namespace GooGalaxy.Runtime.Analytics.Models
         /// <param name="timestampMs">Milliseconds since the session opened.</param>
         /// <param name="matchOrdinal">The ordinal of the match being played.</param>
         /// <param name="playerId">The player whose deployment resolved the impacts.</param>
-        /// <param name="affectedUnitCount">How many units an impact applied a status to.</param>
+        /// <param name="affectedOwnCount">How many units the acting player owned among those an impact applied a status to.</param>
+        /// <param name="affectedEnemyCount">How many units another player owned among those an impact applied a status to.</param>
         /// <param name="affectedHexCount">How many hexes had their state changed.</param>
         /// <param name="destroyedUnitCount">How many units a self-destruct impact removed.</param>
         public static AnalyticsRecord ForAbilityResolved(
             long timestampMs,
             int matchOrdinal,
             int playerId,
-            int affectedUnitCount,
+            int affectedOwnCount,
+            int affectedEnemyCount,
             int affectedHexCount,
             int destroyedUnitCount
         )
@@ -229,9 +231,10 @@ namespace GooGalaxy.Runtime.Analytics.Models
                 timestampMs,
                 matchOrdinal,
                 playerId,
-                slotA: affectedUnitCount,
+                slotA: affectedOwnCount,
                 slotB: affectedHexCount,
-                slotC: destroyedUnitCount
+                slotC: destroyedUnitCount,
+                slotD: affectedEnemyCount
             );
         }
 
@@ -253,6 +256,42 @@ namespace GooGalaxy.Runtime.Analytics.Models
         public static AnalyticsRecord ForPhaseChanged(long timestampMs, int matchOrdinal, MatchPhase phase)
         {
             return new AnalyticsRecord(AnalyticsEventType.PhaseChanged, timestampMs, matchOrdinal, 0, slotA: (int)phase);
+        }
+
+        /// <summary>Builds the record for a condition being put on a unit, refreshes included.</summary>
+        /// <param name="timestampMs">Milliseconds since the session opened.</param>
+        /// <param name="matchOrdinal">The ordinal of the match being played.</param>
+        /// <param name="change">The application. Its acting player becomes the record's player.</param>
+        public static AnalyticsRecord ForStatusApplied(long timestampMs, int matchOrdinal, in StatusChange change)
+        {
+            return new AnalyticsRecord(
+                AnalyticsEventType.StatusApplied,
+                timestampMs,
+                matchOrdinal,
+                change.ActingPlayerId,
+                slotA: change.UnitId,
+                slotB: change.OwnerPlayerId,
+                slotC: (int)change.Status,
+                slotD: change.RemainingWindows
+            );
+        }
+
+        /// <summary>Builds the record for a condition running out on a unit.</summary>
+        /// <param name="timestampMs">Milliseconds since the session opened.</param>
+        /// <param name="matchOrdinal">The ordinal of the match being played.</param>
+        /// <param name="change">The expiry. Its owner becomes the record's player, since nobody acted to end it.</param>
+        public static AnalyticsRecord ForStatusExpired(long timestampMs, int matchOrdinal, in StatusChange change)
+        {
+            return new AnalyticsRecord(
+                AnalyticsEventType.StatusExpired,
+                timestampMs,
+                matchOrdinal,
+                change.OwnerPlayerId,
+                slotA: change.UnitId,
+                slotB: change.OwnerPlayerId,
+                slotC: (int)change.Status,
+                slotD: change.RemainingWindows
+            );
         }
 
         /// <summary>Builds the record for a Clone or a Jump executed by a unit already on the board.</summary>
