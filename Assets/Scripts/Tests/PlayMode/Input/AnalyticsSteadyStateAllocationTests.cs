@@ -24,6 +24,7 @@ using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Tests.PlayMode.Analytics;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -141,7 +142,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             }
 
             // WHEN / THEN
-            Assert.That(RunPressDragReleaseCycle, NotAllocatingGCMemory());
+            Assert.That(RunPressDragReleaseCycle, new AllocatesNothingConstraint());
         }
 
         [Test]
@@ -160,7 +161,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             }
 
             // WHEN / THEN
-            Assert.That(RunRejectedCardPlayCycle, NotAllocatingGCMemory());
+            Assert.That(RunRejectedCardPlayCycle, new AllocatesNothingConstraint());
 
             // THEN — the buffer (2048) comfortably holds every record captured above, so nothing auto-flushed
             // mid-measurement; only this explicit Flush() moves them to the sink, at least one per attempt.
@@ -191,7 +192,7 @@ namespace GooGalaxy.Tests.PlayMode.Input
             int writtenBeforeMeasuring = _analyticsSink.WrittenRecords.Count;
 
             // WHEN / THEN
-            Assert.That(RunMoveExecutedCycle, NotAllocatingGCMemory());
+            Assert.That(RunMoveExecutedCycle, new AllocatesNothingConstraint());
 
             // THEN — nothing auto-flushed during the measured run, so the assertion above measured capture alone.
             Assert.That(_analyticsSink.WrittenRecords.Count, Is.EqualTo(writtenBeforeMeasuring), "No flush should have happened during the measured run.");
@@ -203,15 +204,6 @@ namespace GooGalaxy.Tests.PlayMode.Input
             card.SetAuthoredData(TroopCardIdValue, TroopCardIdValue, "Test description.", CardType.Troop, TroopEnergyCost, true, true, false, false, 1, null);
 
             return card;
-        }
-
-        // Fully qualified rather than reached through a `using UnityEngine.TestTools.Constraints;`, which would
-        // shadow NUnit.Framework.Is (used unqualified throughout this fixture) — see
-        // MatchInputSteadyStateAllocationTests.NotAllocatingGCMemory for the .ApplyTo() pitfall this static form
-        // sidesteps.
-        private static UnityEngine.TestTools.Constraints.AllocatingGCMemoryConstraint NotAllocatingGCMemory()
-        {
-            return UnityEngine.TestTools.Constraints.ConstraintExtensions.AllocatingGCMemory(Is.Not);
         }
 
         // One full gesture: press selects the anchor unit and highlights its targets, the drag carries it off
