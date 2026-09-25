@@ -75,6 +75,7 @@ namespace GooGalaxy.Runtime.Analytics.Services
         private readonly Encoder _encoder = _utf8WithoutBom.GetEncoder();
         private readonly string _directoryPath;
         private readonly int _maxSessionFiles;
+        private readonly Action<string> _deleteFile;
 
         private AnalyticsSession _session;
         private string _filePath;
@@ -90,6 +91,13 @@ namespace GooGalaxy.Runtime.Analytics.Services
         /// <exception cref="ArgumentException">The folder path is null or empty.</exception>
         /// <exception cref="ArgumentOutOfRangeException">The file limit is below one.</exception>
         public JsonlFileSink(string directoryPath, int maxSessionFiles = DefaultMaxSessionFiles)
+            : this(directoryPath, maxSessionFiles, File.Delete) { }
+
+        /// <remarks>
+        /// Test seam: <paramref name="deleteFile" /> replaces <see cref="File.Delete" /> for pruning only, so a test can
+        /// make a delete fail on every platform. A real file system refuses to delete an open file on Windows alone.
+        /// </remarks>
+        internal JsonlFileSink(string directoryPath, int maxSessionFiles, Action<string> deleteFile)
         {
             if (string.IsNullOrEmpty(directoryPath))
             {
@@ -103,6 +111,7 @@ namespace GooGalaxy.Runtime.Analytics.Services
 
             _directoryPath = directoryPath;
             _maxSessionFiles = maxSessionFiles;
+            _deleteFile = deleteFile ?? throw new ArgumentNullException(nameof(deleteFile));
         }
 
         public bool IsFaulted => _isFaulted;
@@ -273,11 +282,11 @@ namespace GooGalaxy.Runtime.Analytics.Services
 
         // A file another process holds, or one already gone, is left for the next session's prune rather than
         // costing this session its capture.
-        private static bool TryDeleteFile(string path)
+        private bool TryDeleteFile(string path)
         {
             try
             {
-                File.Delete(path);
+                _deleteFile(path);
 
                 return true;
             }

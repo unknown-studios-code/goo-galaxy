@@ -126,7 +126,6 @@ namespace GooGalaxy.Tests.EditMode.Utils
 
         [Test]
         [Category("Allocation")]
-        [Explicit("GOOM-36 stress: probabilistic by construction")]
         public void ApplyTo_OtherThreadsAllocatingAcrossManyMeasurements_NeverCountsTheirAllocations()
         {
             // GIVEN — the shape that failed Unity's constraint: many near-empty measurements while other threads allocate

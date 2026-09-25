@@ -192,28 +192,24 @@ namespace GooGalaxy.Tests.PlayMode.Analytics
             Assert.That(Path.GetFileName(secondSink.FilePath), Is.EqualTo("session-20260101-000000Z_2.jsonl"));
         }
 
-        // Windows only: the lock below is a FileShare.None handle, and only Windows refuses to delete a file
-        // that is open that way. POSIX unlinks an open file regardless of the handle, file mode, or — as root in
-        // the CI container — directory permissions, so no portable arrangement makes the delete fail there.
-        [Test]
-        [UnityPlatform(RuntimePlatform.WindowsEditor, RuntimePlatform.WindowsPlayer)]
-        public void Write_AnOldFileIsLocked_SkipsItWithoutFaultingTheSession()
+        [TestCase(typeof(IOException))]
+        [TestCase(typeof(UnauthorizedAccessException))]
+        public void Write_PruneDeleteFails_SkipsTheFileWithoutFaultingTheSession(Type deleteFailure)
         {
-            // GIVEN
+            // GIVEN — deletion is faked to fail, because only Windows refuses to delete a file that another handle
+            // holds open; a real lock would make this test run on one platform only.
             Directory.CreateDirectory(_rootDirectory);
-            string lockedPath = Path.Combine(_rootDirectory, "session-20260101-000000Z.jsonl");
-            File.WriteAllText(lockedPath, "{}\n");
-            var sink = new JsonlFileSink(_rootDirectory, maxSessionFiles: 1);
+            string undeletablePath = Path.Combine(_rootDirectory, "session-20260101-000000Z.jsonl");
+            File.WriteAllText(undeletablePath, "{}\n");
+            var sink = new JsonlFileSink(_rootDirectory, 1, path => throw (Exception)Activator.CreateInstance(deleteFailure));
             sink.Open(new AnalyticsSession("20260102-000000Z", "Device", "OS", "1.0"));
-
-            using FileStream lockingHandle = new(lockedPath, FileMode.Open, FileAccess.Read, FileShare.None);
 
             // WHEN
             sink.Write(BuildBufferWithOneRecord());
 
             // THEN — the only prune candidate could not be deleted, so pruning left it in place and the
             // session still captured successfully instead of faulting.
-            Assert.That((sink.IsFaulted, File.Exists(lockedPath)), Is.EqualTo((false, true)));
+            Assert.That((sink.IsFaulted, File.Exists(undeletablePath), File.Exists(sink.FilePath)), Is.EqualTo((false, true, true)));
         }
 
         [Test]
