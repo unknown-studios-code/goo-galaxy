@@ -23,7 +23,7 @@ namespace GooGalaxy.Tests.EditMode.Utils
 
         private Thread _worker;
         private ManualResetEventSlim _workerStarted;
-        private ManualResetEventSlim _workerFinished;
+        private volatile bool _isWorkerRoundFinished;
         private volatile bool _isStopping;
 
         [TearDown]
@@ -39,10 +39,9 @@ namespace GooGalaxy.Tests.EditMode.Utils
             }
 
             _workerStarted?.Dispose();
-            _workerFinished?.Dispose();
             _worker = null;
             _workerStarted = null;
-            _workerFinished = null;
+            _isWorkerRoundFinished = false;
             _stressThreads.Clear();
             _isStopping = false;
             Array.Clear(_sink, 0, _sink.Length);
@@ -114,18 +113,15 @@ namespace GooGalaxy.Tests.EditMode.Utils
         [Timeout(10000)]
         public void ApplyTo_AnotherThreadAllocatesDuringTheDelegate_Succeeds()
         {
-            // GIVEN — one full handshake first, so the measured Set/Wait pair allocates nothing of its own. A counter that
+            // GIVEN — one full handshake first, so the measured signal-and-yield round allocates nothing of its own. A counter that
             // summed every thread would fail here; Unity's constraint passes it too, because its leak is at the switch
             // around the window rather than inside it (see the stress test below).
             StartAllocatingWorker();
             TestDelegate code = RunWorkerRound;
             code();
 
-            // WHEN
-            ConstraintResult result = new AllocatesNothingConstraint().ApplyTo(code);
-
-            // THEN
-            Assert.That(result.IsSuccess, Is.True);
+            // WHEN / THEN — through Assert.That, so a failure names the allocation count
+            Assert.That(code, new AllocatesNothingConstraint());
         }
 
         [Test]
@@ -229,7 +225,6 @@ namespace GooGalaxy.Tests.EditMode.Utils
         private void StartAllocatingWorker()
         {
             _workerStarted = new ManualResetEventSlim(false);
-            _workerFinished = new ManualResetEventSlim(false);
             _worker = new Thread(RunAllocatingWorker) { IsBackground = true };
             _worker.Start();
         }
@@ -251,15 +246,22 @@ namespace GooGalaxy.Tests.EditMode.Utils
                     _workerSink[i] = new object();
                 }
 
-                _workerFinished.Set();
+                _isWorkerRoundFinished = true;
             }
         }
 
         private void RunWorkerRound()
         {
-            _workerFinished.Reset();
+            // The measured thread waits by yielding on a flag rather than on an event: ManualResetEventSlim.Wait creates
+            // its lock object the first time it actually has to block, and that allocation lands on the calling thread,
+            // so a round that happened to block for the first time inside the measurement failed on a loaded CI runner.
+            _isWorkerRoundFinished = false;
             _workerStarted.Set();
-            _workerFinished.Wait();
+
+            while (!_isWorkerRoundFinished)
+            {
+                Thread.Yield();
+            }
         }
 
         private void StartStressThreads()
