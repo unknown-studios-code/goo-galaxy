@@ -7,6 +7,7 @@ using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Board
@@ -23,6 +24,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private const int FirstSpawnedUnitId = 100;
         private const string SourceCardIdValue = "acid_crawler";
         private const MoveType UndefinedMoveType = (MoveType)99;
+        private const int AllocationIterations = 500;
 
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _adjacentCoords = new(1, 0);
@@ -698,28 +700,29 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        [Category("Allocation")]
         public void Resolve_RepeatedJumps_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // jumps it exists to prove are free.
             PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
             var outwardCommand = new MoveCommand(MoveType.Jump, _origin, _distantCoords, ActingPlayerId, ActingUnitId);
             var returnCommand = new MoveCommand(MoveType.Jump, _distantCoords, _origin, ActingPlayerId, ActingUnitId);
-            Resolve(outwardCommand); // Warm-up to exclude JIT allocation from the measurement.
+            Resolve(outwardCommand);
             Resolve(returnCommand);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 500; i++)
-            {
-                Resolve(outwardCommand);
-                Resolve(returnCommand);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "Resolving a Jump allocated memory on a hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        Resolve(outwardCommand);
+                        Resolve(returnCommand);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         private MovementResult Resolve(in MoveCommand command)

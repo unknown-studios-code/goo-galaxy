@@ -1,6 +1,6 @@
-using System;
 using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Match
@@ -10,6 +10,7 @@ namespace GooGalaxy.Tests.EditMode.Match
     {
         private const int PlayerOneId = 1;
         private const int PlayerTwoId = 2;
+        private const int AllocationIterations = 1000;
 
         [TestCase(0, 3, PlayerTwoId)]
         [TestCase(3, 0, PlayerOneId)]
@@ -57,25 +58,21 @@ namespace GooGalaxy.Tests.EditMode.Match
         [Category("Allocation")]
         public void TryResolveDomination_RepeatedCalls_AllocatesNoManagedMemory()
         {
-            // GIVEN
-            MatchOutcomeResolver.TryResolveDomination(3, 0, PlayerOneId, PlayerTwoId, out _); // Warm-up: excludes JIT allocation.
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // resolutions it exists to prove are free.
+            MatchOutcomeResolver.TryResolveDomination(3, 0, PlayerOneId, PlayerTwoId, out _);
             MatchOutcomeResolver.TryResolveDomination(3, 0, PlayerOneId, PlayerTwoId, out _);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                MatchOutcomeResolver.TryResolveDomination(3, 1, PlayerOneId, PlayerTwoId, out _);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
+            // WHEN / THEN
             Assert.That(
-                allocatedAfter - allocatedBefore,
-                Is.EqualTo(0),
-                "TryResolveDomination allocated memory on a path its own <remarks> documents as allocation-free!"
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        MatchOutcomeResolver.TryResolveDomination(3, 1, PlayerOneId, PlayerTwoId, out _);
+                    }
+                },
+                new AllocatesNothingConstraint()
             );
         }
 

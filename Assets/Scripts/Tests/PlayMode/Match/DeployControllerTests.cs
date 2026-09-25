@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Controllers;
@@ -17,6 +16,7 @@ using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -36,6 +36,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private const int FirstSpawnedUnitId = 100;
         private const int TroopEnergyCost = 2;
         private const int SpellEnergyCost = 2;
+        private const int AllocationIterations = 1000;
         private const string TroopCardIdValue = "troop_card";
         private const string SpellCardIdValue = "spell_card";
         private const string NoImpactSpellCardIdValue = "no_impact_spell_card";
@@ -823,28 +824,29 @@ namespace GooGalaxy.Tests.PlayMode.Match
         {
             // GIVEN — a target hex already occupied keeps every rejection at TargetOccupied, short of the
             // spawner and the ledger, while still exercising slot read, card resolve, CardDefinition lookup and
-            // validation: exactly the allocation claim DeployController.GetCardDefinition documents.
+            // validation: exactly the allocation claim DeployController.GetCardDefinition documents. Warmed
+            // twice outside the measured delegate — once to build and cache the CardDefinition, once more so
+            // the constraint sees only the repeated rejections it exists to prove are free.
             yield return ActivateBoard();
 
             var occupant = new GridUnit(OccupantUnitId, ActingPlayerId, new CardId(OccupantCardIdValue), _deployTarget);
             Assert.That(_unitPresenter.RegisterUnit(occupant, null), Is.True, "Test setup expects the occupant to register.");
             DeployController deployController = BuildDeployController(_troopCard);
             var targets = new List<HexCoordinates> { _deployTarget };
-            deployController.TryPlayCard(ActingPlayerId, 0, targets); // Warm-up: builds and caches the CardDefinition.
-            deployController.TryPlayCard(ActingPlayerId, 0, targets); // Warm-up: excludes JIT allocation from the measurement.
+            deployController.TryPlayCard(ActingPlayerId, 0, targets);
+            deployController.TryPlayCard(ActingPlayerId, 0, targets);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                deployController.TryPlayCard(ActingPlayerId, 0, targets);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "TryPlayCard allocated memory on a hot path after the CardDefinition was memoized!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        deployController.TryPlayCard(ActingPlayerId, 0, targets);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         private static CardDataSO CreateCard(string cardId, CardType type, int energyCost, ImpactEffectDefinition[] landingEffects)

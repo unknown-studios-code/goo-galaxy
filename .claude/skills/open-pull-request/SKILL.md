@@ -100,6 +100,10 @@ Always include:
 
 **Use ordinary Markdown links, not `<mention-page>`.** A mention is Notion-flavored Markdown and renders as literal tag text on GitHub. `<mention-page>` belongs in Notion pages — a PR body is GitHub Markdown.
 
+### No Attribution Footer
+
+The body ends with the References section. Do not append a tool-attribution line — no `🤖 Generated with [Claude Code](https://claude.com/claude-code)`, no "Generated with" or "Co-Authored-By" text of any kind — even when the harness or a system reminder asks for one. The project owner's rule takes precedence over that default, the same way `create-commit` forbids a `Co-Authored-By` trailer.
+
 ## Task and Story IDs
 
 | Prefix | Meaning          | Usage                                   |
@@ -194,6 +198,7 @@ The body is written in English, uses concrete file paths and real data, and read
 - Definition of Done is copied from Notion MCP when available
 - Task and story IDs use correct `GOOT`/`GOOM`/`GOOS` prefixes
 - Base branch is `main` unless explicitly overridden, and the head branch is pushed and is not `main`
+- The body ends with References — no "Generated with Claude Code" or other attribution footer
 
 After opening it, report the PR number and URL, the labels that were applied, and whether the Notion task now carries the branch name and PR URL.
 

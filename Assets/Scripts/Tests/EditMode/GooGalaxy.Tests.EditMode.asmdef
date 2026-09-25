@@ -22,6 +22,7 @@
     "GooGalaxy.Runtime.Match",
     "GooGalaxy.Runtime.UI",
     "GooGalaxy.Runtime.Input",
+    "GooGalaxy.Tests.Utils",
     "UnityEngine.TestRunner",
     "Unity.InputSystem"
   ],
