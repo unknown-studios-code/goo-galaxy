@@ -2,8 +2,8 @@ using System.Collections;
 using GooGalaxy.Runtime.Input.Constants;
 using GooGalaxy.Runtime.Input.Models;
 using GooGalaxy.Runtime.Input.Views;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -15,9 +15,6 @@ namespace GooGalaxy.Tests.PlayMode.Input
     [TestFixture]
     public class PointerInputViewTests : InputTestFixture
     {
-        private const string MatchInputAssetPath = "Assets/Settings/Input/MatchInput.inputactions";
-        private const string InputActionsFieldName = "_inputActions";
-
         private static readonly Vector2 _pressPoint = new(100f, 200f);
         private static readonly Vector2 _movePoint = new(150f, 220f);
 
@@ -44,17 +41,12 @@ namespace GooGalaxy.Tests.PlayMode.Input
 
             _mouse = InputSystem.AddDevice<Mouse>();
 
-            InputActionAsset sourceActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(MatchInputAssetPath);
-            Assert.That(sourceActions, Is.Not.Null, $"Test setup expects '{MatchInputAssetPath}' to exist and import as an InputActionAsset.");
-            _inputActions = Object.Instantiate(sourceActions);
+            _inputActions = MatchInputTestActionsFactory.Create();
 
             _viewGO = new GameObject(nameof(PointerInputView));
             _viewGO.SetActive(false);
             _view = _viewGO.AddComponent<PointerInputView>();
-
-            var serializedView = new SerializedObject(_view);
-            serializedView.FindProperty(InputActionsFieldName).objectReferenceValue = _inputActions;
-            serializedView.ApplyModifiedPropertiesWithoutUndo();
+            _view.SetInputActionsForTests(_inputActions);
         }
 
         public override void TearDown()

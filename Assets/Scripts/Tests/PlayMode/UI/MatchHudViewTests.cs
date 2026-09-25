@@ -7,7 +7,6 @@ using GooGalaxy.Runtime.UI.Models;
 using GooGalaxy.Runtime.UI.Views;
 using GooGalaxy.Runtime.UI.Views.Elements;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
@@ -26,10 +25,13 @@ namespace GooGalaxy.Tests.PlayMode.UI
         // Loaded only by the two tests whose whole subject is a CSS cascade rule that no C# drives: the shared
         // fixture tree below carries no stylesheet at all, by design, so the accent- and scrim-only tests never
         // need it. Rule 6's exception in unity-testing.md applies there — the authored stylesheet is what is
-        // under test — but nowhere else in this fixture.
+        // under test — but nowhere else in this fixture. Both consts, and the two tests that read them, are
+        // compiled only for the editor: a player build has no AssetDatabase to load a stylesheet through.
+#if UNITY_EDITOR
         private const string MatchHudViewUssPath = "Assets/UI/USS/MatchHudView.uss";
 
         private const string DesignTokensUssPath = "Assets/UI/USS/DesignTokens.uss";
+#endif
 
         // A row of five flex-grow: 1 slots does not always divide the strip's pixel width evenly; Yoga hands the
         // remainder pixel to some children and not others, so equal width is asserted within this margin rather
@@ -305,6 +307,15 @@ namespace GooGalaxy.Tests.PlayMode.UI
             Assert.That(_handSlotZero.State.DisplayName, Is.EqualTo("Volatile Mass Prime"));
         }
 
+#if UNITY_EDITOR
+        // Both tests below load the authored stylesheets through UnityEditor.AssetDatabase, because a CSS
+        // cascade rule is their whole subject and no C# path drives the behaviour they pin — the fixture's own
+        // bare, unstyled tree (BuildHudTree, below) would pass either one by coincidence of the default layout
+        // rather than by the rule under test. A player build has no AssetDatabase to load a stylesheet through,
+        // and there is no way to assert a real CSS cascade without one, so both tests are compiled only for the
+        // editor rather than kept as no-ops there (unity-testing.md Rule 15 bans [Explicit]/[Ignore] for this;
+        // conditional compilation is a different mechanism — the test does not exist for a platform that cannot
+        // run it, rather than existing and being skipped).
         [UnityTest]
         public IEnumerator HandStrip_LiveStylesheetApplied_AllFiveCardSlotsResolveToEqualWidth()
         {
@@ -313,8 +324,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
             // flex-basis: 0 with no override, so this loads the authored stylesheet. Asserting against the
             // fixture's normally bare tree would pass by coincidence of the default column layout rather than
             // by the rule this test exists to pin.
-            StyleSheet designTokens = AssetDatabase.LoadAssetAtPath<StyleSheet>(DesignTokensUssPath);
-            StyleSheet matchHudView = AssetDatabase.LoadAssetAtPath<StyleSheet>(MatchHudViewUssPath);
+            StyleSheet designTokens = UnityEditor.AssetDatabase.LoadAssetAtPath<StyleSheet>(DesignTokensUssPath);
+            StyleSheet matchHudView = UnityEditor.AssetDatabase.LoadAssetAtPath<StyleSheet>(MatchHudViewUssPath);
             Assert.That(designTokens, Is.Not.Null, $"Test setup expects '{DesignTokensUssPath}' to exist and import as a StyleSheet.");
             Assert.That(matchHudView, Is.Not.Null, $"Test setup expects '{MatchHudViewUssPath}' to exist and import as a StyleSheet.");
             _document.rootVisualElement.styleSheets.Add(designTokens);
@@ -346,8 +357,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
             // in the fixture that loads the authored stylesheet: without the real cascade there is nothing here
             // to prove. Both sheets are loaded together, as MatchHudView.uss's own rules assume DesignTokens.uss
             // is present for its custom properties.
-            StyleSheet designTokens = AssetDatabase.LoadAssetAtPath<StyleSheet>(DesignTokensUssPath);
-            StyleSheet matchHudView = AssetDatabase.LoadAssetAtPath<StyleSheet>(MatchHudViewUssPath);
+            StyleSheet designTokens = UnityEditor.AssetDatabase.LoadAssetAtPath<StyleSheet>(DesignTokensUssPath);
+            StyleSheet matchHudView = UnityEditor.AssetDatabase.LoadAssetAtPath<StyleSheet>(MatchHudViewUssPath);
             Assert.That(designTokens, Is.Not.Null, $"Test setup expects '{DesignTokensUssPath}' to exist and import as a StyleSheet.");
             Assert.That(matchHudView, Is.Not.Null, $"Test setup expects '{MatchHudViewUssPath}' to exist and import as a StyleSheet.");
             _document.rootVisualElement.styleSheets.Add(designTokens);
@@ -368,6 +379,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             // THEN
             Assert.That((handScrim.resolvedStyle.display, queuedScrim.resolvedStyle.display), Is.EqualTo((DisplayStyle.None, DisplayStyle.Flex)));
         }
+#endif
 
         [Test]
         public void SetHandSlotAffordable_GivenFalse_DimsTheTargetSlot()

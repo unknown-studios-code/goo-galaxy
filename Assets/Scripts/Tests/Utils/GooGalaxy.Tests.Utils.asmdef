@@ -9,7 +9,11 @@
   "precompiledReferences": [
     "nunit.framework.dll"
   ],
-  "references": [],
+  "references": [
+    "GooGalaxy.Runtime.Input",
+    "GooGalaxy.Runtime.UI",
+    "Unity.InputSystem"
+  ],
   "versionDefines": [],
   "allowUnsafeCode": false,
   "autoReferenced": false,
