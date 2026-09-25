@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Board
@@ -15,6 +15,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private const int ThirdPlayerId = 3;
         private const int FreezeDuration = 1;
         private const float FuseDurationInSeconds = 3f;
+        private const int AllocationIterations = 1000;
 
         private static readonly HexCoordinates _spawnCoords = new(2, -1);
 
@@ -114,24 +115,25 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        [Category("Allocation")]
         public void ActiveStatuses_ReadRepeatedlyBeforeAnyStatus_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // reads it exists to prove are free.
             GridUnit unit = CreateUnit();
-            _ = unit.ActiveStatuses; // Warm-up to exclude JIT allocation from the measurement.
+            _ = unit.ActiveStatuses;
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                _ = unit.ActiveStatuses;
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "The status list must stay unallocated until a status is applied.");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        _ = unit.ActiveStatuses;
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]

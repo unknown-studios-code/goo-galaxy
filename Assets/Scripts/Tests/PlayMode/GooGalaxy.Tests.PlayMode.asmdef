@@ -21,6 +21,7 @@
     "GooGalaxy.Runtime.UI",
     "GooGalaxy.Runtime.Input",
     "VContainer",
+    "GooGalaxy.Tests.Utils",
     "UnityEngine.TestRunner",
     "Unity.InputSystem",
     "Unity.InputSystem.TestFramework",

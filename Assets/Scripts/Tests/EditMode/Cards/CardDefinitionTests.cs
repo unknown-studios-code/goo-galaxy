@@ -6,6 +6,7 @@ using GooGalaxy.Runtime.Cards.Models;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -14,6 +15,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
     [TestFixture]
     public class CardDefinitionTests
     {
+        private const int AllocationIterations = 1000;
+
         private CardDataSO _sourceCardData;
 
         [TearDown]
@@ -162,23 +165,26 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
+        [Category("Allocation")]
         public void Definition_StoredInMoveCapableRegistry_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // stores it exists to prove are free.
             var source = new FakeCardData("subject_alpha", "Subject Alpha", CardType.Troop, 1, canClone: true, canJump: true, hasArmor: false);
             var definition = new CardDefinition(source);
-            var registry = new Dictionary<int, IMoveCapable>(1) { [0] = definition }; // Warm-up to exclude JIT allocation from the measurement.
+            var registry = new Dictionary<int, IMoveCapable>(1) { [0] = definition };
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < 1000; i++)
-            {
-                registry[0] = definition;
-            }
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0));
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        registry[0] = definition;
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]

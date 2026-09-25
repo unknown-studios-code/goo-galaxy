@@ -4,6 +4,7 @@ using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Board
@@ -11,6 +12,8 @@ namespace GooGalaxy.Tests.EditMode.Board
     [TestFixture]
     public class HexGridTests
     {
+        private const int AllocationIterations = 1000;
+
         [Test]
         public void HexGrid_Generation_Creates61TilesForRadius4()
         {
@@ -119,53 +122,53 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        [Category("Allocation")]
         public void GetNeighbors_OnRepeatedCalls_DoesNotAllocate()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // lookups it exists to prove are free.
             var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var center = new HexCoordinates(0, 0);
             var results = new List<HexCell>(6);
-
             grid.GetNeighbors(center, results);
 
-            // WHEN
-            long startAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                grid.GetNeighbors(center, results);
-            }
-
-            long endAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(endAlloc - startAlloc, Is.EqualTo(0), "GetNeighbors allocated memory on hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        grid.GetNeighbors(center, results);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]
+        [Category("Allocation")]
         public void GetRingCells_OnRepeatedCalls_DoesNotAllocate()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // lookups it exists to prove are free.
             var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var center = new HexCoordinates(0, 0);
             var results = new List<HexCell>(24);
-
             grid.GetRingCells(center, 2, results);
 
-            // WHEN
-            long startAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                grid.GetRingCells(center, 2, results);
-            }
-
-            long endAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(endAlloc - startAlloc, Is.EqualTo(0), "GetRingCells allocated memory on hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        grid.GetRingCells(center, 2, results);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]
@@ -184,28 +187,28 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        [Category("Allocation")]
         public void GetSpiralCells_OnRepeatedCalls_DoesNotAllocate()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // lookups it exists to prove are free.
             var mockLayout = new FakeGridLayout { GridRadius = 4 };
             var grid = new HexGrid(mockLayout);
             var center = new HexCoordinates(0, 0);
             var results = new List<HexCell>(61);
-
             grid.GetSpiralCells(center, 4, results);
 
-            // WHEN
-            long startAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                grid.GetSpiralCells(center, 4, results);
-            }
-
-            long endAlloc = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(endAlloc - startAlloc, Is.EqualTo(0), "GetSpiralCells allocated memory on hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        grid.GetSpiralCells(center, 4, results);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]

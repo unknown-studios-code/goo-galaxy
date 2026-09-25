@@ -11,6 +11,7 @@ using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.Shared.Utils;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Match
@@ -33,6 +34,7 @@ namespace GooGalaxy.Tests.EditMode.Match
         private const int RingCountAtDistanceTwo = 12;
         private const int HazardDuration = 1;
         private const int Seed = 12345;
+        private const int AllocationIterations = 100;
 
         // Pinned rather than re-derived: the cross-platform guarantee is that this exact seed yields this exact
         // stream on every runtime, and re-deriving it from the production code would only prove self-agreement.
@@ -541,25 +543,25 @@ namespace GooGalaxy.Tests.EditMode.Match
         [Category("Allocation")]
         public void Resolve_RepeatedPasses_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — the warm-up grows every buffer to its steady-state capacity, so the constraint sees
+            // only the repeated resolves it exists to prove are free.
             PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
             _capabilities[ActingUnitId] = new FakeMoveCapability(canClone: true, canJump: true);
             _handCards.Add(CreateTroop());
             _handCards.Add(CreateSpell(CreateClusterImpact(ClusterSize, ClusterRadius)));
-            Resolve(); // Warm-up: grows every buffer to its steady-state capacity and excludes JIT allocation.
+            Resolve();
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 100; i++)
-            {
-                Resolve();
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "MoveOptionResolver.Resolve allocated memory on a per-tick path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        Resolve();
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]

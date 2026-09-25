@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using GooGalaxy.Runtime.Board.Interfaces;
 using GooGalaxy.Runtime.Board.Models;
@@ -7,6 +6,7 @@ using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Board
@@ -21,6 +21,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private const int RivalUnitId = 2;
         private const int UnknownUnitId = 99;
         private const int FreezeDuration = 1;
+        private const int AllocationIterations = 1000;
 
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _adjacentCoords = new(1, 0);
@@ -860,49 +861,50 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        [Category("Allocation")]
         public void ValidateClone_RepeatedCalls_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // validations it exists to prove are free.
             PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
             IReadOnlyDictionary<int, GridUnit> units = _units;
             var command = new MoveCommand(MoveType.Clone, _origin, _adjacentCoords, ActingPlayerId, ActingUnitId);
-            _ = MovementValidator.ValidateClone(_grid, units, command, _fullCapability); // Warm-up to exclude JIT allocation from the measurement.
+            _ = MovementValidator.ValidateClone(_grid, units, command, _fullCapability);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                _ = MovementValidator.ValidateClone(_grid, units, command, _fullCapability);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "ValidateClone allocated memory on a hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        _ = MovementValidator.ValidateClone(_grid, units, command, _fullCapability);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]
         [Category("Allocation")]
         public void ValidateDeploy_RepeatedCalls_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // validations it exists to prove are free.
             PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
             var command = MoveCommand.ForDeploy(_adjacentCoords, ActingPlayerId);
-            _ = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability); // Warm-up to exclude JIT allocation.
+            _ = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                _ = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "ValidateDeploy allocated memory on a hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        _ = MovementValidator.ValidateDeploy(_grid, _units, command, _fullCapability);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         private GridUnit PlaceUnit(int unitId, int playerId, HexCoordinates position)

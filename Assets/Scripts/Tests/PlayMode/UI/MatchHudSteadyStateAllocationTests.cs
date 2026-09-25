@@ -13,6 +13,7 @@ using GooGalaxy.Runtime.UI.Constants;
 using GooGalaxy.Runtime.UI.Presenters;
 using GooGalaxy.Runtime.UI.Views;
 using GooGalaxy.Runtime.UI.Views.Elements;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -83,24 +84,18 @@ namespace GooGalaxy.Tests.PlayMode.UI
         [Category("Allocation")]
         public IEnumerator SteadyState_ClockTickingAndEnergyRegenerating_AllocatesNoManagedMemory()
         {
-            // GIVEN — NotAllocatingGCMemory() scopes its measurement to the delegate: only what runs on the
-            // calling thread, inside RaiseSteadyStateEvents' own call stack, counts. EnergyPresenter.Update()
-            // ticks on the real Unity frame loop, entirely outside that call stack, so its own regen-driven
-            // publishing cannot land in the measurement — which is what made the process-wide ProfilerRecorder
-            // attempt at this same test unusable (an 8x run-to-run spread, tracked back to that exact ticking).
-            // The same delegate-scoping means this would not see an allocation from a scheduled callback or
-            // another thread; MatchHudPresenter's handlers run synchronously on this one, so neither applies
-            // here. This proves allocation in the Editor only; it says nothing about the < 0.5 ms/frame device
-            // budget, which still needs a hardware capture.
+            // GIVEN — EnergyPresenter.Update() keeps publishing on the frame loop, outside the measured delegate, so
+            // the steady state is raised by hand inside RaiseSteadyStateEvents instead. This proves allocation in the
+            // Editor only; the < 0.5 ms/frame device budget still needs a hardware capture.
             yield return BuildPresenterAndViewAsync();
             WarmUpSteadyStatePaths();
 
-            // WHEN / THEN — the act is the delegate itself, which the constraint both runs and measures.
-            Assert.That(RaiseSteadyStateEvents, NotAllocatingGCMemory());
+            // WHEN / THEN
+            Assert.That(RaiseSteadyStateEvents, new AllocatesNothingConstraint());
         }
 
-        // Raises ten simulated seconds of the steady state in one synchronous call, so the whole sequence sits
-        // inside the delegate NotAllocatingGCMemory() measures — no yield, no frame boundary, nothing here can
+        // Raises SimulatedSeconds of the steady state in one synchronous call, so the whole sequence sits
+        // inside the delegate AllocatesNothingConstraint measures — no yield, no frame boundary, nothing here can
         // interleave with anything this fixture does not control.
         private static void RaiseSteadyStateEvents()
         {
@@ -219,15 +214,6 @@ namespace GooGalaxy.Tests.PlayMode.UI
             go.SetActive(true);
 
             return component;
-        }
-
-        // Fully qualified rather than reached through a `using UnityEngine.TestTools.Constraints;`, which would
-        // shadow NUnit.Framework.Is (used unqualified throughout this fixture) and force every other Is.* call
-        // here to disambiguate. See HudClockFormatterTests.NotAllocatingGCMemory for the .ApplyTo() pitfall this
-        // static form sidesteps — confirmed live against the same allocating and non-allocating delegates.
-        private static UnityEngine.TestTools.Constraints.AllocatingGCMemoryConstraint NotAllocatingGCMemory()
-        {
-            return UnityEngine.TestTools.Constraints.ConstraintExtensions.AllocatingGCMemory(Is.Not);
         }
 
         private void WarmUpSteadyStatePaths()
