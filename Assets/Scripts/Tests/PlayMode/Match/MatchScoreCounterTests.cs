@@ -1,10 +1,10 @@
-using System;
 using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Models;
 using GooGalaxy.Runtime.Board.Presenters;
 using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -17,6 +17,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private const int BoardRadius = 6;
         private const int PlayerOneId = 1;
         private const int PlayerTwoId = 2;
+        private const int AllocationIterations = 1000;
 
         private static readonly HexCoordinates _playerOneLiveA = new(1, 0);
         private static readonly HexCoordinates _playerOneLiveB = new(2, 0);
@@ -92,27 +93,23 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [Category("Allocation")]
         public void CountLiveUnits_RepeatedCalls_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // counts it exists to prove are free.
             RegisterUnit(1, PlayerOneId, _playerOneLiveA, isAlive: true);
             RegisterUnit(2, PlayerTwoId, _playerTwoLive, isAlive: true);
-            MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId); // Warm-up: excludes JIT allocation.
+            MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId);
             MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
+            // WHEN / THEN
             Assert.That(
-                allocatedAfter - allocatedBefore,
-                Is.EqualTo(0),
-                "CountLiveUnits allocated memory on a path its own <remarks> documents as allocation-free!"
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId);
+                    }
+                },
+                new AllocatesNothingConstraint()
             );
         }
 
@@ -120,27 +117,23 @@ namespace GooGalaxy.Tests.PlayMode.Match
         [Category("Allocation")]
         public void CountLiveUnits_RepeatedTwoPlayerCalls_AllocateNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // counts it exists to prove are free.
             RegisterUnit(1, PlayerOneId, _playerOneLiveA, isAlive: true);
             RegisterUnit(2, PlayerTwoId, _playerTwoLive, isAlive: true);
-            MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out _, out _); // Warm-up: excludes JIT allocation.
+            MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out _, out _);
             MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out _, out _);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out _, out _);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
+            // WHEN / THEN
             Assert.That(
-                allocatedAfter - allocatedBefore,
-                Is.EqualTo(0),
-                "CountLiveUnits allocated memory on a path its own <remarks> documents as allocation-free!"
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        MatchScoreCounter.CountLiveUnits(_unitPresenter, PlayerOneId, PlayerTwoId, out _, out _);
+                    }
+                },
+                new AllocatesNothingConstraint()
             );
         }
 

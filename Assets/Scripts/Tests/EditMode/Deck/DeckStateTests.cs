@@ -1,6 +1,7 @@
 using System;
 using GooGalaxy.Runtime.Deck.Models;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Deck
@@ -9,6 +10,7 @@ namespace GooGalaxy.Tests.EditMode.Deck
     public class DeckStateTests
     {
         private const int HandSize = 4;
+        private const int AllocationIterations = 1000;
 
         private static readonly CardId _card0 = new("kit_card_0");
         private static readonly CardId _card1 = new("kit_card_1");
@@ -264,23 +266,23 @@ namespace GooGalaxy.Tests.EditMode.Deck
         [Category("Allocation")]
         public void TryAdvanceSlot_RepeatedCalls_AllocatesNoManagedMemory()
         {
-            // GIVEN
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // advances it exists to prove are free.
             CardId[] kit = { _card0, _card1, _card2, _card3, _card4, _card5 };
             var deck = new DeckState(kit, HandSize);
-            deck.TryAdvanceSlot(0, out _); // Warm-up to exclude JIT allocation from the measurement.
+            deck.TryAdvanceSlot(0, out _);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                deck.TryAdvanceSlot(0, out _);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "TryAdvanceSlot allocated memory on a hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        deck.TryAdvanceSlot(0, out _);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]
@@ -290,23 +292,24 @@ namespace GooGalaxy.Tests.EditMode.Deck
             // GIVEN — the configuration the MVP actually runs: a five-card kit against a hand of four leaves the
             // cycle queue capacity at exactly one, starting empty. A six-card kit here would still pass even if
             // the constructor sized the queue one short, since it starts with a full slot of headroom; this is
-            // the one case where an off-by-one grows the backing array on the very first rotation.
+            // the one case where an off-by-one grows the backing array on the very first rotation. Warmed once
+            // outside the measured delegate, so the constraint sees only the repeated advances it exists to
+            // prove are free.
             CardId[] kit = { _card0, _card1, _card2, _card3, _card4 };
             var deck = new DeckState(kit, HandSize);
-            deck.TryAdvanceSlot(0, out _); // Warm-up to exclude JIT allocation from the measurement.
+            deck.TryAdvanceSlot(0, out _);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                deck.TryAdvanceSlot(0, out _);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "TryAdvanceSlot allocated memory on a hot path!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        deck.TryAdvanceSlot(0, out _);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
     }
 }

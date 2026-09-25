@@ -1,6 +1,6 @@
-using System;
 using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 
 namespace GooGalaxy.Tests.EditMode.Match
@@ -11,6 +11,7 @@ namespace GooGalaxy.Tests.EditMode.Match
         private const int PlayerOneId = 1;
         private const int PlayerTwoId = 2;
         private const float HoldSeconds = 1f;
+        private const int AllocationIterations = 1000;
 
         private OvertimeLeadTracker _tracker;
 
@@ -112,22 +113,22 @@ namespace GooGalaxy.Tests.EditMode.Match
         [Category("Allocation")]
         public void Tick_RepeatedCalls_AllocatesNoManagedMemory()
         {
-            // GIVEN
-            _tracker.Tick(2, 1, PlayerOneId, PlayerTwoId, HoldSeconds, deltaTime: 0.01f); // Warm-up: excludes JIT allocation.
+            // GIVEN — warmed once outside the measured delegate, so the constraint sees only the repeated
+            // ticks it exists to prove are free.
+            _tracker.Tick(2, 1, PlayerOneId, PlayerTwoId, HoldSeconds, deltaTime: 0.01f);
             _tracker.Tick(2, 1, PlayerOneId, PlayerTwoId, HoldSeconds, deltaTime: 0.01f);
 
-            // WHEN
-            long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
-
-            for (int i = 0; i < 1000; i++)
-            {
-                _tracker.Tick(2, 1, PlayerOneId, PlayerTwoId, HoldSeconds, deltaTime: 0.01f);
-            }
-
-            long allocatedAfter = GC.GetAllocatedBytesForCurrentThread();
-
-            // THEN
-            Assert.That(allocatedAfter - allocatedBefore, Is.EqualTo(0), "Tick allocated memory on a path its own <remarks> documents as allocation-free!");
+            // WHEN / THEN
+            Assert.That(
+                () =>
+                {
+                    for (int i = 0; i < AllocationIterations; i++)
+                    {
+                        _tracker.Tick(2, 1, PlayerOneId, PlayerTwoId, HoldSeconds, deltaTime: 0.01f);
+                    }
+                },
+                new AllocatesNothingConstraint()
+            );
         }
 
         [Test]
