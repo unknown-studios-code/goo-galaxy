@@ -156,13 +156,24 @@ namespace GooGalaxy.Runtime.Board.Models
             return ConversionOutcome.Converted;
         }
 
-        /// <summary>
+        /// <remarks>
         /// Closes one action window on every condition the unit holds, dropping the ones whose last window
         /// expires. Internal because the status system owns expiry timing: a caller that ticked directly would
         /// bypass the ownership rule that decides <i>whose</i> deployment closes the window. Allocation-free.
         /// Returns true when the unit held at least one condition and it was ticked.
         /// </remarks>
         internal bool TickStatusDurations()
+        {
+            return TickStatusDurations(null);
+        }
+
+        /// <remarks>
+        /// The same tick, additionally appending the type of every condition that expired on it to
+        /// <paramref name="expiredStatuses" />, in no guaranteed order. The buffer is caller-owned and never cleared
+        /// here, so one buffer can collect a whole pass over the registry; a null buffer reports nothing. A
+        /// condition still running after the tick is not reported. Allocation-free once the buffer is sized.
+        /// </remarks>
+        internal bool TickStatusDurations(List<StatusType> expiredStatuses)
         {
             if (_activeStatuses == null || _activeStatuses.Count == 0)
             {
@@ -177,6 +188,7 @@ namespace GooGalaxy.Runtime.Board.Models
                 if (remaining <= 0)
                 {
                     _activeStatuses.RemoveAt(i);
+                    expiredStatuses?.Add(marker.Type);
                     continue;
                 }
 

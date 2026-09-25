@@ -54,10 +54,11 @@ namespace GooGalaxy.Runtime.Board.Services
         /// <paramref name="fuses" /> is the match's single fuse system — see <c>FuseController.Fuses</c>.
         /// <paramref name="areaBuffer" /> is caller-owned scratch overwritten per impact.
         /// <paramref name="affectedUnitIds" />, <paramref name="affectedHexes" /> and
-        /// <paramref name="destroyedUnitIds" /> are caller-owned buffers cleared on entry: the first receives the
-        /// units an impact conditioned, the second the coordinates whose hex state changed — the affected units'
-        /// hexes plus any hex a hazard was spawned on — and the third the units a self-destruct impact marked for
-        /// removal, which the caller removes after publishing. <paramref name="diagnostics" /> reports the authoring
+        /// <paramref name="destroyedUnitIds" /> and <paramref name="appliedStatuses" /> are caller-owned buffers
+        /// cleared on entry: the first receives the units an impact conditioned, the second the coordinates whose hex
+        /// state changed — the affected units' hexes plus any hex a hazard was spawned on — the third the units a
+        /// self-destruct impact marked for removal, which the caller removes after publishing, and the fourth one
+        /// <see cref="StatusChange" /> per status application, refreshes included, in the order they were applied. <paramref name="diagnostics" /> reports the authoring
         /// or state problems the resolution ran into, or <see cref="AbilityDiagnostic.None" />. Throws
         /// <see cref="ArgumentNullException" /> when the grid, the registry, the impact list, the status system, the
         /// fuse system, or any buffer is null.
@@ -73,6 +74,7 @@ namespace GooGalaxy.Runtime.Board.Services
             List<int> affectedUnitIds,
             List<HexCoordinates> affectedHexes,
             List<int> destroyedUnitIds,
+            List<StatusChange> appliedStatuses,
             out AbilityDiagnostic diagnostics
         )
         {
@@ -121,10 +123,16 @@ namespace GooGalaxy.Runtime.Board.Services
                 throw new ArgumentNullException(nameof(destroyedUnitIds));
             }
 
+            if (appliedStatuses == null)
+            {
+                throw new ArgumentNullException(nameof(appliedStatuses));
+            }
+
             diagnostics = AbilityDiagnostic.None;
             affectedUnitIds.Clear();
             affectedHexes.Clear();
             destroyedUnitIds.Clear();
+            appliedStatuses.Clear();
 
             for (int i = 0; i < landingEffects.Count; i++)
             {
@@ -137,7 +145,7 @@ namespace GooGalaxy.Runtime.Board.Services
                     case ImpactEffectType.ApplyStatus:
                         if (HasExpectedDurationUnit(effect, ImpactDurationUnit.ActionWindows, ref diagnostics))
                         {
-                            ApplyStatus(grid, units, context, effect, statusEffects, areaBuffer, affectedUnitIds, affectedHexes);
+                            ApplyStatus(grid, units, context, effect, statusEffects, areaBuffer, affectedUnitIds, affectedHexes, appliedStatuses);
                         }
 
                         break;
@@ -173,7 +181,8 @@ namespace GooGalaxy.Runtime.Board.Services
             StatusEffectResolver statusEffects,
             List<HexCell> areaBuffer,
             List<int> affectedUnitIds,
-            List<HexCoordinates> affectedHexes
+            List<HexCoordinates> affectedHexes,
+            List<StatusChange> appliedStatuses
         )
         {
             if (effect.Status == StatusType.None || effect.Duration <= 0)
@@ -204,7 +213,7 @@ namespace GooGalaxy.Runtime.Board.Services
                     continue;
                 }
 
-                statusEffects.ApplyStatus(unit, effect.Status, effect.Duration);
+                statusEffects.ApplyStatus(unit, effect.Status, effect.Duration, context.ActingPlayerId, appliedStatuses);
 
                 // The output buffers are cleared once per deployment, not per impact, so a card with two status
                 // impacts would otherwise report the same unit twice — breaking the payload's "at most once

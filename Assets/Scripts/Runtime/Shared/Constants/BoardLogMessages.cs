@@ -65,6 +65,9 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const string AbilityResolvedSubscriberFailed =
             "An AbilityResolved subscriber threw. The impacts themselves were applied and the board is correct; the failing subscriber is the defect.";
 
+        public const string StatusChangeSubscriberFailed =
+            "A StatusApplied or StatusExpired subscriber threw. The condition change was applied and the board is correct; the failing subscriber is the defect.";
+
         public const string HazardOverwritten =
             "A landing spawned a hazard on a hex that already carried one. The previous duration was discarded and the new one starts fresh.";
 

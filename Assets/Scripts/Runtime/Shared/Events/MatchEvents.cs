@@ -184,8 +184,11 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// second fuse — a unit carries at most one.
         /// <para>
         /// Raised from inside the deployment that armed the fuse, so a subscriber runs while that deployment is
-        /// still resolving. Read the board, do not deploy: a subscriber that resolves a move or a spell is
-        /// rejected by the re-entrancy latches rather than served.
+        /// still resolving. Read the board, do not deploy. A spell resolved from the handler is refused with
+        /// <c>ResolverBusy</c>, and so is a move while the deployment resolving is itself a troop landing. While a
+        /// Protocol is resolving, though, nothing latches board moves: a move resolved from the handler lands and
+        /// converts, and only its landing abilities are dropped by the ability re-entrancy latch — a half-resolved
+        /// move, not a refused one.
         /// </para>
         /// <para>
         /// The payload is value types only and describes state that outlives the callback, so unlike the
@@ -213,6 +216,48 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// </para>
         /// </remarks>
         public static event Action<int, int> FuseExpired;
+
+        /// <summary>
+        /// Raised once for every application a deployment's impacts make, refreshes included, carrying the unit, its
+        /// owner at that moment, the player whose deployment applied it, the condition, and the action windows it lasts.
+        /// </summary>
+        /// <remarks>
+        /// <b>Once per unit per application, refreshes included.</b> A unit already carrying the condition has its
+        /// duration refreshed rather than a second marker stacked, and that refresh is still an application, so it
+        /// raises this again with the refreshed duration. A card with two status impacts that both reach one unit
+        /// raises it twice.
+        /// <para>
+        /// Published from inside the deployment, after every impact has resolved and immediately <b>before</b>
+        /// <see cref="AbilityResolved" /> for the same deployment, so a subscriber can pair the two. Read the board, do not deploy. A spell resolved from the handler is refused with
+        /// <c>ResolverBusy</c>, and so is a move while the deployment resolving is itself a troop landing. While a
+        /// Protocol is resolving, though, nothing latches board moves: a move resolved from the handler lands and
+        /// converts, and only its landing abilities are dropped by the ability re-entrancy latch — a half-resolved
+        /// move, not a refused one.
+        /// </para>
+        /// <para>
+        /// The payload is a value type, so there is nothing for a subscriber to copy.
+        /// </para>
+        /// </remarks>
+        public static event Action<StatusChange> StatusApplied;
+
+        /// <summary>
+        /// Raised when a condition's last action window closes and it drops off a unit, carrying the unit, its
+        /// owner at that moment, and the condition. <see cref="StatusChange.ActingPlayerId" /> is
+        /// <see cref="StatusChange.NoActingPlayer" /> and <see cref="StatusChange.RemainingWindows" /> is zero.
+        /// </summary>
+        /// <remarks>
+        /// Published from the self-cleanup of the deployment that closed the window, after the marker has been
+        /// removed, so a subscriber reading the unit sees the state this event describes. Read the board, do not
+        /// deploy — the deployment is still resolving.
+        /// <para>
+        /// A unit removed any other way — a Jump detonation, a fuse, ordinary cleanup — does not raise this for the
+        /// conditions it was carrying. It states that a duration ran out, not that a condition stopped mattering.
+        /// </para>
+        /// <para>
+        /// The payload is a value type, so there is nothing for a subscriber to copy.
+        /// </para>
+        /// </remarks>
+        public static event Action<StatusChange> StatusExpired;
 
         /// <summary>
         /// Raised whenever a player's hand changes — dealt at match start, and rotated whenever a slot is
@@ -431,6 +476,25 @@ namespace GooGalaxy.Runtime.Shared.Events
             FuseExpired?.Invoke(unitId, playerId);
         }
 
+        /// <summary>
+        /// Publishes <see cref="StatusApplied"/>. Called once the unit is actually carrying the condition, for every
+        /// application of the deployment and before that deployment's <see cref="AbilityResolved"/>.
+        /// </summary>
+        /// <param name="change">The unit, its owner, the acting player, the condition and its duration.</param>
+        public static void RaiseStatusApplied(in StatusChange change)
+        {
+            StatusApplied?.Invoke(change);
+        }
+
+        /// <summary>
+        /// Publishes <see cref="StatusExpired"/>. Called only after the marker has been removed from the unit.
+        /// </summary>
+        /// <param name="change">The unit, its owner and the condition that ran out.</param>
+        public static void RaiseStatusExpired(in StatusChange change)
+        {
+            StatusExpired?.Invoke(change);
+        }
+
         /// <summary>Publishes <see cref="HandChanged"/>. Called once the hand already holds what this reports.</summary>
         /// <param name="playerId">The player whose hand changed.</param>
         /// <param name="hand">
@@ -484,6 +548,8 @@ namespace GooGalaxy.Runtime.Shared.Events
             AbilityResolved = null;
             FuseArmed = null;
             FuseExpired = null;
+            StatusApplied = null;
+            StatusExpired = null;
             HandChanged = null;
             CardDiscarded = null;
             CardPlayAttempted = null;
