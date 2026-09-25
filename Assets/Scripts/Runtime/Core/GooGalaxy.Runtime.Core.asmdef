@@ -8,6 +8,7 @@
   "references": [
     "GooGalaxy.Runtime.Shared",
     "GooGalaxy.Runtime.AI",
+    "GooGalaxy.Runtime.Analytics",
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Networking",
     "GooGalaxy.Runtime.Cards",

@@ -1,10 +1,8 @@
-using GooGalaxy.Runtime.Match.Models;
+using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 
-namespace GooGalaxy.Tests.EditMode.Match
+namespace GooGalaxy.Tests.EditMode.Shared
 {
-    // CardPlayResult travels to the client as a rejection reason, so its explicit numeric values must never
-    // drift — a renumbering silently changes what an older peer reads. This fixture pins every value.
     [TestFixture]
     public class CardPlayResultTests
     {
@@ -17,11 +15,10 @@ namespace GooGalaxy.Tests.EditMode.Match
         [TestCase(CardPlayResult.IllegalPlacement, ExpectedResult = 6)]
         [TestCase(CardPlayResult.BoardUnavailable, ExpectedResult = 7)]
         [TestCase(CardPlayResult.ResolverBusy, ExpectedResult = 8)]
+        [TestCase(CardPlayResult.MatchNotInPlay, ExpectedResult = 9)]
         public int CardPlayResult_ExplicitValue_MatchesTheAuthoredWireNumber(CardPlayResult result)
         {
-            // GIVEN
-
-            // WHEN / THEN — the act is the returned value; a parameterized failure names the offending member.
+            // THEN
             return (int)result;
         }
     }

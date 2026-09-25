@@ -100,6 +100,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private MatchInitializer _initializer;
         private DeployController _deployController;
         private CardDiscardController _cardDiscardController;
+        private float _playerTwoMultiplierAtLastOpen;
 
         [SetUp]
         public void SetUp()
@@ -135,6 +136,7 @@ namespace GooGalaxy.Tests.PlayMode.Match
             _cardDiscardController = BuildBareComponent<CardDiscardController>("CardDiscardController_Bare_Test");
 
             _catchUpEvents.Clear();
+            _playerTwoMultiplierAtLastOpen = 0f;
             MatchEvents.CatchUpChanged += HandleCatchUpChanged;
         }
 
@@ -344,8 +346,10 @@ namespace GooGalaxy.Tests.PlayMode.Match
             SetCatchUp(config, new CatchUpConfig(thresholdRatio: 0.49f, regenMultiplier: 1.5f, durationSeconds: 0.3f, cooldownSeconds: 10f));
             yield return WaitForCatchUpEvent(PlayerTwoId, isActive: true);
 
-            // THEN — the multiplier the running match applies is the one captured at start, not the edited one.
-            Assert.That(_energyPresenter.GetState(PlayerTwoId).CatchUpMultiplier, Is.EqualTo(1.15f).Within(0.0001f));
+            // THEN — the multiplier the running match applied is the one captured at start, not the edited one. It is
+            // read as the window opened: the window lasts 0.3s at an accelerated time scale, so one slow frame can
+            // close it again before this coroutine resumes, and a read here would then see the closed value of 1.0.
+            Assert.That(_playerTwoMultiplierAtLastOpen, Is.EqualTo(1.15f).Within(0.0001f));
         }
 
         [UnityTest]
@@ -459,6 +463,13 @@ namespace GooGalaxy.Tests.PlayMode.Match
         private void HandleCatchUpChanged(int playerId, bool isActive, float remainingSeconds)
         {
             _catchUpEvents.Add((playerId, isActive));
+
+            // MatchController applies the multiplier before it raises the open edge, so this read is the value the
+            // window runs with — taken here because the window can close again before a coroutine resumes.
+            if (isActive && (playerId == PlayerTwoId) && (_energyPresenter != null))
+            {
+                _playerTwoMultiplierAtLastOpen = _energyPresenter.GetState(playerId).CatchUpMultiplier;
+            }
         }
 
         private void RegisterUnit(int unitId, int playerId, HexCoordinates position)

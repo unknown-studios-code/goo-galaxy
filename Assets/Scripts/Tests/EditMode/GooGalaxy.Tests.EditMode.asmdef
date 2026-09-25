@@ -14,6 +14,7 @@
   "references": [
     "GooGalaxy.Runtime.Shared",
     "GooGalaxy.Runtime.AI",
+    "GooGalaxy.Runtime.Analytics",
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",

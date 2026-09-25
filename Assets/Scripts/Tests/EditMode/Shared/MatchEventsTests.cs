@@ -467,6 +467,45 @@ namespace GooGalaxy.Tests.EditMode.Shared
             Assert.That(hasFired, Is.False, "CardDiscarded should have no subscribers after ResetEvents.");
         }
 
+        [Test]
+        public void RaiseCardPlayAttempted_WithSubscriber_DeliversThePlayerIdCardTargetCostAndResult()
+        {
+            // GIVEN
+            CardPlayAttempt received = default;
+            MatchEvents.CardPlayAttempted += attempt => received = attempt;
+            var expected = new CardPlayAttempt(2, new CardId("acid_crawler"), new HexCoordinates(1, -1), 3, CardPlayResult.InsufficientEnergy);
+
+            // WHEN
+            MatchEvents.RaiseCardPlayAttempted(expected);
+
+            // THEN
+            Assert.That(received, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void RaiseCardPlayAttempted_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseCardPlayAttempted(new CardPlayAttempt(1, default, default, 0, CardPlayResult.Success)));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsCardPlayAttempted_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.CardPlayAttempted += _ => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseCardPlayAttempted(new CardPlayAttempt(1, default, default, 0, CardPlayResult.Success));
+
+            // THEN
+            Assert.That(hasFired, Is.False, "CardPlayAttempted should have no subscribers after ResetEvents.");
+        }
+
         private void HandleMatchStarted(MatchConfiguration config)
         {
             _hasMatchStartedFired = true;
