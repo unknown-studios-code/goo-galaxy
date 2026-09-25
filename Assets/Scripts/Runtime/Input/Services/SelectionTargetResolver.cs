@@ -13,9 +13,12 @@ namespace GooGalaxy.Runtime.Input.Services
     /// <para>
     /// <b>The Protocol filter and the per-path filter live in one place</b>, so the set a selection highlights and
     /// the set a commit is looked up in cannot drift apart. Every <see cref="MoveOptionKind.Protocol" /> option is
-    /// dropped before anything reads one, because cluster targeting is out of scope for the MVP; a board move is
-    /// then kept only when it belongs to the selection's own unit (<see cref="InteractionSourceKind.BoardUnit" />)
-    /// or its own hand slot (<see cref="InteractionSourceKind.HandSlot" />).
+    /// dropped before anything reads one: a human aims a Protocol through
+    /// <see cref="InteractionState.SpellTargeting" /> and <see cref="ClusterTargetBuilder" />, from wherever the
+    /// pointer is, never from the option set. That is also what keeps retaining the option set safe — a Protocol
+    /// option's cluster borrows the enumerator's buffers, which the next pass overwrites, and a board move carries no
+    /// cluster at all. A board move is then kept only when it belongs to the selection's own unit
+    /// (<see cref="InteractionSourceKind.BoardUnit" />) or its own hand slot (<see cref="InteractionSourceKind.HandSlot" />).
     /// </para>
     /// <para>
     /// Stateless and allocation-free: every method scans its input with an indexed <c>for</c> loop and writes only
@@ -28,8 +31,9 @@ namespace GooGalaxy.Runtime.Input.Services
         /// <param name="option">The option under test.</param>
         /// <param name="source">The live selection to test it against.</param>
         /// <returns>
-        /// <see langword="false" /> for every <see cref="MoveOptionKind.Protocol" /> option; otherwise whether the
-        /// option's unit or hand slot matches the one <paramref name="source" /> was started from.
+        /// <see langword="false" /> for every <see cref="MoveOptionKind.Protocol" /> option, which is aimed rather than
+        /// enumerated; otherwise whether the option's unit or hand slot matches the one <paramref name="source" /> was
+        /// started from.
         /// </returns>
         public static bool IsOptionForSource(in MoveOption option, in InteractionSource source)
         {

@@ -5,6 +5,7 @@ using GooGalaxy.Runtime.Input.Models;
 using GooGalaxy.Runtime.Shared.Constants;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Controls;
 
 namespace GooGalaxy.Runtime.Input.Views
 {
@@ -31,6 +32,13 @@ namespace GooGalaxy.Runtime.Input.Views
     /// scene unload keeps dispatching into callbacks whose objects Unity has already destroyed, which surfaces
     /// as a <c>MissingReferenceException</c> from inside the Input System rather than from anything in this
     /// assembly. The subscriptions are torn down in the same callback for the same reason.
+    /// </para>
+    /// <para>
+    /// <b>Only a mouse hovers.</b> A position change while nothing is pressed is republished as
+    /// <see cref="IPointerSource.PointerHovered" /> when, and only when, the reading came from an enabled mouse —
+    /// decided per reading by the device's capability rather than by a platform define, because the Device
+    /// Simulator swaps the mouse for a touchscreen at runtime. A touchscreen reports no position between touches
+    /// that anything should act on, so it never hovers.
     /// </para>
     /// <para>
     /// The asset arrives through the Inspector rather than through <c>Resources.Load</c> or a path, so a
@@ -61,6 +69,8 @@ namespace GooGalaxy.Runtime.Input.Views
         public event Action<PointerSample> PointerPressed;
 
         public event Action<PointerSample> PointerMoved;
+
+        public event Action<PointerSample> PointerHovered;
 
         public event Action<PointerSample> PointerReleased;
 
@@ -112,6 +122,16 @@ namespace GooGalaxy.Runtime.Input.Views
             ReleaseActivePointer();
         }
 
+        /// <remarks>
+        /// A test seam, so a PlayMode fixture can hand the view its actions without the editor-only
+        /// <c>SerializedObject</c>. Must be called before the GameObject is first activated, since the actions are
+        /// resolved in <c>Awake</c>. The scene wires <see cref="_inputActions" /> in the prefab; nothing at runtime calls this.
+        /// </remarks>
+        internal void SetInputActionsForTests(InputActionAsset inputActions)
+        {
+            _inputActions = inputActions;
+        }
+
         /// <remarks>An override that skips the base call drops the event and no subscriber sees the pointer.</remarks>
         protected virtual void OnPointerPressed()
         {
@@ -125,9 +145,49 @@ namespace GooGalaxy.Runtime.Input.Views
         }
 
         /// <remarks>An override that skips the base call drops the event and no subscriber sees the pointer.</remarks>
+        protected virtual void OnPointerHovered()
+        {
+            PointerHovered?.Invoke(BuildSample(PointerPhase.Hovered));
+        }
+
+        /// <remarks>An override that skips the base call drops the event and no subscriber sees the pointer.</remarks>
         protected virtual void OnPointerReleased()
         {
             PointerReleased?.Invoke(BuildSample(PointerPhase.Released));
+        }
+
+        /// <remarks>
+        /// Raises <see cref="PointerReleased" /> with <see cref="PointerPhase.Canceled" />, since the pointer is up either
+        /// way and a subscriber tracking a gesture must hear that it ended. An override that skips the base call drops
+        /// the event, and that subscriber is left holding a gesture with no pointer behind it.
+        /// </remarks>
+        protected virtual void OnPointerCanceled()
+        {
+            PointerReleased?.Invoke(BuildSample(PointerPhase.Canceled));
+        }
+
+        // Asked of every reading rather than cached, because the device behind the pointer can change at runtime:
+        // the Device Simulator disables the mouse and drives the pointer from a simulated touchscreen, and a real
+        // tablet can gain or lose a mouse mid-session. A disabled mouse is not hovering, whatever it last reported.
+        private static bool IsHoverCapable(InputControl control)
+        {
+            return control != null && control.device is Mouse mouse && mouse.enabled;
+        }
+
+        // Tells a press the system took away from one the player lifted, both of which reach the press action as a cancel.
+        // A reset — which is also how the Input System drops input on focus loss, and what disabling a device does
+        // first — cancels the action before it writes the device's default state, so the press control still reads
+        // held here; a lift has already written zero. An OS-cancelled touch does write zero, but leaves its phase behind.
+        private static bool IsPressTakenAway(InputControl control)
+        {
+            if (control is ButtonControl button && button.isPressed)
+            {
+                return true;
+            }
+
+            return control != null
+                && control.device is Touchscreen touchscreen
+                && touchscreen.primaryTouch.phase.ReadValue() == UnityEngine.InputSystem.TouchPhase.Canceled;
         }
 
         private void ResolveActions()
@@ -203,7 +263,17 @@ namespace GooGalaxy.Runtime.Input.Views
                 return;
             }
 
+            bool isTakenAway = IsPressTakenAway(context.control);
+
             ReleaseActivePointer();
+
+            if (isTakenAway)
+            {
+                OnPointerCanceled();
+
+                return;
+            }
+
             OnPointerReleased();
         }
 
@@ -211,12 +281,17 @@ namespace GooGalaxy.Runtime.Input.Views
         {
             _currentScreenPosition = context.ReadValue<Vector2>();
 
-            if (!_isPointerDown)
+            if (_isPointerDown)
             {
+                OnPointerMoved();
+
                 return;
             }
 
-            OnPointerMoved();
+            if (IsHoverCapable(context.control))
+            {
+                OnPointerHovered();
+            }
         }
     }
 }
