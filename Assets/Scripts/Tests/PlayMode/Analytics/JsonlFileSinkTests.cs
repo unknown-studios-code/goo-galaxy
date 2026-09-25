@@ -192,7 +192,11 @@ namespace GooGalaxy.Tests.PlayMode.Analytics
             Assert.That(Path.GetFileName(secondSink.FilePath), Is.EqualTo("session-20260101-000000Z_2.jsonl"));
         }
 
+        // Windows only: the lock below is a FileShare.None handle, and only Windows refuses to delete a file
+        // that is open that way. POSIX unlinks an open file regardless of the handle, file mode, or — as root in
+        // the CI container — directory permissions, so no portable arrangement makes the delete fail there.
         [Test]
+        [UnityPlatform(RuntimePlatform.WindowsEditor, RuntimePlatform.WindowsPlayer)]
         public void Write_AnOldFileIsLocked_SkipsItWithoutFaultingTheSession()
         {
             // GIVEN

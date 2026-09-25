@@ -179,13 +179,22 @@ namespace GooGalaxy.Tests.PlayMode.Input
             _moveExecutedCommand = new MoveCommand(MoveType.Jump, _anchorHex, new HexCoordinates(1, 0), LocalPlayerId, AnchorUnitId);
             _moveExecutedAffectedCoordinates = new List<HexCoordinates> { _anchorHex, new(1, 0) };
 
-            for (int i = 0; i < WarmUpIterations; i++)
+            for (int i = 0; i < CaptureWarmUpIterations; i++)
             {
                 RunMoveExecutedCycle();
             }
 
+            // Empties the buffer before measuring. Warm-up plus the measured cycle would otherwise sit a few dozen
+            // records under capacity, and the records the live match adds on its own — a number that depends on
+            // frame timing — could fill it mid-measurement, so the fake sink's growth would be what got measured.
+            _analyticsController.Flush();
+            int writtenBeforeMeasuring = _analyticsSink.WrittenRecords.Count;
+
             // WHEN / THEN
             Assert.That(RunMoveExecutedCycle, NotAllocatingGCMemory());
+
+            // THEN — nothing auto-flushed during the measured run, so the assertion above measured capture alone.
+            Assert.That(_analyticsSink.WrittenRecords.Count, Is.EqualTo(writtenBeforeMeasuring), "No flush should have happened during the measured run.");
         }
 
         private static CardDataSO CreateTroopCard()
