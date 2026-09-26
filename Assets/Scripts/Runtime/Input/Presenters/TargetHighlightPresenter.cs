@@ -13,11 +13,13 @@ namespace GooGalaxy.Runtime.Input.Presenters
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Only the difference is applied.</b> A target set arrives on selection, on a landing that changes the
-    /// board, and on an affordability edge — never on every pointer move, since a drag only tests membership of
-    /// the set already computed — and clearing all 61 cells and re-setting the handful that are legal on each of
-    /// those would still write a colour into every <c>SpriteRenderer</c> on the board for no reason. Diffing
-    /// against the previous set turns that into the two or three writes that actually changed.
+    /// <b>Only the difference is applied.</b> A troop's or a unit's target set arrives on selection, on a landing
+    /// that changes the board, and on an affordability edge — never on every pointer move, since a drag only tests
+    /// membership of the set already computed. A Protocol's aimed cluster does follow the pointer, but only arrives
+    /// when the hovered hex or the order of its neighbours changes. Clearing all 61 cells and re-setting the handful
+    /// that are shown on each of those would still write a colour into every <c>SpriteRenderer</c> on the board for
+    /// no reason; diffing against the previous set turns a cluster sliding one hex into the two or three writes that
+    /// actually changed.
     /// </para>
     /// <para>
     /// <b>Two sets, swapped rather than rebuilt.</b> The pass fills the spare set, diffs it against the live

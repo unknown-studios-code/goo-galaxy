@@ -24,6 +24,7 @@ using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.PlayMode.Input
@@ -40,12 +41,25 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private const int LocalPlayerId = 1;
         private const int AnchorUnitId = 10;
         private const int TroopEnergyCost = 2;
+        private const int SpellEnergyCost = 3;
+        private const int SpellRadius = 1;
+        private const int SpellClusterSize = 3;
+        private const int SpellFreezeDuration = 1;
         private const string TroopCardIdValue = "alloc_troop_card";
+        private const string SpellCardIdValue = "alloc_spell_card";
+        private const string UncastableSpellCardIdValue = "alloc_uncastable_spell_card";
 
         // Shared by every cycle below: none of them ever commits, so the board never changes and each is safe to
         // repeat any number of times without running out of empty targets to drag toward.
         private const int WarmUpIterations = 3;
         private const int MeasuredIterations = 500;
+
+        // Frames budgeted for the HUD UIDocument's panel to attach and Yoga to resolve layout against it, matching
+        // MatchInputControllerTests.BuildHudAsync.
+        private const int HudLayoutSettleFrameBudget = 10;
+
+        // A percentage of the panel, not pixels — see MatchInputControllerTests.BuildHudAsync for why.
+        private const float HudStripSizePercent = 15f;
 
         private static readonly HexCoordinates _anchorHex = new(0, 0);
 
@@ -55,6 +69,14 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private static readonly HexCoordinates _targetHex = new(1, 0);
 
         private static readonly Vector2 _offGridScreenPosition = new(1_000_000f, 1_000_000f);
+
+        // Near the screen's own bottom-left corner, matching MatchInputControllerTests._hudScreenPosition — always
+        // inside the hand-strip region BuildHudAsync builds there, and never a board hex under this fixture's zoom.
+        private static readonly Vector2 _hudScreenPosition = new(1f, 1f);
+
+        // A single pixel: far below the gesture threshold, so a move by this much stays inside the same hex
+        // instead of crossing into a neighbour — the "moving within one hex" half of the touch-drift cycles below.
+        private static readonly Vector2 _withinHexDriftOffset = new(1f, 0f);
 
         private readonly List<Object> _spawned = new();
 
@@ -67,6 +89,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private GridView _gridView;
         private TargetHighlightPresenter _highlightPresenter;
         private CardPresenter _cardPresenter;
+        private CardDataSO _spellCard;
+        private CardDataSO _uncastableSpellCard;
         private DeckPresenter _deckPresenter;
         private DeployController _deployController;
         private CardDiscardController _discardController;
@@ -75,6 +99,9 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private FakeHandGestureSource _handGestureSource;
         private GameObject _presenterGO;
         private MatchInputController _presenter;
+        private GameObject _hudGO;
+        private PanelSettings _hudPanelSettings;
+        private UIDocument _hudDocument;
         private Vector2 _anchorScreenPosition;
         private Vector2 _targetScreenPosition;
 
@@ -195,10 +222,190 @@ namespace GooGalaxy.Tests.PlayMode.Input
             Assert.That(RunHandSlotDragCycle, new AllocatesNothingConstraint());
         }
 
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedHoverBackAndForthWithASpellSelected_AllocatesNoManagedMemory()
+        {
+            // GIVEN — the aim must genuinely be live and the preview genuinely valid, or the cycle below would
+            // measure an inert path instead of ClusterTargetBuilder actually re-arranging on every hover. No
+            // pointer press precedes the hand-slot press: a hover is ignored outright while the pointer is down.
+            BuildSpellHand();
+            _handGestureSource.RaiseHandSlotPressed(0);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.SpellTargeting), "Test setup expects the affordable Protocol to enter SpellTargeting.");
+            _pointerSource.RaiseHovered(_anchorScreenPosition);
+            Assert.That(_presenter.IsSpellPreviewValid, Is.True, "Test setup expects the hover to have built a valid preview.");
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunSpellHoverBackAndForthCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunSpellHoverBackAndForthCycle, new AllocatesNothingConstraint());
+        }
+
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedBoardPressAimWithASpellSelected_AllocatesNoManagedMemory()
+        {
+            // GIVEN — the press on the board must genuinely preview a valid cluster, or the cycle below would measure
+            // the off-grid cancel alone instead of ClusterTargetBuilder arranging under a finger that is down.
+            BuildSpellHand();
+            TapSpellCardInHand();
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.SpellTargeting), "Test setup expects the affordable Protocol to enter SpellTargeting.");
+            _pointerSource.RaisePressed(_anchorScreenPosition);
+            Assert.That(_presenter.IsSpellPreviewValid, Is.True, "Test setup expects the board press to have built a valid preview.");
+            _pointerSource.RaiseReleased(_offGridScreenPosition);
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunBoardPressAimCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunBoardPressAimCycle, new AllocatesNothingConstraint());
+        }
+
+        [UnityTest]
+        [Category("Allocation")]
+        public IEnumerator SteadyState_RepeatedBoardPressAimWithAHudWired_AllocatesNoManagedMemory()
+        {
+            // GIVEN — a real HUD wired through the test seam, so the panel picks on the press, the move onto the hand
+            // strip and the release there are all genuinely on the measured path. The release over the HUD keeps the aim,
+            // so the cycle repeats without re-selecting and never casts.
+            yield return BuildHudAsync();
+            BuildSpellHand();
+            TapSpellCardInHand();
+            _pointerSource.RaisePressed(_anchorScreenPosition);
+            Assert.That(_presenter.IsSpellPreviewValid, Is.True, "Test setup expects the board press to have built a valid preview.");
+            _pointerSource.RaiseReleased(_hudScreenPosition);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.SpellTargeting), "Test setup expects the release over the HUD to keep the aim.");
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunBoardPressAimOntoTheHudCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunBoardPressAimOntoTheHudCycle, new AllocatesNothingConstraint());
+        }
+
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedBoardTapOnAnInvalidSpot_AllocatesNoManagedMemory()
+        {
+            // GIVEN — the uncastable Protocol makes every on-grid spot one with no valid cluster, so each lift keeps the
+            // aim instead of casting and the same tap repeats against the same live selection.
+            BuildUncastableSpellHand();
+            TapSpellCardInHand();
+            _pointerSource.RaisePressed(_anchorScreenPosition);
+            _pointerSource.RaiseReleased(_anchorScreenPosition);
+            Assert.That(_presenter.State, Is.EqualTo(InteractionState.SpellTargeting), "Test setup expects the invalid lift to keep the aim.");
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunBoardTapOnAnInvalidSpotCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunBoardTapOnAnInvalidSpotCycle, new AllocatesNothingConstraint());
+        }
+
+        [UnityTest]
+        [Category("Allocation")]
+        public IEnumerator SteadyState_RepeatedTouchDragAimWithAHudWired_AllocatesNoManagedMemory()
+        {
+            // GIVEN — a real HUD UIDocument, wired through the test seam, so IsScreenPointOverHud's panel pick
+            // is genuinely on the measured path the way it is once a scene's HUD exists; a drag-aim armed from a
+            // bare press never reaches it. The press lands on the hand strip so DragSpellAim genuinely arms the
+            // drag, and the pointer is never released, so ClusterTargetBuilder re-arranges the aim on every move
+            // — between hexes and drifting within one — without either cycle ever committing.
+            yield return BuildHudAsync();
+            BuildSpellHand();
+            _pointerSource.RaisePressed(_hudScreenPosition);
+            _handGestureSource.RaiseHandSlotPressed(0);
+            _pointerSource.RaiseMoved(_anchorScreenPosition);
+            Assert.That(_presenter.IsSpellPreviewValid, Is.True, "Test setup expects the drag onto the board to have built a valid preview.");
+
+            for (int i = 0; i < WarmUpIterations; i++)
+            {
+                RunTouchDragAimCycle();
+            }
+
+            // WHEN / THEN
+            Assert.That(RunTouchDragAimCycle, new AllocatesNothingConstraint());
+        }
+
         private static CardDataSO CreateTroopCard()
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
             card.SetAuthoredData(TroopCardIdValue, TroopCardIdValue, "Test description.", CardType.Troop, TroopEnergyCost, true, true, false, false, 1, null);
+
+            return card;
+        }
+
+        private static CardDataSO CreateSpellCard()
+        {
+            CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
+            ImpactEffectDefinition[] landingEffects = new[]
+            {
+                new ImpactEffectDefinition(
+                    ImpactEffectType.ApplyStatus,
+                    StatusType.Frozen,
+                    SpellRadius,
+                    SpellFreezeDuration,
+                    TargetFilter.All,
+                    SpellClusterSize
+                ),
+            };
+            card.SetAuthoredData(
+                SpellCardIdValue,
+                SpellCardIdValue,
+                "Test description.",
+                CardType.Spell,
+                SpellEnergyCost,
+                false,
+                false,
+                false,
+                false,
+                0,
+                landingEffects
+            );
+
+            return card;
+        }
+
+        // A second impact whose zero radius no cluster the first impact arranges can satisfy, matching
+        // MatchInputControllerTests.CreateUncastableSpellCard: every spot on the board is an on-grid spot with no valid
+        // cluster, which is the keep-the-aim release path.
+        private static CardDataSO CreateUncastableSpellCard()
+        {
+            CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
+            ImpactEffectDefinition[] landingEffects = new[]
+            {
+                new ImpactEffectDefinition(
+                    ImpactEffectType.ApplyStatus,
+                    StatusType.Frozen,
+                    SpellRadius,
+                    SpellFreezeDuration,
+                    TargetFilter.All,
+                    SpellClusterSize
+                ),
+                new ImpactEffectDefinition(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, SpellFreezeDuration, TargetFilter.All, SpellClusterSize),
+            };
+            card.SetAuthoredData(
+                UncastableSpellCardIdValue,
+                UncastableSpellCardIdValue,
+                "Test description.",
+                CardType.Spell,
+                SpellEnergyCost,
+                false,
+                false,
+                false,
+                false,
+                0,
+                landingEffects
+            );
 
             return card;
         }
@@ -242,6 +449,80 @@ namespace GooGalaxy.Tests.PlayMode.Input
                 _handGestureSource.RaiseHandSlotPressed(0);
                 _pointerSource.RaiseMoved(_targetScreenPosition);
                 _pointerSource.RaiseReleased(_offGridScreenPosition);
+            }
+        }
+
+        // Hovers back and forth between two on-board hexes with a Protocol aimed, then drifts within the anchor
+        // hex by a single pixel, so ClusterTargetBuilder re-arranges and TargetHighlightPresenter re-diffs the
+        // cluster on a genuine hex change and then re-measures the same arrangement on a move too small to
+        // change it — the "same hex, moved anyway" path a finger's natural jitter produces. Neither ever
+        // commits, so the same cycle is safe to repeat MeasuredIterations times in a row.
+        private void RunSpellHoverBackAndForthCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                _pointerSource.RaiseHovered(_targetScreenPosition);
+                _pointerSource.RaiseHovered(_anchorScreenPosition);
+                _pointerSource.RaiseHovered(_anchorScreenPosition + _withinHexDriftOffset);
+            }
+        }
+
+        // The finger-aimed equivalent of the hover cycle above: the card is tapped, a press on the board previews
+        // under the finger, the drag re-arranges on a genuine hex change and on a within-hex drift, and the release
+        // off the grid cancels rather than casting — so the board never changes and the cycle is safe to repeat.
+        private void RunBoardPressAimCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                TapSpellCardInHand();
+                _pointerSource.RaisePressed(_anchorScreenPosition);
+                _pointerSource.RaiseMoved(_targetScreenPosition);
+                _pointerSource.RaiseMoved(_anchorScreenPosition + _withinHexDriftOffset);
+                _pointerSource.RaiseReleased(_offGridScreenPosition);
+            }
+        }
+
+        // The board-press cycle above with the HUD in play: the drag ends on the hand strip and lifts there, which keeps
+        // the aim live, so each iteration presses again on the same selection.
+        private void RunBoardPressAimOntoTheHudCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                _pointerSource.RaisePressed(_anchorScreenPosition);
+                _pointerSource.RaiseMoved(_targetScreenPosition);
+                _pointerSource.RaiseMoved(_hudScreenPosition);
+                _pointerSource.RaiseReleased(_hudScreenPosition);
+            }
+        }
+
+        private void RunBoardTapOnAnInvalidSpotCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                _pointerSource.RaisePressed(_anchorScreenPosition);
+                _pointerSource.RaiseReleased(_anchorScreenPosition);
+            }
+        }
+
+        // The pointer's own press and release around the hand strip's report of slot 0, as a real HUD produces them,
+        // landing off the grid so the press selects nothing of its own.
+        private void TapSpellCardInHand()
+        {
+            _pointerSource.RaisePressed(_offGridScreenPosition);
+            _handGestureSource.RaiseHandSlotPressed(0);
+            _pointerSource.RaiseReleased(_offGridScreenPosition);
+        }
+
+        // The touch equivalent of the hover cycle above, driven through DragSpellAim instead of
+        // HandlePointerHovered: the pointer stays down throughout, alternating a genuine hex change with a
+        // within-hex drift, and is never released, so the aim stays live and the board never changes.
+        private void RunTouchDragAimCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                _pointerSource.RaiseMoved(_targetScreenPosition);
+                _pointerSource.RaiseMoved(_anchorScreenPosition);
+                _pointerSource.RaiseMoved(_anchorScreenPosition + _withinHexDriftOffset);
             }
         }
 
@@ -292,10 +573,14 @@ namespace GooGalaxy.Tests.PlayMode.Input
             cardPresenterGO.SetActive(false);
             _cardPresenter = cardPresenterGO.AddComponent<CardPresenter>();
             CardDataSO troopCard = CreateTroopCard();
-            _cardPresenter.SetAuthoredCards(troopCard);
+            _spellCard = CreateSpellCard();
+            _uncastableSpellCard = CreateUncastableSpellCard();
+            _cardPresenter.SetAuthoredCards(troopCard, _spellCard, _uncastableSpellCard);
             cardPresenterGO.SetActive(true);
             _spawned.Add(cardPresenterGO);
             _spawned.Add(troopCard);
+            _spawned.Add(_spellCard);
+            _spawned.Add(_uncastableSpellCard);
 
             var kitCards = new CardDataSO[DeckState.GetMinimumKitSize(HandSize)];
 
@@ -315,6 +600,35 @@ namespace GooGalaxy.Tests.PlayMode.Input
             deckGO.SetActive(true);
             _deckPresenter.InitializePlayer(LocalPlayerId);
             _spawned.Add(deckGO);
+        }
+
+        private void BuildSpellHand()
+        {
+            DealHandOf(_spellCard);
+        }
+
+        private void BuildUncastableSpellHand()
+        {
+            DealHandOf(_uncastableSpellCard);
+        }
+
+        // Re-deals the local player's hand from a kit of nothing but one card, so every slot resolves to the same
+        // Protocol deterministically — a shuffle of identical entries has nothing to scramble.
+        private void DealHandOf(CardDataSO card)
+        {
+            var kitCards = new CardDataSO[DeckState.GetMinimumKitSize(HandSize)];
+
+            for (int i = 0; i < kitCards.Length; i++)
+            {
+                kitCards[i] = card;
+            }
+
+            KitDataSO spellKit = ScriptableObject.CreateInstance<KitDataSO>();
+            spellKit.SetAuthoredCards(kitCards);
+            _spawned.Add(spellKit);
+
+            _deckPresenter.SetKit(spellKit, HandSize);
+            _deckPresenter.InitializePlayer(LocalPlayerId);
         }
 
         private void BuildHighlightPresenter()
@@ -387,6 +701,51 @@ namespace GooGalaxy.Tests.PlayMode.Input
             );
             _presenterGO.SetActive(true);
             _spawned.Add(_presenterGO);
+        }
+
+        // Wires a real UIDocument onto the already-built presenter through the internal test seam
+        // SetHudDocumentForTests, mirroring MatchInputControllerTests.BuildHudAsync — see that method for the
+        // full reasoning behind the root's explicit sizing and the hand strip's percentage-based one.
+        private IEnumerator BuildHudAsync()
+        {
+            _hudGO = new GameObject("MatchInputController_Alloc_Hud_Test");
+            _hudPanelSettings = ScriptableObject.CreateInstance<PanelSettings>();
+            _hudDocument = _hudGO.AddComponent<UIDocument>();
+            _hudDocument.panelSettings = _hudPanelSettings;
+            _spawned.Add(_hudGO);
+            _spawned.Add(_hudPanelSettings);
+
+            int frameBudget = HudLayoutSettleFrameBudget;
+
+            while ((_hudDocument.rootVisualElement == null) && frameBudget-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.That(_hudDocument.rootVisualElement, Is.Not.Null, "Test setup expects the HUD UIDocument to have created its root within the wait budget.");
+
+            _hudDocument.rootVisualElement.style.width = new Length(100f, LengthUnit.Percent);
+            _hudDocument.rootVisualElement.style.height = new Length(100f, LengthUnit.Percent);
+            _hudDocument.rootVisualElement.pickingMode = PickingMode.Ignore;
+
+            var handStrip = new VisualElement();
+            handStrip.style.position = Position.Absolute;
+            handStrip.style.left = 0f;
+            handStrip.style.bottom = 0f;
+            handStrip.style.width = new Length(HudStripSizePercent, LengthUnit.Percent);
+            handStrip.style.height = new Length(HudStripSizePercent, LengthUnit.Percent);
+            _hudDocument.rootVisualElement.Add(handStrip);
+
+            int layoutBudget = HudLayoutSettleFrameBudget;
+
+            while (float.IsNaN(handStrip.resolvedStyle.width) && layoutBudget-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.That(handStrip.resolvedStyle.width, Is.GreaterThan(0f), "Test setup expects the hand strip to have resolved a non-zero layout.");
+
+            _presenter.SetHudDocumentForTests(_hudDocument);
         }
 
         private Vector2 ScreenPositionForHex(HexCoordinates coordinates)

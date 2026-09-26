@@ -375,6 +375,84 @@ namespace GooGalaxy.Tests.EditMode.Shared
         }
 
         [Test]
+        public void RaiseStatusApplied_WithSubscriber_DeliversTheChangeIntact()
+        {
+            // GIVEN
+            StatusChange receivedChange = default;
+            MatchEvents.StatusApplied += change => receivedChange = change;
+            var expectedChange = new StatusChange(5, 1, 2, StatusType.Frozen, 3);
+
+            // WHEN
+            MatchEvents.RaiseStatusApplied(in expectedChange);
+
+            // THEN
+            Assert.That(receivedChange, Is.EqualTo(expectedChange));
+        }
+
+        [Test]
+        public void RaiseStatusApplied_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseStatusApplied(default));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsStatusApplied_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.StatusApplied += _ => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseStatusApplied(default);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "StatusApplied should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
+        public void RaiseStatusExpired_WithSubscriber_DeliversTheChangeIntact()
+        {
+            // GIVEN
+            StatusChange receivedChange = default;
+            MatchEvents.StatusExpired += change => receivedChange = change;
+            var expectedChange = new StatusChange(5, 1, StatusChange.NoActingPlayer, StatusType.Frozen, 0);
+
+            // WHEN
+            MatchEvents.RaiseStatusExpired(in expectedChange);
+
+            // THEN
+            Assert.That(receivedChange, Is.EqualTo(expectedChange));
+        }
+
+        [Test]
+        public void RaiseStatusExpired_NoSubscribers_DoesNotThrow()
+        {
+            // GIVEN
+
+            // WHEN / THEN
+            Assert.DoesNotThrow(() => MatchEvents.RaiseStatusExpired(default));
+        }
+
+        [Test]
+        public void ResetEvents_ClearsStatusExpired_Subscriber()
+        {
+            // GIVEN
+            bool hasFired = false;
+            MatchEvents.StatusExpired += _ => hasFired = true;
+
+            // WHEN
+            MatchEvents.ResetEvents();
+            MatchEvents.RaiseStatusExpired(default);
+
+            // THEN
+            Assert.That(hasFired, Is.False, "StatusExpired should have no subscribers after ResetEvents.");
+        }
+
+        [Test]
         public void RaiseHandChanged_WithSubscriber_DeliversThePlayerIdHandAndNextCard()
         {
             // GIVEN

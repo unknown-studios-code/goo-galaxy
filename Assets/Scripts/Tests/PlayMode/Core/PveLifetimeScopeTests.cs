@@ -21,8 +21,8 @@ using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.UI.Presenters;
 using GooGalaxy.Runtime.UI.Views;
 using GooGalaxy.Tests.PlayMode.UI;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
@@ -43,8 +43,9 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private const float CellVisualSize = 1f;
         private const float ThinkSeconds = 1.5f;
         private const float EnergyCeilingThreshold = 8f;
+#if UNITY_EDITOR
         private const string MatchHudViewUxmlPath = "Assets/UI/UXML/MatchHudView.uxml";
-        private const string MatchInputActionsPath = "Assets/Settings/Input/MatchInput.inputactions";
+#endif
 
         private readonly List<Object> _spawned = new();
 
@@ -349,12 +350,22 @@ namespace GooGalaxy.Tests.PlayMode.Core
             document.worldSpaceSizeMode = UIDocument.WorldSpaceSizeMode.Fixed;
             document.worldSpaceSize = new Vector2(1080f, 1920f);
 
-            VisualTreeAsset visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
+#if UNITY_EDITOR
+            // The authored asset in the editor, so MatchHudView.CacheElements resolves against the markup that ships.
+            VisualTreeAsset visualTreeAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
             Assert.That(visualTreeAsset, Is.Not.Null, $"Test setup expects '{MatchHudViewUxmlPath}' to exist and import as a VisualTreeAsset.");
             document.visualTreeAsset = visualTreeAsset;
-
             _matchHudView = documentGO.AddComponent<MatchHudView>();
             documentGO.SetActive(true);
+#else
+            // A player build has no AssetDatabase to load the authored UXML through, so the same named elements
+            // CacheElements requires are built directly onto the UIDocument's own root instead. That root only
+            // exists once UIDocument.OnEnable has run, so the document is activated alone before MatchHudView is
+            // added — unlike the editor branch, which can assign a visualTreeAsset up front and activate once.
+            documentGO.SetActive(true);
+            HudTestTreeBuilder.Build(document.rootVisualElement);
+            _matchHudView = documentGO.AddComponent<MatchHudView>();
+#endif
             _spawned.Add(documentGO);
         }
 
@@ -366,15 +377,13 @@ namespace GooGalaxy.Tests.PlayMode.Core
         // gets the chance to build a bare one.
         private void CreatePointerInputView()
         {
-            InputActionAsset inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(MatchInputActionsPath);
-            Assert.That(inputActions, Is.Not.Null, $"Test setup expects '{MatchInputActionsPath}' to exist and import as an InputActionAsset.");
+            InputActionAsset inputActions = MatchInputTestActionsFactory.Create();
+            _spawned.Add(inputActions);
 
             var pointerGO = new GameObject("PointerInputView_PVE_Test");
             pointerGO.SetActive(false);
-            JsonUtility.FromJsonOverwrite(
-                $"{{\"_inputActions\":{{\"instanceID\":{inputActions.GetInstanceID()}}}}}",
-                pointerGO.AddComponent<PointerInputView>()
-            );
+            PointerInputView view = pointerGO.AddComponent<PointerInputView>();
+            view.SetInputActionsForTests(inputActions);
             pointerGO.SetActive(true);
             _spawned.Add(pointerGO);
         }

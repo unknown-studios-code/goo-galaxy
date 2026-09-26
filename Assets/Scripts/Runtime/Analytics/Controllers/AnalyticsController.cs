@@ -122,6 +122,8 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
             MatchEvents.MoveExecuted += HandleMoveExecuted;
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
+            MatchEvents.StatusApplied += HandleStatusApplied;
+            MatchEvents.StatusExpired += HandleStatusExpired;
             MatchEvents.CardDiscarded += HandleCardDiscarded;
             MatchEvents.CardPlayAttempted += HandleCardPlayAttempted;
         }
@@ -136,6 +138,8 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
             MatchEvents.MoveExecuted -= HandleMoveExecuted;
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
+            MatchEvents.StatusApplied -= HandleStatusApplied;
+            MatchEvents.StatusExpired -= HandleStatusExpired;
             MatchEvents.CardDiscarded -= HandleCardDiscarded;
             MatchEvents.CardPlayAttempted -= HandleCardPlayAttempted;
         }
@@ -389,11 +393,40 @@ namespace GooGalaxy.Runtime.Analytics.Controllers
                 return;
             }
 
-            int affectedUnitCount = CountOf(result.AffectedUnitIds);
             int affectedHexCount = CountOf(result.AffectedHexes);
             int destroyedUnitCount = CountOf(result.DestroyedUnitIds);
 
-            Capture(AnalyticsRecord.ForAbilityResolved(GetTimestamp(), _matchOrdinal, actingPlayerId, affectedUnitCount, affectedHexCount, destroyedUnitCount));
+            Capture(
+                AnalyticsRecord.ForAbilityResolved(
+                    GetTimestamp(),
+                    _matchOrdinal,
+                    actingPlayerId,
+                    result.AffectedOwnCount,
+                    result.AffectedEnemyCount,
+                    affectedHexCount,
+                    destroyedUnitCount
+                )
+            );
+        }
+
+        private void HandleStatusApplied(StatusChange change)
+        {
+            if (!IsCapturing)
+            {
+                return;
+            }
+
+            Capture(AnalyticsRecord.ForStatusApplied(GetTimestamp(), _matchOrdinal, in change));
+        }
+
+        private void HandleStatusExpired(StatusChange change)
+        {
+            if (!IsCapturing)
+            {
+                return;
+            }
+
+            Capture(AnalyticsRecord.ForStatusExpired(GetTimestamp(), _matchOrdinal, in change));
         }
 
         private void HandleCardDiscarded(int playerId, CardId discardedCard, int slotIndex)

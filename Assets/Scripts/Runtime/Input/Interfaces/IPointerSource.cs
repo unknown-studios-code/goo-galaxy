@@ -34,8 +34,26 @@ namespace GooGalaxy.Runtime.Input.Interfaces
         /// <remarks>Not raised while the pointer is up, so a subscriber tracking a gesture needs no hover filter of its own.</remarks>
         public event Action<PointerSample> PointerMoved;
 
+        /// <summary>
+        /// Raised when a hover-capable pointer moves while it is up, carrying the reading taken at that instant with
+        /// <see cref="PointerPhase.Hovered" />.
+        /// </summary>
+        /// <remarks>
+        /// Only a mouse hovers. A touch pointer never raises this — a finger that is not down is not anywhere — so a
+        /// subscriber must offer every hover-driven affordance through the press-drag path as well. The capability is
+        /// decided per reading rather than once, because the active device can change at runtime (the Device
+        /// Simulator swaps the mouse for a touchscreen without restarting). Never raised while the pointer is down:
+        /// that movement is <see cref="PointerMoved" />, and the two are mutually exclusive.
+        /// </remarks>
+        public event Action<PointerSample> PointerHovered;
+
         /// <summary>Raised when the pointer comes up, carrying the reading taken at that instant.</summary>
-        /// <remarks>Raised only for the pointer that <see cref="PointerPressed" /> reported, so a lifted second finger is silent.</remarks>
+        /// <remarks>
+        /// Raised only for the pointer that <see cref="PointerPressed" /> reported, so a lifted second finger is silent.
+        /// The phase is <see cref="PointerPhase.Released" /> when the player lifted it and <see cref="PointerPhase.Canceled" />
+        /// when the system took it away — focus loss, a device reset, an OS-cancelled touch — in which case the position is
+        /// only where the pointer was last seen, and a subscriber must end its gesture without committing anything.
+        /// </remarks>
         public event Action<PointerSample> PointerReleased;
 
         /// <summary>Where the pointer is now, in screen pixels with the origin bottom-left.</summary>

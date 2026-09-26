@@ -2,10 +2,11 @@ using System.Collections;
 using GooGalaxy.Runtime.Input.Constants;
 using GooGalaxy.Runtime.Input.Models;
 using GooGalaxy.Runtime.Input.Views;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
@@ -14,9 +15,6 @@ namespace GooGalaxy.Tests.PlayMode.Input
     [TestFixture]
     public class PointerInputViewTests : InputTestFixture
     {
-        private const string MatchInputAssetPath = "Assets/Settings/Input/MatchInput.inputactions";
-        private const string InputActionsFieldName = "_inputActions";
-
         private static readonly Vector2 _pressPoint = new(100f, 200f);
         private static readonly Vector2 _movePoint = new(150f, 220f);
 
@@ -24,8 +22,10 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private PointerInputView _view;
         private InputActionAsset _inputActions;
         private Mouse _mouse;
+        private Touchscreen _touchscreen;
         private PointerSample? _lastPressedSample;
         private PointerSample? _lastMovedSample;
+        private PointerSample? _lastHoveredSample;
         private PointerSample? _lastReleasedSample;
 
         public override void Setup()
@@ -36,21 +36,17 @@ namespace GooGalaxy.Tests.PlayMode.Input
             // field a test can write is reset here rather than relying on a fresh instance per test.
             _lastPressedSample = null;
             _lastMovedSample = null;
+            _lastHoveredSample = null;
             _lastReleasedSample = null;
 
             _mouse = InputSystem.AddDevice<Mouse>();
 
-            InputActionAsset sourceActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(MatchInputAssetPath);
-            Assert.That(sourceActions, Is.Not.Null, $"Test setup expects '{MatchInputAssetPath}' to exist and import as an InputActionAsset.");
-            _inputActions = Object.Instantiate(sourceActions);
+            _inputActions = MatchInputTestActionsFactory.Create();
 
             _viewGO = new GameObject(nameof(PointerInputView));
             _viewGO.SetActive(false);
             _view = _viewGO.AddComponent<PointerInputView>();
-
-            var serializedView = new SerializedObject(_view);
-            serializedView.FindProperty(InputActionsFieldName).objectReferenceValue = _inputActions;
-            serializedView.ApplyModifiedPropertiesWithoutUndo();
+            _view.SetInputActionsForTests(_inputActions);
         }
 
         public override void TearDown()
@@ -68,6 +64,11 @@ namespace GooGalaxy.Tests.PlayMode.Input
             if (_mouse != null)
             {
                 InputSystem.RemoveDevice(_mouse);
+            }
+
+            if (_touchscreen != null)
+            {
+                InputSystem.RemoveDevice(_touchscreen);
             }
 
             base.TearDown();
@@ -173,6 +174,77 @@ namespace GooGalaxy.Tests.PlayMode.Input
         }
 
         [UnityTest]
+        public IEnumerator PointerHovered_MouseMovesWithNoButtonHeld_ReportsTheMovedPositionAndHoveredPhase()
+        {
+            // GIVEN
+            ActivateView();
+            _view.PointerHovered += HandlePointerHovered;
+
+            // WHEN
+            yield return SendHoverAsync(_movePoint);
+
+            // THEN
+            Assert.That((_lastHoveredSample.Value.ScreenPosition, _lastHoveredSample.Value.Phase), Is.EqualTo((_movePoint, PointerPhase.Hovered)));
+        }
+
+        [UnityTest]
+        public IEnumerator PointerHovered_MouseMovesWhilePressed_DoesNotRaise()
+        {
+            // GIVEN — the arrangement press can itself report a position change a moment before the button
+            // change lands in the same Input System update, which is a legitimate hover the instant before the
+            // press and not what this test is about, so the sample it may have set is cleared before the act.
+            ActivateView();
+            _view.PointerHovered += HandlePointerHovered;
+            yield return SendPointerStateAsync(_pressPoint, isPressed: true);
+            _lastHoveredSample = null;
+
+            // WHEN
+            yield return SendPointerStateAsync(_movePoint, isPressed: true);
+
+            // THEN
+            Assert.That(_lastHoveredSample, Is.Null);
+        }
+
+        [UnityTest]
+        public IEnumerator PointerHovered_TouchscreenMoves_NeverRaises()
+        {
+            // GIVEN — Touchscreen.position mirrors the primary touch and only updates for an active touch
+            // contact, so the move must be queued as a real touch state rather than through Set: Set merely
+            // writes the aggregate position control's own backing memory, which Touchscreen's state processing
+            // then overwrites back to zero the moment the frame runs with no active touch behind it — measured
+            // here directly against the device, independent of this view's own bindings.
+            ActivateView();
+            _view.PointerHovered += HandlePointerHovered;
+            _touchscreen = InputSystem.AddDevice<Touchscreen>();
+
+            // WHEN
+            InputSystem.QueueStateEvent(
+                _touchscreen,
+                new TouchState
+                {
+                    touchId = 1,
+                    phase = UnityEngine.InputSystem.TouchPhase.Began,
+                    position = _movePoint,
+                }
+            );
+            InputSystem.Update();
+            yield return null;
+
+            // THEN — proves the touch reading genuinely reached the position action before checking it raised no
+            // hover, or a binding fault that stopped the reading from arriving at all would pass this test for
+            // the wrong reason: no hover, because nothing happened.
+            Assert.That(_view.CurrentScreenPosition, Is.EqualTo(_movePoint), "Test setup expects the touch reading to have reached the position action.");
+            Assert.That(_lastHoveredSample, Is.Null);
+        }
+
+        // PointerHovered_MouseDisabled_DoesNotRaise was removed rather than fixed: a disabled device is dropped by
+        // the Input System itself before HandlePositionPerformed's own IsHoverCapable check ever runs, per
+        // InputSystem.DisableDevice's documented behaviour, so no event this fixture can send reaches that check
+        // with the device already disabled — the test asserted silence for a reason unrelated to the branch it
+        // named. Reaching the branch genuinely would need a device that reports Mouse.enabled false while still
+        // delivering state changes, which is not a real device and not a seam this frozen runtime can be given.
+
+        [UnityTest]
         public IEnumerator CurrentScreenPosition_MovedWhileNotDown_StillUpdatesFromTheDevice()
         {
             // GIVEN
@@ -249,6 +321,15 @@ namespace GooGalaxy.Tests.PlayMode.Input
             yield return null;
         }
 
+        // Moves the mouse position without touching its button, matching a real hover: no MouseState button bit
+        // set, unlike SendPointerStateAsync which always drives both together for a press or a release.
+        private IEnumerator SendHoverAsync(Vector2 position)
+        {
+            Set(_mouse.position, position);
+            InputSystem.Update();
+            yield return null;
+        }
+
         private void ActivateView()
         {
             _viewGO.SetActive(true);
@@ -262,6 +343,11 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private void HandlePointerMoved(PointerSample sample)
         {
             _lastMovedSample = sample;
+        }
+
+        private void HandlePointerHovered(PointerSample sample)
+        {
+            _lastHoveredSample = sample;
         }
 
         private void HandlePointerReleased(PointerSample sample)

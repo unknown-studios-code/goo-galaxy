@@ -80,6 +80,8 @@ namespace GooGalaxy.Tests.PlayMode.Input
         private Vector2 _anchorScreenPosition;
         private MoveCommand _moveExecutedCommand;
         private List<HexCoordinates> _moveExecutedAffectedCoordinates;
+        private StatusChange _statusAppliedChange;
+        private StatusChange _statusExpiredChange;
 
         [UnitySetUp]
         public IEnumerator SetUp()
@@ -198,6 +200,33 @@ namespace GooGalaxy.Tests.PlayMode.Input
             Assert.That(_analyticsSink.WrittenRecords.Count, Is.EqualTo(writtenBeforeMeasuring), "No flush should have happened during the measured run.");
         }
 
+        [Test]
+        [Category("Allocation")]
+        public void SteadyState_RepeatedStatusAppliedAndExpiredWithAnalyticsControllerSubscribed_AllocatesNoManagedMemory()
+        {
+            // GIVEN — reused StatusChange values raised directly on the bus, so only AnalyticsController's own
+            // HandleStatusApplied and HandleStatusExpired capture is measured, independent of the board.
+            _statusAppliedChange = new StatusChange(AnchorUnitId, LocalPlayerId, LocalPlayerId, StatusType.Frozen, 1);
+            _statusExpiredChange = new StatusChange(AnchorUnitId, LocalPlayerId, StatusChange.NoActingPlayer, StatusType.Frozen, 0);
+
+            for (int i = 0; i < CaptureWarmUpIterations; i++)
+            {
+                RunStatusChangeCycle();
+            }
+
+            // Empties the buffer before measuring, matching the move-executed cycle above: each measured
+            // iteration captures two records (applied and expired), 1000 in total, comfortably under the 2048
+            // buffer, so nothing auto-flushes mid-measurement.
+            _analyticsController.Flush();
+            int writtenBeforeMeasuring = _analyticsSink.WrittenRecords.Count;
+
+            // WHEN / THEN
+            Assert.That(RunStatusChangeCycle, new AllocatesNothingConstraint());
+
+            // THEN — nothing auto-flushed during the measured run, so the assertion above measured capture alone.
+            Assert.That(_analyticsSink.WrittenRecords.Count, Is.EqualTo(writtenBeforeMeasuring), "No flush should have happened during the measured run.");
+        }
+
         private static CardDataSO CreateTroopCard()
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
@@ -237,6 +266,17 @@ namespace GooGalaxy.Tests.PlayMode.Input
             for (int i = 0; i < MeasuredIterations; i++)
             {
                 MatchEvents.RaiseMoveExecuted(_moveExecutedCommand, _moveExecutedAffectedCoordinates);
+            }
+        }
+
+        // Raised directly rather than through a real freeze, since only AnalyticsController's own handlers are
+        // under measurement here; the two changes are built once in the test and reused every iteration.
+        private void RunStatusChangeCycle()
+        {
+            for (int i = 0; i < MeasuredIterations; i++)
+            {
+                MatchEvents.RaiseStatusApplied(in _statusAppliedChange);
+                MatchEvents.RaiseStatusExpired(in _statusExpiredChange);
             }
         }
 

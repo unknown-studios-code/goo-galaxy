@@ -31,17 +31,26 @@ namespace GooGalaxy.Runtime.Board.Services
     /// directly, and no temporary list is built per tick.
     /// </para>
     /// <para>
-    /// <b>An instance, unlike every other <c>*Resolver</c> here, and deliberately so.</b> It holds exactly one
-    /// piece of state: a <c>readonly</c> binding to the registry it expires conditions on. Making it static
-    /// would mean passing that registry through every call, and the registry is the same object for the whole
-    /// match — the parameter would be noise on every call site and a chance to pass the wrong board. The
-    /// binding is immutable and there is no per-call state, so the type is still a pure rule in every sense
-    /// that matters: same registry and same input, same result. Do not "fix" this into a static class.
+    /// <b>An instance, unlike every other <c>*Resolver</c> here, and deliberately so.</b> It holds a
+    /// <c>readonly</c> binding to the registry it expires conditions on. Making it static would mean passing that
+    /// registry through every call, and the registry is the same object for the whole match — the parameter would
+    /// be noise on every call site and a chance to pass the wrong board. Do not "fix" this into a static class.
+    /// </para>
+    /// <para>
+    /// <b>It carries nothing from one call to the next.</b> What it changed is reported into buffers the caller
+    /// owns — the same shape <c>AbilityResolver</c> uses for its affected units and hexes — and it only ever
+    /// appends to them: clearing, reading and publishing them is the caller's. Its one other field is a scratch list
+    /// cleared before every use, which exists only so a tick can learn which conditions a unit dropped without
+    /// allocating.
     /// </para>
     /// </remarks>
     internal sealed class StatusEffectResolver
     {
+        // A unit carries at most one marker per condition, and there are two conditions to carry.
+        private const int MaxStatusesPerUnit = 2;
+
         private readonly Dictionary<int, GridUnit>.ValueCollection _units;
+        private readonly List<StatusType> _expiredStatusScratch = new(MaxStatusesPerUnit);
 
         /// <remarks>
         /// Takes the registry's value collection, which stays bound to the backing dictionary, so units registered or
@@ -55,16 +64,29 @@ namespace GooGalaxy.Runtime.Board.Services
         /// <remarks>
         /// A null or dead <paramref name="unit" /> is ignored, as is a <paramref name="type" /> of
         /// <see cref="StatusType.None" />. <paramref name="duration" /> is action windows the condition lasts; a value
-        /// below one is ignored.
+        /// below one is ignored. Records nothing — see the overload that takes a buffer.
         /// </remarks>
         internal void ApplyStatus(GridUnit unit, StatusType type, int duration)
         {
-            if (unit == null || !unit.IsAlive)
+            ApplyStatus(unit, type, duration, StatusChange.NoActingPlayer, null);
+        }
+
+        /// <remarks>
+        /// The same application, appended to <paramref name="applied" /> as a <see cref="StatusChange" /> against
+        /// <paramref name="actingPlayerId" /> — the player whose deployment applied it. Only an application the unit
+        /// actually accepted is recorded, so a null or dead unit, <see cref="StatusType.None" />, or a duration below
+        /// one records nothing; a refresh of a condition already held is recorded again. The buffer is caller-owned,
+        /// never cleared here, and may be null to record nothing.
+        /// </remarks>
+        internal void ApplyStatus(GridUnit unit, StatusType type, int duration, int actingPlayerId, List<StatusChange> applied)
+        {
+            if (unit == null || !unit.IsAlive || type == StatusType.None || duration <= 0)
             {
                 return;
             }
 
             unit.AddStatus(type, duration);
+            applied?.Add(new StatusChange(unit.UnitId, unit.PlayerId, actingPlayerId, type, duration));
         }
 
         /// <remarks>
@@ -73,7 +95,7 @@ namespace GooGalaxy.Runtime.Board.Services
         /// </remarks>
         internal void TickDurations(int playerId)
         {
-            TickDurations(playerId, null);
+            TickDurations(playerId, null, null);
         }
 
         /// <remarks>
@@ -91,6 +113,16 @@ namespace GooGalaxy.Runtime.Board.Services
         /// </remarks>
         internal void TickDurations(int playerId, IReadOnlyList<int> exemptUnitIds)
         {
+            TickDurations(playerId, exemptUnitIds, null);
+        }
+
+        /// <remarks>
+        /// The same tick, appending one <see cref="StatusChange" /> to <paramref name="expired" /> for every condition
+        /// it ran out — owner at the moment of expiry, <see cref="StatusChange.NoActingPlayer" />, zero windows left.
+        /// The buffer is caller-owned, never cleared here, and may be null to record nothing.
+        /// </remarks>
+        internal void TickDurations(int playerId, IReadOnlyList<int> exemptUnitIds, List<StatusChange> expired)
+        {
             foreach (GridUnit unit in _units)
             {
                 if (unit == null || !unit.IsAlive || unit.PlayerId != playerId)
@@ -103,7 +135,9 @@ namespace GooGalaxy.Runtime.Board.Services
                     continue;
                 }
 
-                unit.TickStatusDurations();
+                _expiredStatusScratch.Clear();
+                unit.TickStatusDurations(_expiredStatusScratch);
+                RecordExpiries(unit, expired);
             }
         }
 
@@ -123,6 +157,19 @@ namespace GooGalaxy.Runtime.Board.Services
             }
 
             return false;
+        }
+
+        private void RecordExpiries(GridUnit unit, List<StatusChange> expired)
+        {
+            if (expired == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _expiredStatusScratch.Count; i++)
+            {
+                expired.Add(new StatusChange(unit.UnitId, unit.PlayerId, StatusChange.NoActingPlayer, _expiredStatusScratch[i], 0));
+            }
         }
     }
 }

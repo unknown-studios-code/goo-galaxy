@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using GooGalaxy.Runtime.UI.Constants;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UIElements;
@@ -12,10 +11,19 @@ using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.PlayMode.UI
 {
+#if UNITY_EDITOR
     // Flow-named per Rule 2's PlayMode exception in unity-testing.md: this pins MatchHudView.uss's
     // content-height rule -- top and bottom bars take their content height, the board window absorbs the rest --
     // through the real UXML and stylesheets at two device ratios. No single type owns that outcome, so this is
     // named for the rule rather than for MatchHudView.
+    //
+    // Compiled only for the editor: every test here builds its panel from the authored MatchHudView.uxml through
+    // UnityEditor.AssetDatabase, because the CSS layout rule under test is defined by that asset and cannot be
+    // reproduced any other way -- there is no player-side fallback that would still be testing the same rule. A
+    // player build has no AssetDatabase to load the asset through, so the fixture is compiled out entirely for
+    // that target rather than kept as tests that would fail to arrange themselves (unity-testing.md Rule 15 bans
+    // [Explicit]/[Ignore] for exactly this; conditional compilation means these tests do not exist for a
+    // platform that cannot run them, rather than existing and being skipped).
     [TestFixture]
     public class MatchHudPortraitRatioTests
     {
@@ -240,7 +248,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             document.worldSpaceSizeMode = UIDocument.WorldSpaceSizeMode.Fixed;
             document.worldSpaceSize = new Vector2(width, height);
 
-            VisualTreeAsset visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
+            VisualTreeAsset visualTreeAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
             Assert.That(visualTreeAsset, Is.Not.Null, $"Test setup expects '{MatchHudViewUxmlPath}' to exist and import as a VisualTreeAsset.");
             document.visualTreeAsset = visualTreeAsset;
 
@@ -265,4 +273,5 @@ namespace GooGalaxy.Tests.PlayMode.UI
             Assert.Fail($"Test setup expects the panel to settle to height {height} within the layout settle budget.");
         }
     }
+#endif
 }

@@ -20,12 +20,14 @@ namespace GooGalaxy.Tests.EditMode.Board
 
         private Dictionary<int, GridUnit> _units;
         private StatusEffectResolver _resolver;
+        private List<StatusChange> _changes;
 
         [SetUp]
         public void SetUp()
         {
             _units = new Dictionary<int, GridUnit>();
             _resolver = new StatusEffectResolver(_units.Values);
+            _changes = new List<StatusChange>();
         }
 
         [Test]
@@ -53,6 +55,57 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(outcome, Is.EqualTo(ConversionOutcome.Immune));
+        }
+
+        [Test]
+        public void ApplyStatus_SameStatusAppliedTwice_RefreshesInsteadOfStacking()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit(UnitOneId, PlayerOneId);
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 1);
+
+            // WHEN
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 4);
+
+            // THEN
+            Assert.That(unit.ActiveStatuses, Has.Count.EqualTo(1));
+            Assert.That(unit.ActiveStatuses[0].RemainingDuration, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void ApplyStatus_WithActingPlayer_RecordsTheApplicationAgainstThatPlayer()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit(UnitOneId, PlayerOneId);
+
+            // WHEN
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 3, PlayerTwoId, _changes);
+
+            // THEN
+            Assert.That(_changes, Is.EqualTo(new[] { new StatusChange(UnitOneId, PlayerOneId, PlayerTwoId, StatusType.Frozen, 3) }));
+        }
+
+        [Test]
+        public void ApplyStatus_SameStatusAppliedTwice_RecordsTheRefreshAsASecondApplication()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit(UnitOneId, PlayerOneId);
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 1, PlayerTwoId, _changes);
+
+            // WHEN
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 4, PlayerTwoId, _changes);
+
+            // THEN
+            Assert.That(
+                _changes,
+                Is.EqualTo(
+                    new[]
+                    {
+                        new StatusChange(UnitOneId, PlayerOneId, PlayerTwoId, StatusType.Frozen, 1),
+                        new StatusChange(UnitOneId, PlayerOneId, PlayerTwoId, StatusType.Frozen, 4),
+                    }
+                )
+            );
         }
 
         [Test]
@@ -110,18 +163,58 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
-        public void ApplyStatus_SameStatusAppliedTwice_RefreshesInsteadOfStacking()
+        public void ApplyStatus_NullUnit_RecordsNoApplication()
+        {
+            // GIVEN
+            // no unit instance
+
+            // WHEN
+            _resolver.ApplyStatus(null, StatusType.Frozen, 1, PlayerTwoId, _changes);
+
+            // THEN
+            Assert.That(_changes, Is.Empty);
+        }
+
+        [Test]
+        public void ApplyStatus_NoneType_RecordsNoApplication()
         {
             // GIVEN
             GridUnit unit = CreateUnit(UnitOneId, PlayerOneId);
-            _resolver.ApplyStatus(unit, StatusType.Frozen, 1);
 
             // WHEN
-            _resolver.ApplyStatus(unit, StatusType.Frozen, 4);
+            _resolver.ApplyStatus(unit, StatusType.None, 1, PlayerTwoId, _changes);
 
             // THEN
-            Assert.That(unit.ActiveStatuses, Has.Count.EqualTo(1));
-            Assert.That(unit.ActiveStatuses[0].RemainingDuration, Is.EqualTo(4));
+            Assert.That(_changes, Is.Empty);
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void ApplyStatus_NonPositiveDuration_RecordsNoApplication(int duration)
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit(UnitOneId, PlayerOneId);
+
+            // WHEN
+            _resolver.ApplyStatus(unit, StatusType.Frozen, duration, PlayerTwoId, _changes);
+
+            // THEN
+            Assert.That(_changes, Is.Empty);
+        }
+
+        [Test]
+        public void ApplyStatus_NullChangesBuffer_DoesNotThrowAndStillAppliesTheStatus()
+        {
+            // GIVEN — the buffer is caller-owned and optional; a null caller that only wants the application
+            // itself, not a record of it, must not be forced to allocate a list it never reads.
+            GridUnit unit = CreateUnit(UnitOneId, PlayerOneId);
+
+            // WHEN
+            void applyCall() => _resolver.ApplyStatus(unit, StatusType.Frozen, 1, PlayerTwoId, null);
+
+            // THEN
+            Assert.DoesNotThrow(applyCall);
+            Assert.That(unit.HasStatus(StatusType.Frozen), Is.True);
         }
 
         [Test]
@@ -169,6 +262,20 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        public void TickDurations_MarkerReachingZero_RecordsTheExpiryWithTheOwnerAndNoActingPlayer()
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 1);
+
+            // WHEN
+            _resolver.TickDurations(PlayerOneId, null, _changes);
+
+            // THEN
+            Assert.That(_changes, Is.EqualTo(new[] { new StatusChange(UnitOneId, PlayerOneId, StatusChange.NoActingPlayer, StatusType.Frozen, 0) }));
+        }
+
+        [Test]
         public void TickDurations_MarkerWithDurationTwo_SurvivesTheFirstTick()
         {
             // GIVEN
@@ -195,6 +302,21 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(unit.HasStatus(StatusType.Rooted), Is.False);
+        }
+
+        [Test]
+        public void TickDurations_WithExemptUnit_RecordsNoExpiryForTheExemptUnit()
+        {
+            // GIVEN
+            GridUnit exemptUnit = RegisterUnit(UnitOneId, PlayerOneId);
+            _resolver.ApplyStatus(exemptUnit, StatusType.Frozen, 1);
+            var exemptUnitIds = new List<int> { exemptUnit.UnitId };
+
+            // WHEN
+            _resolver.TickDurations(PlayerOneId, exemptUnitIds, _changes);
+
+            // THEN
+            Assert.That(_changes, Is.Empty);
         }
 
         [Test]
@@ -240,6 +362,22 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.DoesNotThrow(tickCall);
+        }
+
+        [Test]
+        public void TickDurations_NullExpiredBuffer_DoesNotThrowAndStillTicksTheMarker()
+        {
+            // GIVEN — the buffer is caller-owned and optional; a null caller that only wants the tick applied,
+            // not a record of what expired, must not be forced to allocate a list it never reads.
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            _resolver.ApplyStatus(unit, StatusType.Frozen, 1);
+
+            // WHEN
+            void tickCall() => _resolver.TickDurations(PlayerOneId, null, null);
+
+            // THEN
+            Assert.DoesNotThrow(tickCall);
+            Assert.That(unit.HasStatus(StatusType.Frozen), Is.False);
         }
 
         [Test]

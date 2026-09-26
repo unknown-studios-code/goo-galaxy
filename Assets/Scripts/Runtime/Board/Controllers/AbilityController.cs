@@ -36,6 +36,12 @@ namespace GooGalaxy.Runtime.Board.Controllers
     /// publishes nothing.
     /// </para>
     /// <para>
+    /// Condition changes are published around it: one <c>MatchEvents.StatusApplied</c> per application,
+    /// immediately before <c>AbilityResolved</c>, and one <c>MatchEvents.StatusExpired</c> per condition the
+    /// step 6 tick ran out, after the tick. The status resolver reports both into buffers this component owns and
+    /// clears per deployment, so nothing is allocated.
+    /// </para>
+    /// <para>
     /// Step 6 self-cleanup is unconditional <i>within a deployment that resolves</i>, and the two paths differ
     /// on what counts as one. A troop landing always resolves: the move already happened, so even a card with
     /// no impacts reaches the shared body and closes its action windows — a Subject Alpha thaws a frozen unit
@@ -59,6 +65,12 @@ namespace GooGalaxy.Runtime.Board.Controllers
         // with a longer trail does not resize the list on a landing.
         private const int MaxTrackedHazards = 8;
 
+        // A unit carries at most one marker per condition, and there are two conditions to carry — so one tick can
+        // expire at most two markers per unit on a full board. Applications are bounded by the board too.
+        private const int MaxStatusesPerUnit = 2;
+        private const int AppliedStatusCapacity = BoardMetrics.DefaultBoardCellCount;
+        private const int ExpiredStatusCapacity = BoardMetrics.DefaultBoardCellCount * MaxStatusesPerUnit;
+
         private static readonly ProfilerMarker _resolveAbilitiesMarker = new("AbilityController.ResolveAbilities");
 
         // Separate from the resolve marker because the two answer different questions: the resolve marker is
@@ -78,6 +90,8 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private readonly List<HexCoordinates> _affectedHexes = new(BoardMetrics.MaxImpactAreaCells);
         private readonly List<int> _destroyedUnitIds = new(MaxSelfDestructsPerLanding);
         private readonly List<HexCell> _hazardCells = new(MaxTrackedHazards);
+        private readonly List<StatusChange> _appliedStatuses = new(AppliedStatusCapacity);
+        private readonly List<StatusChange> _expiredStatuses = new(ExpiredStatusCapacity);
 
         private ReadOnlyCollection<int> _affectedUnitIdsView;
         private ReadOnlyCollection<HexCoordinates> _affectedHexesView;
@@ -91,6 +105,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private bool _hasLoggedBoardUnavailable;
         private bool _hasLoggedAbilityReentry;
         private bool _hasLoggedSpellReentry;
+        private bool _hasLoggedStatusChangeFailure;
 
         // Read at the point of use, never cached during injection: see FuseController.Fuses for why the resolver
         // may not exist yet. Caching what was visible at Construct would pin a null for the rest of the match.
@@ -270,79 +285,6 @@ namespace GooGalaxy.Runtime.Board.Controllers
             return false;
         }
 
-        // The tracked cells belong to the grid that is being replaced, and a hazard whose owner never deploys
-        // again never ticks out on its own, so without this they would outlive their board. Clearing on the
-        // event rather than on the next landing's grid comparison means the stale references are dropped at
-        // the moment the old board dies, instead of being held until someone happens to move.
-        //
-        // The diagnostic and re-entry latches are re-armed alongside them. Domain reload is disabled, so a
-        // presenter that reported one in a match would otherwise stay silent about it for every later match in
-        // the same session — the failure mode that hides the *next* defect rather than the one already seen.
-        // _hasLoggedBoardUnavailable is deliberately not re-armed here: it re-arms inside TryGetBoard, on the
-        // first call that actually finds a usable board. A grid arriving is not that moment — the unit registry
-        // and the status resolver can still be unset — so clearing it here would re-report the same broken
-        // wiring on the next landing.
-        private void HandleGridInitialized(IHexGrid grid)
-        {
-            _hazardCells.Clear();
-
-            _loggedDiagnostics = AbilityDiagnostic.None;
-            _hasLoggedAbilityReentry = false;
-            _hasLoggedSpellReentry = false;
-        }
-
-        private void HandleLandingResolved(MoveCommand command, ConversionResult conversions)
-        {
-            // Re-entering would clear the buffers the outer AbilityResolved subscribers are still iterating,
-            // and would run step 6 cleanup for the inner landing before the outer one had finished step 4.
-            if (_isResolvingAbilities)
-            {
-                // PERF: latched, for the same reason as the spell path — a subscriber that deploys mid-dispatch
-                // re-enters on every landing for the rest of the match, and each rejected one would otherwise
-                // extract a stack trace and retain a console entry.
-                if (!_hasLoggedAbilityReentry)
-                {
-                    _hasLoggedAbilityReentry = true;
-                    Debug.LogError(BoardLogMessages.AbilityResolveReentered, this);
-                }
-
-                return;
-            }
-
-            if (!TryGetBoard(out HexGrid grid))
-            {
-                return;
-            }
-
-            // The unit standing on the landing hex is the acting one, which is not always the commanded unit: a
-            // Clone leaves the commanded unit on its source and puts a new one on the target, and a Deploy
-            // carries no unit id at all. See MoveCommand.UnitId.
-            bool hasLanded = grid.TryGetCell(command.Target, out HexCell landingCell) && landingCell.IsOccupied;
-
-            _isResolvingAbilities = true;
-
-            try
-            {
-                var context = AbilityContext.ForLanding(
-                    command.PlayerId,
-                    hasLanded ? landingCell.OccupantUnitId : AbilityContext.NoActingUnit,
-                    command.Target,
-                    command.Type == MoveType.Jump,
-                    command.Source,
-                    conversions
-                );
-
-                // An empty or off-grid landing hex means nothing actually landed, so no impact may resolve —
-                // but the deployment still happened, so its action windows still close. Passing no impacts
-                // rather than returning early is what keeps step 6 unconditional.
-                ResolveDeployment(grid, context, hasLanded ? GetLandingEffects(landingCell.OccupantUnitId) : null);
-            }
-            finally
-            {
-                _isResolvingAbilities = false;
-            }
-        }
-
         // The shared body of both deployment paths. Everything a troop landing and a Protocol have in common
         // lives here; everything they do not is already resolved into the context by the time it arrives.
         private void ResolveDeployment(HexGrid grid, in AbilityContext context, IReadOnlyList<ImpactEffect> landingEffects)
@@ -352,6 +294,8 @@ namespace GooGalaxy.Runtime.Board.Controllers
             _affectedUnitIds.Clear();
             _affectedHexes.Clear();
             _destroyedUnitIds.Clear();
+            _appliedStatuses.Clear();
+            _expiredStatuses.Clear();
 
             if (landingEffects != null && landingEffects.Count > 0)
             {
@@ -383,17 +327,71 @@ namespace GooGalaxy.Runtime.Board.Controllers
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out diagnostics
                 );
             }
 
             LogDiagnostics(diagnostics);
+            PublishStatusApplied();
             PublishAbilityResolved(context.ActingPlayerId);
+        }
+
+        // Each change is dispatched inside its own guard, for the same reason PublishAbilityResolved guards its one:
+        // the conditions are already on the units, and a throwing subscriber must not unwind past the AbilityResolved
+        // publish and the self-cleanup that follow. The guard is per change, not per subscriber — a throw still stops
+        // the multicast, so the subscribers after the throwing one miss that change, exactly as they miss an
+        // AbilityResolved whose earlier subscriber threw. The next change is dispatched to everyone again.
+        private void PublishStatusApplied()
+        {
+            for (int i = 0; i < _appliedStatuses.Count; i++)
+            {
+                try
+                {
+                    MatchEvents.RaiseStatusApplied(_appliedStatuses[i]);
+                }
+                catch (Exception exception)
+                {
+                    LogStatusChangeSubscriberFailure(exception);
+                }
+            }
+        }
+
+        private void PublishStatusExpired()
+        {
+            for (int i = 0; i < _expiredStatuses.Count; i++)
+            {
+                try
+                {
+                    MatchEvents.RaiseStatusExpired(_expiredStatuses[i]);
+                }
+                catch (Exception exception)
+                {
+                    LogStatusChangeSubscriberFailure(exception);
+                }
+            }
+        }
+
+        // PERF: latched, as the re-entry logs are. A subscriber that throws on a status change throws on every one for
+        // the rest of the match — several per deployment — and each log extracts a stack trace and retains a console
+        // entry. The first failure, with its exception, is what the reader needs; the latch re-arms per board.
+        private void LogStatusChangeSubscriberFailure(Exception exception)
+        {
+            if (_hasLoggedStatusChangeFailure)
+            {
+                return;
+            }
+
+            _hasLoggedStatusChangeFailure = true;
+            Debug.LogError(BoardLogMessages.StatusChangeSubscriberFailed, this);
+            Debug.LogException(exception, this);
         }
 
         private void PublishAbilityResolved(int actingPlayerId)
         {
-            var result = new AbilityResult(_affectedUnitIdsView, _affectedHexesView, _destroyedUnitIdsView);
+            CountAffectedByOwner(actingPlayerId, out int affectedOwnCount, out int affectedEnemyCount);
+
+            var result = new AbilityResult(_affectedUnitIdsView, _affectedHexesView, _destroyedUnitIdsView, affectedOwnCount, affectedEnemyCount);
 
             try
             {
@@ -411,6 +409,31 @@ namespace GooGalaxy.Runtime.Board.Controllers
             }
         }
 
+        // Read after the impacts and before self-cleanup, so a unit this landing converted counts for its new owner
+        // and a unit about to be removed is still registered. Every affected unit was alive when an impact reached
+        // it, so a miss here would be a registry fault; it is left uncounted rather than guessed at.
+        private void CountAffectedByOwner(int actingPlayerId, out int affectedOwnCount, out int affectedEnemyCount)
+        {
+            affectedOwnCount = 0;
+            affectedEnemyCount = 0;
+
+            for (int i = 0; i < _affectedUnitIds.Count; i++)
+            {
+                if (!_unitPresenter.ActiveUnits.TryGetValue(_affectedUnitIds[i], out GridUnit unit) || unit == null)
+                {
+                    continue;
+                }
+
+                if (unit.PlayerId == actingPlayerId)
+                {
+                    affectedOwnCount++;
+                    continue;
+                }
+
+                affectedEnemyCount++;
+            }
+        }
+
         // Step 6 of the GDD's interaction order. Removal comes first, because a destroyed unit must not be
         // ticked. Both ticks then close the window the *previous* deployment opened, never the one this
         // landing just opened, and both express that as an exemption on identity rather than on list
@@ -423,8 +446,11 @@ namespace GooGalaxy.Runtime.Board.Controllers
                 DestroyMarkedUnits();
                 TrackSpawnedHazards(grid);
                 TickHazards(actingPlayerId, _affectedHexes);
-                _statusEffects.TickDurations(actingPlayerId, _affectedUnitIdsView);
+                _statusEffects.TickDurations(actingPlayerId, _affectedUnitIdsView, _expiredStatuses);
             }
+
+            // Outside the marker, so subscriber work is not charged to the cleanup scan.
+            PublishStatusExpired();
         }
 
         private void DestroyMarkedUnits()
@@ -586,6 +612,80 @@ namespace GooGalaxy.Runtime.Board.Controllers
             grid = _gridPresenter != null ? _gridPresenter.HexGrid : null;
 
             return grid != null;
+        }
+
+        // The tracked cells belong to the grid that is being replaced, and a hazard whose owner never deploys
+        // again never ticks out on its own, so without this they would outlive their board. Clearing on the
+        // event rather than on the next landing's grid comparison means the stale references are dropped at
+        // the moment the old board dies, instead of being held until someone happens to move.
+        //
+        // The diagnostic, re-entry and status-change latches are re-armed alongside them. Domain reload is disabled, so a
+        // presenter that reported one in a match would otherwise stay silent about it for every later match in
+        // the same session — the failure mode that hides the *next* defect rather than the one already seen.
+        // _hasLoggedBoardUnavailable is deliberately not re-armed here: it re-arms inside TryGetBoard, on the
+        // first call that actually finds a usable board. A grid arriving is not that moment — the unit registry
+        // and the status resolver can still be unset — so clearing it here would re-report the same broken
+        // wiring on the next landing.
+        private void HandleGridInitialized(IHexGrid grid)
+        {
+            _hazardCells.Clear();
+
+            _loggedDiagnostics = AbilityDiagnostic.None;
+            _hasLoggedAbilityReentry = false;
+            _hasLoggedSpellReentry = false;
+            _hasLoggedStatusChangeFailure = false;
+        }
+
+        private void HandleLandingResolved(MoveCommand command, ConversionResult conversions)
+        {
+            // Re-entering would clear the buffers the outer AbilityResolved subscribers are still iterating,
+            // and would run step 6 cleanup for the inner landing before the outer one had finished step 4.
+            if (_isResolvingAbilities)
+            {
+                // PERF: latched, for the same reason as the spell path — a subscriber that deploys mid-dispatch
+                // re-enters on every landing for the rest of the match, and each rejected one would otherwise
+                // extract a stack trace and retain a console entry.
+                if (!_hasLoggedAbilityReentry)
+                {
+                    _hasLoggedAbilityReentry = true;
+                    Debug.LogError(BoardLogMessages.AbilityResolveReentered, this);
+                }
+
+                return;
+            }
+
+            if (!TryGetBoard(out HexGrid grid))
+            {
+                return;
+            }
+
+            // The unit standing on the landing hex is the acting one, which is not always the commanded unit: a
+            // Clone leaves the commanded unit on its source and puts a new one on the target, and a Deploy
+            // carries no unit id at all. See MoveCommand.UnitId.
+            bool hasLanded = grid.TryGetCell(command.Target, out HexCell landingCell) && landingCell.IsOccupied;
+
+            _isResolvingAbilities = true;
+
+            try
+            {
+                var context = AbilityContext.ForLanding(
+                    command.PlayerId,
+                    hasLanded ? landingCell.OccupantUnitId : AbilityContext.NoActingUnit,
+                    command.Target,
+                    command.Type == MoveType.Jump,
+                    command.Source,
+                    conversions
+                );
+
+                // An empty or off-grid landing hex means nothing actually landed, so no impact may resolve —
+                // but the deployment still happened, so its action windows still close. Passing no impacts
+                // rather than returning early is what keeps step 6 unconditional.
+                ResolveDeployment(grid, context, hasLanded ? GetLandingEffects(landingCell.OccupantUnitId) : null);
+            }
+            finally
+            {
+                _isResolvingAbilities = false;
+            }
         }
     }
 }

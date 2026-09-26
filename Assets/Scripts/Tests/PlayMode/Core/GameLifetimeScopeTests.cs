@@ -27,8 +27,8 @@ using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.UI.Presenters;
 using GooGalaxy.Runtime.UI.Views;
 using GooGalaxy.Tests.PlayMode.UI;
+using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
@@ -45,8 +45,9 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private const int ActingUnitId = 1;
         private const float Tolerance = 0.0001f;
         private const float CellVisualSize = 1f;
+#if UNITY_EDITOR
         private const string MatchHudViewUxmlPath = "Assets/UI/UXML/MatchHudView.uxml";
-        private const string MatchInputActionsPath = "Assets/Settings/Input/MatchInput.inputactions";
+#endif
 
         private static readonly HexCoordinates _origin = new(0, 0);
         private static readonly HexCoordinates _jumpTarget = new(2, 0);
@@ -64,6 +65,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameObject _pointerInputViewGO;
         private GameObject _boardCameraGO;
         private PanelSettings _matchHudViewPanelSettings;
+        private InputActionAsset _pointerInputActions;
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
         private DeckPresenter _deckPresenter;
@@ -116,6 +118,11 @@ namespace GooGalaxy.Tests.PlayMode.Core
             if (_pointerInputViewGO != null)
             {
                 Object.DestroyImmediate(_pointerInputViewGO);
+            }
+
+            if (_pointerInputActions != null)
+            {
+                Object.DestroyImmediate(_pointerInputActions);
             }
 
             if (_boardCameraGO != null)
@@ -569,12 +576,22 @@ namespace GooGalaxy.Tests.PlayMode.Core
             document.worldSpaceSizeMode = UIDocument.WorldSpaceSizeMode.Fixed;
             document.worldSpaceSize = new Vector2(1080f, 1920f);
 
-            VisualTreeAsset visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
+#if UNITY_EDITOR
+            // The authored asset in the editor, so MatchHudView.CacheElements resolves against the markup that ships.
+            VisualTreeAsset visualTreeAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(MatchHudViewUxmlPath);
             Assert.That(visualTreeAsset, Is.Not.Null, $"Test setup expects '{MatchHudViewUxmlPath}' to exist and import as a VisualTreeAsset.");
             document.visualTreeAsset = visualTreeAsset;
-
             _matchHudViewGO.AddComponent<MatchHudView>();
             _matchHudViewGO.SetActive(true);
+#else
+            // A player build has no AssetDatabase to load the authored UXML through, so the same named elements
+            // CacheElements requires are built directly onto the UIDocument's own root instead. That root only
+            // exists once UIDocument.OnEnable has run, so the document is activated alone before MatchHudView is
+            // added — unlike the editor branch, which can assign a visualTreeAsset up front and activate once.
+            _matchHudViewGO.SetActive(true);
+            HudTestTreeBuilder.Build(document.rootVisualElement);
+            _matchHudViewGO.AddComponent<MatchHudView>();
+#endif
         }
 
         // GameLifetimeScope also registers PointerInputView — RegisterComponentInHierarchy<PointerInputView>()
@@ -585,15 +602,12 @@ namespace GooGalaxy.Tests.PlayMode.Core
         // gets the chance to build a bare one.
         private void CreatePointerInputView()
         {
-            InputActionAsset inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(MatchInputActionsPath);
-            Assert.That(inputActions, Is.Not.Null, $"Test setup expects '{MatchInputActionsPath}' to exist and import as an InputActionAsset.");
+            _pointerInputActions = MatchInputTestActionsFactory.Create();
 
             _pointerInputViewGO = new GameObject("PointerInputView_DI_Test");
             _pointerInputViewGO.SetActive(false);
-            JsonUtility.FromJsonOverwrite(
-                $"{{\"_inputActions\":{{\"instanceID\":{inputActions.GetInstanceID()}}}}}",
-                _pointerInputViewGO.AddComponent<PointerInputView>()
-            );
+            PointerInputView view = _pointerInputViewGO.AddComponent<PointerInputView>();
+            view.SetInputActionsForTests(_pointerInputActions);
             _pointerInputViewGO.SetActive(true);
         }
 

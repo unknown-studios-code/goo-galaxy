@@ -275,6 +275,52 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
+        public void TickStatusDurations_BufferGiven_AppendsOnlyTheTypesThatExpiredOnThisTick()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+            unit.AddStatus(StatusType.Frozen, FreezeDuration);
+            unit.AddStatus(StatusType.Rooted, 2);
+            var expired = new List<StatusType>();
+
+            // WHEN
+            unit.TickStatusDurations(expired);
+
+            // THEN
+            Assert.That(expired, Is.EqualTo(new[] { StatusType.Frozen }));
+        }
+
+        [Test]
+        public void TickStatusDurations_BufferAlreadyHoldingEntries_AppendsWithoutClearingIt()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+            unit.AddStatus(StatusType.Frozen, FreezeDuration);
+            var expired = new List<StatusType> { StatusType.Rooted };
+
+            // WHEN
+            unit.TickStatusDurations(expired);
+
+            // THEN
+            Assert.That(expired, Is.EqualTo(new[] { StatusType.Rooted, StatusType.Frozen }));
+        }
+
+        [Test]
+        public void TickStatusDurations_NoStatusExpiresOnThisTick_LeavesTheBufferUnchanged()
+        {
+            // GIVEN
+            GridUnit unit = CreateUnit();
+            unit.AddStatus(StatusType.Rooted, 2);
+            var expired = new List<StatusType>();
+
+            // WHEN
+            unit.TickStatusDurations(expired);
+
+            // THEN
+            Assert.That(expired, Is.Empty);
+        }
+
+        [Test]
         public void IsFrozen_WhileFrozenStatusIsActive_IsTrue()
         {
             // GIVEN

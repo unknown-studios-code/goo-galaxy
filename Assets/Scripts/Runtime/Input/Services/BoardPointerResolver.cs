@@ -60,6 +60,9 @@ namespace GooGalaxy.Runtime.Input.Services
             _cellVisualSize = cellVisualSize;
         }
 
+        /// <summary>The size the board was projected at, center to corner vertex, as handed in at construction.</summary>
+        public float CellVisualSize => _cellVisualSize;
+
         /// <summary>Converts a screen point into the coordinate space of a runtime UI Toolkit panel.</summary>
         /// <remarks>
         /// <b>The Y flip is mandatory, not a simplification to trim.</b> Screen space is bottom-left origin and
@@ -114,7 +117,24 @@ namespace GooGalaxy.Runtime.Input.Services
         /// <returns>True when the point falls on a hex the board contains.</returns>
         public bool TryResolveHex(Vector2 screenPosition, HexGrid grid, out HexCoordinates coordinates)
         {
+            return TryResolveBoardPoint(screenPosition, grid, out coordinates, out _);
+        }
+
+        /// <summary>Resolves the board hex under a screen point, and where on the board plane the point falls.</summary>
+        /// <remarks>
+        /// <paramref name="boardPosition" /> is in the world space <c>HexMathUtils.ProjectToWorldSpace</c> writes
+        /// into — the board's XY plane — so it can be measured directly against a hex's projected centre. It is
+        /// filled whenever the camera could unproject the point, even when the point is off the board.
+        /// </remarks>
+        /// <param name="screenPosition">The point to resolve, in screen pixels with the origin bottom-left.</param>
+        /// <param name="grid">The board to resolve against, which is what decides whether the hex exists.</param>
+        /// <param name="coordinates">The hex under the point, or a default value when there is none.</param>
+        /// <param name="boardPosition">The point on the board plane, or <see cref="Vector2.zero" /> when there is no camera or grid.</param>
+        /// <returns>True when the point falls on a hex the board contains.</returns>
+        public bool TryResolveBoardPoint(Vector2 screenPosition, HexGrid grid, out HexCoordinates coordinates, out Vector2 boardPosition)
+        {
             coordinates = default;
+            boardPosition = Vector2.zero;
 
             if (_camera == null || grid == null)
             {
@@ -128,6 +148,8 @@ namespace GooGalaxy.Runtime.Input.Services
             // check above already covers a destroyed camera for _cameraTransform too, so no second one is added.
             float distanceToBoard = BoardPlaneZ - _cameraTransform.position.z;
             Vector3 worldPosition = _camera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, distanceToBoard));
+
+            boardPosition = worldPosition;
 
             Vector2 axial = HexMathUtils.ProjectToAxial(worldPosition, _cellVisualSize);
             HexCoordinates candidate = HexMathUtils.RoundToAxial(axial.x, axial.y);

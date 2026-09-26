@@ -51,6 +51,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         private List<int> _affectedUnitIds;
         private List<HexCoordinates> _affectedHexes;
         private List<int> _destroyedUnitIds;
+        private List<StatusChange> _appliedStatuses;
 
         [SetUp]
         public void SetUp()
@@ -64,6 +65,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             _affectedUnitIds = new List<int>();
             _affectedHexes = new List<HexCoordinates>();
             _destroyedUnitIds = new List<int>();
+            _appliedStatuses = new List<StatusChange>();
         }
 
         [Test]
@@ -576,6 +578,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -603,6 +606,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -630,6 +634,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -657,6 +662,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -684,6 +690,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -711,6 +718,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     null,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -738,6 +746,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     null,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -764,6 +773,35 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _areaBuffer,
                     _affectedUnitIds,
                     _affectedHexes,
+                    null,
+                    _appliedStatuses,
+                    out _
+                );
+
+            // THEN
+            Assert.Throws<ArgumentNullException>(resolveCall);
+        }
+
+        [Test]
+        public void Resolve_NullAppliedStatuses_ThrowsArgumentNullException()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+
+            // WHEN
+            void resolveCall() =>
+                AbilityResolver.Resolve(
+                    _grid,
+                    _units,
+                    context,
+                    _landingEffects,
+                    _statusEffects,
+                    _fuses,
+                    _areaBuffer,
+                    _affectedUnitIds,
+                    _affectedHexes,
+                    _destroyedUnitIds,
                     null,
                     out _
                 );
@@ -1104,6 +1142,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedUnitIds,
                     _affectedHexes,
                     _destroyedUnitIds,
+                    _appliedStatuses,
                     out _
                 );
 
@@ -1281,6 +1320,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                 _affectedUnitIds,
                 _affectedHexes,
                 _destroyedUnitIds,
+                _appliedStatuses,
                 out AbilityDiagnostic diagnostics
             );
 

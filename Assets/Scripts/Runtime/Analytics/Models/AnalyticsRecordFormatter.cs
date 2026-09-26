@@ -44,6 +44,8 @@ namespace GooGalaxy.Runtime.Analytics.Models
         public const string CardDiscardedEventName = "card_discarded";
         public const string PhaseChangedEventName = "phase_changed";
         public const string MoveExecutedEventName = "move_executed";
+        public const string StatusAppliedEventName = "status_applied";
+        public const string StatusExpiredEventName = "status_expired";
 
         private const string VersionKey = "v";
         private const string TimestampKey = "t";
@@ -60,6 +62,8 @@ namespace GooGalaxy.Runtime.Analytics.Models
         private const string ConvertedKey = "converted";
         private const string StrippedKey = "stripped";
         private const string AffectedKey = "affected";
+        private const string AffectedOwnKey = "affected_own";
+        private const string AffectedEnemyKey = "affected_enemy";
         private const string HexesKey = "hexes";
         private const string DestroyedKey = "destroyed";
         private const string SlotKey = "slot";
@@ -68,6 +72,9 @@ namespace GooGalaxy.Runtime.Analytics.Models
         private const string SourceHexQKey = "sq";
         private const string SourceHexRKey = "sr";
         private const string UnitKey = "unit";
+        private const string OwnerKey = "owner";
+        private const string StatusKey = "status";
+        private const string StatusDurationKey = "dur";
         private const string WinnerKey = "winner";
         private const string PlayerOneScoreKey = "p1_score";
         private const string PlayerTwoScoreKey = "p2_score";
@@ -115,6 +122,8 @@ namespace GooGalaxy.Runtime.Analytics.Models
                 AnalyticsEventType.CardDiscarded => CardDiscardedEventName,
                 AnalyticsEventType.PhaseChanged => PhaseChangedEventName,
                 AnalyticsEventType.MoveExecuted => MoveExecutedEventName,
+                AnalyticsEventType.StatusApplied => StatusAppliedEventName,
+                AnalyticsEventType.StatusExpired => StatusExpiredEventName,
                 _ => null,
             };
         }
@@ -217,7 +226,9 @@ namespace GooGalaxy.Runtime.Analytics.Models
 
                 case AnalyticsEventType.AbilityResolved:
                     AppendIntegerField(builder, PlayerKey, record.PlayerId);
-                    AppendIntegerField(builder, AffectedKey, record.SlotA);
+                    AppendIntegerField(builder, AffectedKey, (long)record.SlotA + record.SlotD);
+                    AppendIntegerField(builder, AffectedOwnKey, record.SlotA);
+                    AppendIntegerField(builder, AffectedEnemyKey, record.SlotD);
                     AppendIntegerField(builder, HexesKey, record.SlotB);
                     AppendIntegerField(builder, DestroyedKey, record.SlotC);
                     break;
@@ -240,6 +251,20 @@ namespace GooGalaxy.Runtime.Analytics.Models
                     AppendIntegerField(builder, HexQKey, record.Hex.Q);
                     AppendIntegerField(builder, HexRKey, record.Hex.R);
                     AppendIntegerField(builder, UnitKey, record.SlotB);
+                    break;
+
+                case AnalyticsEventType.StatusApplied:
+                    AppendIntegerField(builder, PlayerKey, record.PlayerId);
+                    AppendIntegerField(builder, UnitKey, record.SlotA);
+                    AppendIntegerField(builder, OwnerKey, record.SlotB);
+                    AppendEnumField(builder, StatusKey, GetName((StatusType)record.SlotC), record.SlotC);
+                    AppendIntegerField(builder, StatusDurationKey, record.SlotD);
+                    break;
+
+                case AnalyticsEventType.StatusExpired:
+                    AppendIntegerField(builder, PlayerKey, record.PlayerId);
+                    AppendIntegerField(builder, UnitKey, record.SlotA);
+                    AppendEnumField(builder, StatusKey, GetName((StatusType)record.SlotC), record.SlotC);
                     break;
             }
         }
@@ -310,6 +335,17 @@ namespace GooGalaxy.Runtime.Analytics.Models
                 MoveType.Deploy => nameof(MoveType.Deploy),
                 MoveType.Clone => nameof(MoveType.Clone),
                 MoveType.Jump => nameof(MoveType.Jump),
+                _ => null,
+            };
+        }
+
+        private static string GetName(StatusType value)
+        {
+            return value switch
+            {
+                StatusType.None => nameof(StatusType.None),
+                StatusType.Frozen => nameof(StatusType.Frozen),
+                StatusType.Rooted => nameof(StatusType.Rooted),
                 _ => null,
             };
         }

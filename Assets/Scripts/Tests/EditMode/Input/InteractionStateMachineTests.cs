@@ -46,6 +46,37 @@ namespace GooGalaxy.Tests.EditMode.Input
         }
 
         [Test]
+        public void TrySelectSpellSlot_FromIdle_EntersSpellTargetingWithTheHandSlotSource()
+        {
+            // GIVEN
+            var machine = new InteractionStateMachine();
+
+            // WHEN
+            bool wasSelected = machine.TrySelectSpellSlot(SlotIndex);
+
+            // THEN
+            Assert.That(
+                (wasSelected, machine.State, machine.Source),
+                Is.EqualTo((true, InteractionState.SpellTargeting, InteractionSource.ForHandSlot(SlotIndex)))
+            );
+        }
+
+        [TestCaseSource(nameof(NonIdleStateBuilders))]
+        public void TrySelectSpellSlot_FromANonIdleState_ReturnsFalseAndLeavesStateAndSourceUnchanged(Func<InteractionStateMachine> buildMachine)
+        {
+            // GIVEN
+            InteractionStateMachine machine = buildMachine();
+            InteractionState stateBeforeAttempt = machine.State;
+            InteractionSource sourceBeforeAttempt = machine.Source;
+
+            // WHEN
+            bool wasSelected = machine.TrySelectSpellSlot(SlotIndex);
+
+            // THEN
+            Assert.That((wasSelected, machine.State, machine.Source), Is.EqualTo((false, stateBeforeAttempt, sourceBeforeAttempt)));
+        }
+
+        [Test]
         public void TrySelectBoardUnit_FromIdle_EntersUnitSelectedWithTheBoardUnitSource()
         {
             // GIVEN
@@ -173,6 +204,60 @@ namespace GooGalaxy.Tests.EditMode.Input
             Assert.That((didEndPreview, machine.State, machine.Source), Is.EqualTo((false, stateBeforeAttempt, sourceBeforeAttempt)));
         }
 
+        [TestCaseSource(nameof(HandSlotSourcedWaitingStateBuilders))]
+        public void TryBeginSpellTargeting_FromAHandSlotSourcedWaitingState_EntersSpellTargeting(Func<InteractionStateMachine> buildMachine)
+        {
+            // GIVEN
+            InteractionStateMachine machine = buildMachine();
+
+            // WHEN
+            bool didBeginSpellTargeting = machine.TryBeginSpellTargeting();
+
+            // THEN
+            Assert.That((didBeginSpellTargeting, machine.State), Is.EqualTo((true, InteractionState.SpellTargeting)));
+        }
+
+        [Test]
+        public void TryBeginSpellTargeting_FromABoardUnitSourcedSelection_ReturnsFalse()
+        {
+            // GIVEN
+            InteractionStateMachine machine = BuildUnitSelected();
+
+            // WHEN
+            bool didBeginSpellTargeting = machine.TryBeginSpellTargeting();
+
+            // THEN
+            Assert.That((didBeginSpellTargeting, machine.State), Is.EqualTo((false, InteractionState.UnitSelected)));
+        }
+
+        [Test]
+        public void TryEndSpellTargeting_FromSpellTargeting_ReturnsToCardSelected()
+        {
+            // GIVEN
+            InteractionStateMachine machine = BuildSpellTargeting();
+
+            // WHEN
+            bool didEndSpellTargeting = machine.TryEndSpellTargeting();
+
+            // THEN
+            Assert.That((didEndSpellTargeting, machine.State), Is.EqualTo((true, InteractionState.CardSelected)));
+        }
+
+        [TestCaseSource(nameof(IllegalEndSpellTargetingStateBuilders))]
+        public void TryEndSpellTargeting_FromANonSpellTargetingState_ReturnsFalseAndLeavesStateAndSourceUnchanged(Func<InteractionStateMachine> buildMachine)
+        {
+            // GIVEN
+            InteractionStateMachine machine = buildMachine();
+            InteractionState stateBeforeAttempt = machine.State;
+            InteractionSource sourceBeforeAttempt = machine.Source;
+
+            // WHEN
+            bool didEndSpellTargeting = machine.TryEndSpellTargeting();
+
+            // THEN
+            Assert.That((didEndSpellTargeting, machine.State, machine.Source), Is.EqualTo((false, stateBeforeAttempt, sourceBeforeAttempt)));
+        }
+
         [TestCaseSource(nameof(EveryReachableStateBuilder))]
         public void Cancel_FromEveryReachableState_ReturnsToIdleWithTheSourceCleared(Func<InteractionStateMachine> buildMachine)
         {
@@ -218,12 +303,21 @@ namespace GooGalaxy.Tests.EditMode.Input
             return machine;
         }
 
+        private static InteractionStateMachine BuildSpellTargeting()
+        {
+            var machine = new InteractionStateMachine();
+            machine.TrySelectSpellSlot(SlotIndex);
+
+            return machine;
+        }
+
         private static IEnumerable<TestCaseData> NonIdleStateBuilders()
         {
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildCardSelected).SetName("CardSelected");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildUnitSelected).SetName("UnitSelected");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildDragging).SetName("Dragging");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildPreviewing).SetName("Previewing");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildSpellTargeting).SetName("SpellTargeting");
         }
 
         private static IEnumerable<TestCaseData> IllegalBeginDragStateBuilders()
@@ -231,6 +325,22 @@ namespace GooGalaxy.Tests.EditMode.Input
             yield return new TestCaseData((Func<InteractionStateMachine>)(() => new InteractionStateMachine())).SetName("Idle");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildDragging).SetName("Dragging");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildPreviewing).SetName("Previewing");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildSpellTargeting).SetName("SpellTargeting");
+        }
+
+        private static IEnumerable<TestCaseData> HandSlotSourcedWaitingStateBuilders()
+        {
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildCardSelected).SetName("CardSelected");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildDragging).SetName("Dragging");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildPreviewing).SetName("Previewing");
+        }
+
+        private static IEnumerable<TestCaseData> IllegalEndSpellTargetingStateBuilders()
+        {
+            yield return new TestCaseData((Func<InteractionStateMachine>)(() => new InteractionStateMachine())).SetName("Idle");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildCardSelected).SetName("CardSelected");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildUnitSelected).SetName("UnitSelected");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildDragging).SetName("Dragging");
         }
 
         private static IEnumerable<TestCaseData> IllegalBeginPreviewStateBuilders()
@@ -256,6 +366,7 @@ namespace GooGalaxy.Tests.EditMode.Input
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildUnitSelected).SetName("UnitSelected");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildDragging).SetName("Dragging");
             yield return new TestCaseData((Func<InteractionStateMachine>)BuildPreviewing).SetName("Previewing");
+            yield return new TestCaseData((Func<InteractionStateMachine>)BuildSpellTargeting).SetName("SpellTargeting");
         }
     }
 }

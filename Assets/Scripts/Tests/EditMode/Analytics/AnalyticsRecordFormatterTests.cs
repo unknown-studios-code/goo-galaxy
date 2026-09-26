@@ -167,7 +167,7 @@ namespace GooGalaxy.Tests.EditMode.Analytics
         {
             // GIVEN
             var builder = new StringBuilder();
-            var record = AnalyticsRecord.ForAbilityResolved(8000L, 1, 2, 5, 6, 2);
+            var record = AnalyticsRecord.ForAbilityResolved(8000L, 1, 2, 3, 2, 6, 2);
 
             // WHEN
             AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
@@ -175,7 +175,9 @@ namespace GooGalaxy.Tests.EditMode.Analytics
             // THEN
             Assert.That(
                 builder.ToString(),
-                Is.EqualTo("{\"v\":1,\"t\":8000,\"m\":1,\"e\":\"ability_resolved\",\"p\":2,\"affected\":5,\"hexes\":6,\"destroyed\":2}\n")
+                Is.EqualTo(
+                    "{\"v\":1,\"t\":8000,\"m\":1,\"e\":\"ability_resolved\",\"p\":2,\"affected\":5,\"affected_own\":3,\"affected_enemy\":2,\"hexes\":6,\"destroyed\":2}\n"
+                )
             );
         }
 
@@ -262,6 +264,57 @@ namespace GooGalaxy.Tests.EditMode.Analytics
                 builder.ToString(),
                 Is.EqualTo("{\"v\":1,\"t\":0,\"m\":0,\"e\":\"move_executed\",\"p\":0,\"move\":999,\"sq\":0,\"sr\":0,\"q\":0,\"r\":0,\"unit\":0}\n")
             );
+        }
+
+        [Test]
+        public void TryAppendLine_StatusApplied_WritesExactGoldenLine()
+        {
+            // GIVEN
+            var builder = new StringBuilder();
+            var change = new StatusChange(5, 1, 2, StatusType.Frozen, 3);
+            var record = AnalyticsRecord.ForStatusApplied(13000L, 1, in change);
+
+            // WHEN
+            AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
+
+            // THEN
+            Assert.That(
+                builder.ToString(),
+                Is.EqualTo("{\"v\":1,\"t\":13000,\"m\":1,\"e\":\"status_applied\",\"p\":2,\"unit\":5,\"owner\":1,\"status\":\"Frozen\",\"dur\":3}\n")
+            );
+        }
+
+        [Test]
+        public void TryAppendLine_StatusAppliedWithAnUnknownStatusType_WritesTheBareNumber()
+        {
+            // GIVEN
+            var builder = new StringBuilder();
+            var change = new StatusChange(5, 1, 2, (StatusType)999, 3);
+            var record = AnalyticsRecord.ForStatusApplied(0L, 0, in change);
+
+            // WHEN
+            AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
+
+            // THEN
+            Assert.That(
+                builder.ToString(),
+                Is.EqualTo("{\"v\":1,\"t\":0,\"m\":0,\"e\":\"status_applied\",\"p\":2,\"unit\":5,\"owner\":1,\"status\":999,\"dur\":3}\n")
+            );
+        }
+
+        [Test]
+        public void TryAppendLine_StatusExpired_WritesExactGoldenLine()
+        {
+            // GIVEN
+            var builder = new StringBuilder();
+            var change = new StatusChange(5, 1, StatusChange.NoActingPlayer, StatusType.Rooted, 0);
+            var record = AnalyticsRecord.ForStatusExpired(14000L, 1, in change);
+
+            // WHEN
+            AnalyticsRecordFormatter.TryAppendLine(builder, in record, in _emptySession);
+
+            // THEN
+            Assert.That(builder.ToString(), Is.EqualTo("{\"v\":1,\"t\":14000,\"m\":1,\"e\":\"status_expired\",\"p\":1,\"unit\":5,\"status\":\"Rooted\"}\n"));
         }
 
         [Test]
@@ -367,6 +420,30 @@ namespace GooGalaxy.Tests.EditMode.Analytics
 
             // WHEN / THEN
             Assert.Throws<ArgumentNullException>(() => AnalyticsRecordFormatter.TryAppendLine(null, in record, in _emptySession));
+        }
+
+        [Test]
+        public void GetEventName_StatusApplied_ReturnsStatusAppliedEventName()
+        {
+            // GIVEN
+
+            // WHEN
+            string eventName = AnalyticsRecordFormatter.GetEventName(AnalyticsEventType.StatusApplied);
+
+            // THEN
+            Assert.That(eventName, Is.EqualTo(AnalyticsRecordFormatter.StatusAppliedEventName));
+        }
+
+        [Test]
+        public void GetEventName_StatusExpired_ReturnsStatusExpiredEventName()
+        {
+            // GIVEN
+
+            // WHEN
+            string eventName = AnalyticsRecordFormatter.GetEventName(AnalyticsEventType.StatusExpired);
+
+            // THEN
+            Assert.That(eventName, Is.EqualTo(AnalyticsRecordFormatter.StatusExpiredEventName));
         }
     }
 }

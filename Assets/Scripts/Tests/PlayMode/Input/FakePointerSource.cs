@@ -5,12 +5,13 @@ using UnityEngine;
 
 namespace GooGalaxy.Tests.PlayMode.Input
 {
-    // Hand-written double per the testing rules: raises the three PointerSample events a real touch device would,
-    // with no Input System behind it, so a fixture drives a press, a move and a release directly.
+    // Hand-written double per the testing rules: raises the PointerSample events a real device would, with no Input
+    // System behind it, so a fixture drives a press, a move, a hover and a release directly.
     internal sealed class FakePointerSource : IPointerSource
     {
         public event Action<PointerSample> PointerPressed;
         public event Action<PointerSample> PointerMoved;
+        public event Action<PointerSample> PointerHovered;
         public event Action<PointerSample> PointerReleased;
 
         public Vector2 CurrentScreenPosition { get; private set; }
@@ -30,11 +31,24 @@ namespace GooGalaxy.Tests.PlayMode.Input
             PointerMoved?.Invoke(new PointerSample(screenPosition, PointerPhase.Moved, 0f));
         }
 
+        public void RaiseHovered(Vector2 screenPosition)
+        {
+            CurrentScreenPosition = screenPosition;
+            PointerHovered?.Invoke(new PointerSample(screenPosition, PointerPhase.Hovered, 0f));
+        }
+
         public void RaiseReleased(Vector2 screenPosition)
         {
             CurrentScreenPosition = screenPosition;
             IsPointerDown = false;
             PointerReleased?.Invoke(new PointerSample(screenPosition, PointerPhase.Released, 0f));
+        }
+
+        public void RaiseCanceled(Vector2 screenPosition)
+        {
+            CurrentScreenPosition = screenPosition;
+            IsPointerDown = false;
+            PointerReleased?.Invoke(new PointerSample(screenPosition, PointerPhase.Canceled, 0f));
         }
     }
 }

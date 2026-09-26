@@ -213,6 +213,87 @@ namespace GooGalaxy.Tests.PlayMode.Analytics
         }
 
         [Test]
+        public void HandleAbilityResolved_Raised_CapturesTheOwnAndEnemyCounts()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildEnabledController();
+            var result = new AbilityResult(new List<int> { 1, 2, 3 }, null, null, affectedOwnCount: 2, affectedEnemyCount: 1);
+
+            // WHEN
+            MatchEvents.RaiseAbilityResolved(LocalPlayerId, result);
+            controller.Flush();
+
+            // THEN
+            AnalyticsRecord abilityRecord = sink.WrittenRecords.Single(record => record.Type == AnalyticsEventType.AbilityResolved);
+            Assert.That((abilityRecord.SlotA, abilityRecord.SlotD), Is.EqualTo((2, 1)));
+        }
+
+        [Test]
+        public void HandleStatusApplied_Raised_CapturesTheUnitOwnerStatusAndDuration()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildEnabledController();
+            var change = new StatusChange(5, LocalPlayerId, OpponentPlayerId, StatusType.Frozen, 3);
+
+            // WHEN
+            MatchEvents.RaiseStatusApplied(in change);
+            controller.Flush();
+
+            // THEN
+            AnalyticsRecord statusRecord = sink.WrittenRecords.Single(record => record.Type == AnalyticsEventType.StatusApplied);
+            Assert.That(
+                (statusRecord.PlayerId, statusRecord.SlotA, statusRecord.SlotB, statusRecord.SlotC, statusRecord.SlotD),
+                Is.EqualTo((OpponentPlayerId, 5, LocalPlayerId, (int)StatusType.Frozen, 3))
+            );
+        }
+
+        [Test]
+        public void StatusApplied_IsEnabledFalse_NothingReachesTheSink()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildDisabledController();
+            var change = new StatusChange(5, LocalPlayerId, OpponentPlayerId, StatusType.Frozen, 3);
+
+            // WHEN
+            MatchEvents.RaiseStatusApplied(in change);
+            controller.Flush();
+
+            // THEN
+            Assert.That((sink.OpenedSessions.Count, sink.WrittenRecords.Count), Is.EqualTo((0, 0)));
+        }
+
+        [Test]
+        public void HandleStatusExpired_Raised_CapturesTheOwnerAndStatus()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildEnabledController();
+            var change = new StatusChange(5, LocalPlayerId, StatusChange.NoActingPlayer, StatusType.Rooted, 0);
+
+            // WHEN
+            MatchEvents.RaiseStatusExpired(in change);
+            controller.Flush();
+
+            // THEN
+            AnalyticsRecord statusRecord = sink.WrittenRecords.Single(record => record.Type == AnalyticsEventType.StatusExpired);
+            Assert.That((statusRecord.PlayerId, statusRecord.SlotA, statusRecord.SlotC), Is.EqualTo((LocalPlayerId, 5, (int)StatusType.Rooted)));
+        }
+
+        [Test]
+        public void StatusExpired_IsEnabledFalse_NothingReachesTheSink()
+        {
+            // GIVEN
+            (AnalyticsController controller, FakeAnalyticsSink sink) = BuildDisabledController();
+            var change = new StatusChange(5, LocalPlayerId, StatusChange.NoActingPlayer, StatusType.Rooted, 0);
+
+            // WHEN
+            MatchEvents.RaiseStatusExpired(in change);
+            controller.Flush();
+
+            // THEN
+            Assert.That((sink.OpenedSessions.Count, sink.WrittenRecords.Count), Is.EqualTo((0, 0)));
+        }
+
+        [Test]
         public void HandleMatchEnded_AfterScoreChangedForBothSeats_CapturesTheLastCountPerSeat()
         {
             // GIVEN

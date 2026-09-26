@@ -38,7 +38,10 @@ namespace GooGalaxy.Runtime.Analytics.Models
         /// <summary>A landing converted or stripped units. Carries both counts.</summary>
         ConversionEvent = 8,
 
-        /// <summary>A deployment's impacts resolved. Carries the affected unit, hex and destroyed unit counts.</summary>
+        /// <summary>
+        /// A deployment's impacts resolved. Carries the affected unit count split into the acting player's own units
+        /// and everyone else's, the affected hex count, and the destroyed unit count.
+        /// </summary>
         AbilityResolved = 9,
 
         /// <summary>A card was discarded from hand. Carries the card and the slot it left.</summary>
@@ -52,5 +55,17 @@ namespace GooGalaxy.Runtime.Analytics.Models
         /// hexes, and the unit that moved. A Deploy is not captured here — see <see cref="CardDeployed" />.
         /// </summary>
         MoveExecuted = 12,
+
+        /// <summary>
+        /// A deployment's impact put a condition on a unit, refreshes included. Carries the unit, its owner, the
+        /// condition and how many action windows it lasts; the record's player is the one who deployed.
+        /// </summary>
+        StatusApplied = 13,
+
+        /// <summary>
+        /// A condition's duration ran out and it dropped off a unit. Carries the unit and the condition; the record's
+        /// player is the unit's owner.
+        /// </summary>
+        StatusExpired = 14,
     }
 }

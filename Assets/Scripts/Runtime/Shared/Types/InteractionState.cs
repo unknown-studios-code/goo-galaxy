@@ -6,8 +6,10 @@ namespace GooGalaxy.Runtime.Shared.Types
     /// <remarks>
     /// Two selection paths share these members, because both end in the same commit: a card pressed in hand
     /// enters <see cref="CardSelected" />, a unit tapped on the board enters <see cref="UnitSelected" />, and
-    /// from either one a moving pointer enters <see cref="Dragging" />. Nothing here says which hexes are legal
-    /// — that is the enumerator's answer, and this type only tracks how far the gesture has got.
+    /// from either one a moving pointer enters <see cref="Dragging" />. A Protocol the player can afford enters
+    /// <see cref="SpellTargeting" /> instead of <see cref="CardSelected" />, because it is aimed rather than
+    /// dropped. Nothing here says which hexes are legal — that is the enumerator's answer, and this type only
+    /// tracks how far the gesture has got.
     /// </remarks>
     public enum InteractionState
     {
@@ -26,12 +28,12 @@ namespace GooGalaxy.Runtime.Shared.Types
         /// <summary>A candidate target is being shown before the player commits.</summary>
         Previewing = 4,
 
-        /// <summary>A Protocol is picking its hex cluster.</summary>
+        /// <summary>A Protocol is aiming its hex cluster: the cluster under the pointer is previewed and a commit casts it.</summary>
         /// <remarks>
-        /// Declared and deliberately unreachable: Protocol cluster targeting is out of scope for the MVP, so the
-        /// input layer drops Protocol options rather than entering this state. It stays declared as the seam
-        /// that feature attaches to — a Protocol needs several hexes picked in sequence, which is a phase
-        /// neither <see cref="CardSelected" /> nor <see cref="Dragging" /> describes.
+        /// Entered from hand for a Protocol — directly when affordable, or promoted from <see cref="CardSelected" />,
+        /// <see cref="Dragging" /> or <see cref="Previewing" /> once it becomes so. Left only by cancellation, or back
+        /// to <see cref="CardSelected" /> if the balance falls below the cost; <c>InteractionStateMachine</c> enforces
+        /// both.
         /// </remarks>
         SpellTargeting = 5,
     }

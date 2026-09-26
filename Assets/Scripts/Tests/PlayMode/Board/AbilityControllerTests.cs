@@ -45,6 +45,11 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private static readonly HexCoordinates _orderTarget = new(0, 0);
         private static readonly HexCoordinates _orderEnemyCoords = new(1, 0);
 
+        private static readonly HexCoordinates _fullOrderFirstSource = new(-2, 0);
+        private static readonly HexCoordinates _fullOrderFirstTarget = new(0, 0);
+        private static readonly HexCoordinates _fullOrderSecondSource = new(2, 0);
+        private static readonly HexCoordinates _fullOrderSecondTarget = new(4, 0);
+
         private static readonly HexCoordinates _emptySource = new(-2, 0);
         private static readonly HexCoordinates _emptyTarget = new(0, 0);
 
@@ -128,6 +133,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
         private int _conversionResolvedCallCount;
         private int _landingResolvedCallCount;
         private int _abilityResolvedCallCount;
+        private int _statusExpiredCallCount;
+        private StatusChange? _lastStatusExpiredChange;
 
         [SetUp]
         public void SetUp()
@@ -153,10 +160,14 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _conversionResolvedCallCount = 0;
             _landingResolvedCallCount = 0;
             _abilityResolvedCallCount = 0;
+            _statusExpiredCallCount = 0;
+            _lastStatusExpiredChange = null;
 
             MatchEvents.ConversionResolved += HandleConversionResolved;
             MatchEvents.LandingResolved += HandleLandingResolved;
             MatchEvents.AbilityResolved += HandleAbilityResolved;
+            MatchEvents.StatusApplied += HandleStatusApplied;
+            MatchEvents.StatusExpired += HandleStatusExpired;
         }
 
         [TearDown]
@@ -165,6 +176,8 @@ namespace GooGalaxy.Tests.PlayMode.Board
             MatchEvents.ConversionResolved -= HandleConversionResolved;
             MatchEvents.LandingResolved -= HandleLandingResolved;
             MatchEvents.AbilityResolved -= HandleAbilityResolved;
+            MatchEvents.StatusApplied -= HandleStatusApplied;
+            MatchEvents.StatusExpired -= HandleStatusExpired;
             MatchEvents.ResetEvents();
 
             if (_boardGO != null)
@@ -255,7 +268,78 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _unitPresenter.ResolveMove(command);
 
             // THEN
-            Assert.That(_eventOrder, Is.EqualTo(new[] { "ConversionResolved", "LandingResolved", "AbilityResolved" }));
+            Assert.That(_eventOrder, Is.EqualTo(new[] { "ConversionResolved", "LandingResolved", "StatusApplied", "AbilityResolved" }));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_AppliesThenExpiresAStatusInOneLanding_RaisesEventsInTheFullDocumentedOrder()
+        {
+            // GIVEN — one landing that applies a fresh status to the unit that just landed (step 4, exempted from
+            // its own tick) and, through that same landing's step 6 self-cleanup, expires an unrelated status an
+            // earlier landing placed on a different unit the acting player owns — proving the full order
+            // LandingResolved < StatusApplied < AbilityResolved < StatusExpired holds within a single
+            // resolution, not merely across two of them.
+            yield return ActivateBoardCo();
+
+            var firstCapability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _fullOrderFirstSource, firstCapability);
+            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _fullOrderFirstSource, _fullOrderFirstTarget, ActingPlayerId, ActingUnitId));
+            Assert.That(_eventOrder, Does.Contain("StatusApplied"), "Test setup expects the earlier landing to have frozen the acting unit.");
+            _eventOrder.Clear();
+
+            var secondCapability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, FreezeDuration, TargetFilter.Self, 0) },
+            };
+            RegisterUnitAt(ThirdUnitId, ActingPlayerId, _fullOrderSecondSource, secondCapability);
+            var command = new MoveCommand(MoveType.Jump, _fullOrderSecondSource, _fullOrderSecondTarget, ActingPlayerId, ThirdUnitId);
+
+            // WHEN
+            _unitPresenter.ResolveMove(command);
+
+            // THEN
+            Assert.That(_eventOrder, Is.EqualTo(new[] { "LandingResolved", "StatusApplied", "AbilityResolved", "StatusExpired" }));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_UnitConvertedThenAffectedByAStatusImpact_CountsUnderTheActingPlayersOwnCount()
+        {
+            // GIVEN — standard conversion (step 3) flips the enemy unit before the freeze (step 4) counts
+            // ownership, so a unit this same landing just converted must be tallied as the acting player's own,
+            // never the enemy's — TargetFilter.NewlyConverted isolates exactly that unit.
+            yield return ActivateBoardCo();
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                ConversionRadius = 1,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.NewlyConverted, 0) },
+            };
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _orderSource, capability);
+            RegisterUnitAt(EnemyUnitId, RivalPlayerId, _orderEnemyCoords, new FakeCapability());
+            var command = new MoveCommand(MoveType.Jump, _orderSource, _orderTarget, ActingPlayerId, ActingUnitId);
+            AbilityResult receivedResult = default;
+            void handleResolved(int actingPlayerId, AbilityResult result) => receivedResult = result;
+            MatchEvents.AbilityResolved += handleResolved;
+
+            // WHEN
+            try
+            {
+                _unitPresenter.ResolveMove(command);
+            }
+            finally
+            {
+                MatchEvents.AbilityResolved -= handleResolved;
+            }
+
+            // THEN
+            Assert.That((receivedResult.AffectedOwnCount, receivedResult.AffectedEnemyCount), Is.EqualTo((1, 0)));
         }
 
         [UnityTest]
@@ -794,6 +878,104 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         [UnityTest]
         [Timeout(5000)]
+        public IEnumerator ResolveSpell_CryoStasisClusterOverTwoOwnAndOneEnemyUnit_PublishesTheOwnAndEnemyCounts()
+        {
+            // GIVEN
+            yield return ActivateBoardCo();
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
+            RegisterUnitAt(FriendlyUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
+            RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellAdjacentTwo, new FakeCapability());
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
+            AbilityResult receivedResult = default;
+            void handleResolved(int actingPlayerId, AbilityResult result) => receivedResult = result;
+            MatchEvents.AbilityResolved += handleResolved;
+
+            // WHEN
+            try
+            {
+                _abilityController.ResolveSpell(command, capability);
+            }
+            finally
+            {
+                MatchEvents.AbilityResolved -= handleResolved;
+            }
+
+            // THEN
+            Assert.That((receivedResult.AffectedOwnCount, receivedResult.AffectedEnemyCount), Is.EqualTo((2, 1)));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_CryoStasisClusterOverOneUnit_PublishesStatusAppliedBeforeAbilityResolved()
+        {
+            // GIVEN — only the centre hex of the cluster is occupied, so exactly one StatusApplied precedes the
+            // single AbilityResolved this deployment publishes.
+            yield return ActivateBoardCo();
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
+
+            // WHEN
+            _abilityController.ResolveSpell(command, capability);
+
+            // THEN
+            Assert.That(_eventOrder, Is.EqualTo(new[] { "StatusApplied", "AbilityResolved" }));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_AfterTheAffectedPlayersNextDeployment_PublishesStatusExpiredForTheThawedUnit()
+        {
+            // GIVEN — a single frozen unit, from an enemy's landing rather than CryoStasis's self-inclusive
+            // cluster, so exactly one StatusExpired can be attributed to it with nothing else also expiring. The
+            // next deployment is a Protocol rather than a Jump, so no move-distance capability is needed to reach it.
+            yield return ArrangeSingleUnitFrozenAsync();
+            var thawSpellCapability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, FreezeDuration, TargetFilter.Self, 1) },
+            };
+            var thawCommand = new SpellCommand(ActingPlayerId, new CardId("subject_alpha"), new List<HexCoordinates> { _spellFarTarget });
+
+            // WHEN
+            _abilityController.ResolveSpell(thawCommand, thawSpellCapability);
+
+            // THEN
+            Assert.That(
+                _lastStatusExpiredChange,
+                Is.EqualTo(new StatusChange(_lastFriendlyUnit.UnitId, ActingPlayerId, StatusChange.NoActingPlayer, StatusType.Frozen, 0))
+            );
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_UnitRemovedBeforeItsOwnersNextDeployment_PublishesNoStatusExpiredForIt()
+        {
+            // GIVEN — the frozen unit is gone from the registry entirely by the time step 6 would have ticked it,
+            // so TickDurations never reaches it and nothing is published on its behalf.
+            yield return ArrangeSingleUnitFrozenAsync();
+            Assert.That(_unitPresenter.UnregisterUnit(_lastFriendlyUnit.UnitId), Is.True, "Test setup expects the frozen unit to unregister.");
+            var thawSpellCapability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Rooted, 0, FreezeDuration, TargetFilter.Self, 1) },
+            };
+            var thawCommand = new SpellCommand(ActingPlayerId, new CardId("subject_alpha"), new List<HexCoordinates> { _spellFarTarget });
+
+            // WHEN
+            _abilityController.ResolveSpell(thawCommand, thawSpellCapability);
+
+            // THEN
+            Assert.That(_statusExpiredCallCount, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveSpell_NullCapability_ReturnsCardHasNoImpacts()
         {
             // GIVEN
@@ -1115,6 +1297,96 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         [UnityTest]
         [Timeout(5000)]
+        public IEnumerator ResolveSpell_StatusAppliedSubscriberThrows_StillPublishesLaterChangesAndAbilityResolved()
+        {
+            // GIVEN — a cluster of two so the second StatusApplied is observable once the first throws.
+            yield return ActivateBoardCo();
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
+            RegisterUnitAt(FriendlyUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 2) },
+            };
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter, _spellAdjacentOne });
+            int statusAppliedCallCount = 0;
+            void handleThrowing(StatusChange change)
+            {
+                statusAppliedCallCount++;
+
+                throw new InvalidOperationException("Test subscriber deliberately throws.");
+            }
+            MatchEvents.StatusApplied += handleThrowing;
+            LogAssert.Expect(LogType.Error, BoardLogMessages.StatusChangeSubscriberFailed);
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("InvalidOperationException"));
+
+            // WHEN
+            _abilityController.ResolveSpell(command, capability);
+            MatchEvents.StatusApplied -= handleThrowing;
+
+            // THEN
+            Assert.That((statusAppliedCallCount, _abilityResolvedCallCount), Is.EqualTo((2, 1)));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_StatusAppliedSubscriberThrowsTwiceInOneMatch_LogsTheFailureOnlyOnce()
+        {
+            // GIVEN — latching: two separate deployments each provoke the same throwing subscriber, so only the
+            // first is allowed to reach the console.
+            yield return ActivateBoardCo();
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
+            };
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
+            static void handleThrowing(StatusChange change) => throw new InvalidOperationException("Test subscriber deliberately throws.");
+            MatchEvents.StatusApplied += handleThrowing;
+            LogAssert.Expect(LogType.Error, BoardLogMessages.StatusChangeSubscriberFailed);
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("InvalidOperationException"));
+            _abilityController.ResolveSpell(command, capability);
+
+            // WHEN
+            _abilityController.ResolveSpell(command, capability);
+            MatchEvents.StatusApplied -= handleThrowing;
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_StatusAppliedSubscriberThrows_AfterGridInitialized_LogsTheFailureAgain()
+        {
+            // GIVEN — proves HandleGridInitialized re-arms the status-change failure latch, not just the
+            // hazard-diagnostic one.
+            yield return ActivateBoardCo();
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellCenter, new FakeCapability());
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 0, FreezeDuration, TargetFilter.All, 1) },
+            };
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), new List<HexCoordinates> { _spellCenter });
+            static void handleThrowing(StatusChange change) => throw new InvalidOperationException("Test subscriber deliberately throws.");
+            MatchEvents.StatusApplied += handleThrowing;
+            LogAssert.Expect(LogType.Error, BoardLogMessages.StatusChangeSubscriberFailed);
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("InvalidOperationException"));
+            _abilityController.ResolveSpell(command, capability);
+
+            MatchEvents.RaiseGridInitialized(_gridPresenter.HexGrid);
+            LogAssert.Expect(LogType.Error, BoardLogMessages.StatusChangeSubscriberFailed);
+            LogAssert.Expect(LogType.Exception, new System.Text.RegularExpressions.Regex("InvalidOperationException"));
+
+            // WHEN
+            _abilityController.ResolveSpell(command, capability);
+            MatchEvents.StatusApplied -= handleThrowing;
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveSpell_ExistingHazardOwnedByTheCastingPlayer_TicksAndDisappears()
         {
             // GIVEN — proves step 6 self-cleanup runs on the spell path too, or a Protocol-only player never
@@ -1356,6 +1628,27 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _unitPresenter.ResolveMove(command);
         }
 
+        // Freezes exactly one unit — ActingPlayerId's, from an enemy landing filtered to Enemy rather than All —
+        // so a test reading _statusExpiredCallCount or _lastStatusExpiredChange afterward has only this one
+        // application to account for, unlike CryoStasis's self-inclusive cluster which also freezes its own
+        // acting unit.
+        private IEnumerator ArrangeSingleUnitFrozenAsync()
+        {
+            yield return ActivateBoardCo();
+
+            var enemyCapability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.Enemy, 0) },
+            };
+            RegisterUnitAt(EnemyUnitId, RivalPlayerId, _spellFarSource, enemyCapability);
+            // Armored so the radius-1 standard conversion strips its armor rather than flipping ownership,
+            // matching ResolveSpell_ClosesTheActingPlayersActionWindow's own reasoning for the same shape.
+            _lastFriendlyUnit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability(), hasArmor: true);
+
+            _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _spellFarSource, _spellCenter, RivalPlayerId, EnemyUnitId));
+        }
+
         private IEnumerator ArrangeAcidCrawlerLandingAsync()
         {
             yield return ActivateBoardCo();
@@ -1387,6 +1680,18 @@ namespace GooGalaxy.Tests.PlayMode.Board
         {
             _abilityResolvedCallCount++;
             _eventOrder.Add("AbilityResolved");
+        }
+
+        private void HandleStatusApplied(StatusChange change)
+        {
+            _eventOrder.Add("StatusApplied");
+        }
+
+        private void HandleStatusExpired(StatusChange change)
+        {
+            _statusExpiredCallCount++;
+            _lastStatusExpiredChange = change;
+            _eventOrder.Add("StatusExpired");
         }
 
         private GridUnit RegisterUnitAt(int unitId, int playerId, HexCoordinates position, IMoveCapable capability, bool hasArmor = false)
