@@ -13,6 +13,8 @@
     "GooGalaxy.Runtime.Shared",
     "GooGalaxy.Runtime.AI",
     "GooGalaxy.Runtime.Analytics",
+    "GooGalaxy.Runtime.Audio",
+    "FMODUnity",
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",
