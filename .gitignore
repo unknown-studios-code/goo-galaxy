@@ -400,3 +400,23 @@ nohup.out
 
 # Superpowers plugin state
 .superpowers/
+
+
+
+######################
+### FMOD specific  ###
+######################
+
+# The FMOD Studio project sits in a `~` folder so Unity never imports it, and the Linux block's `*~`
+# would otherwise ignore it whole. Its built banks are versioned (through LFS) so CI needs no FMOD Studio.
+!/[Aa]ssets/Audio/FMODProject~/
+/[Aa]ssets/Audio/FMODProject~/**/.cache/
+/[Aa]ssets/Audio/FMODProject~/**/.user/
+/[Aa]ssets/Audio/FMODProject~/**/.unsaved/
+
+# Recommended by the FMOD for Unity setup wizard: the editor cache is local, and banks copied into
+# StreamingAssets are generated from the Studio project at build time.
+/[Aa]ssets/Plugins/FMOD/Cache/*
+/[Aa]ssets/StreamingAssets/**/*.bank
+/[Aa]ssets/StreamingAssets/**/*.bank.meta
+fmod_editor.log
