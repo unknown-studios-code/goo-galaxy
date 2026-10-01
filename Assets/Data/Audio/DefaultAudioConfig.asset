@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 997599e8e3e8f8644838e303903955ff, type: 3}
+  m_Name: DefaultAudioConfig
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Audio::GooGalaxy.Runtime.Audio.Data.AudioConfigSO
+  _idleIntensity: 0
+  _earlyIntensity: 0.2
+  _earlyUntilElapsedSeconds: 60
+  _midIntensity: 0.5
+  _midUntilElapsedSeconds: 120
+  _lateIntensity: 0.7
+  _finalWindowIntensity: 0.85
+  _finalWindowSeconds: 15
+  _overtimeIntensity: 1
+  _matchMusic:
+    Guid:
+      Data1: 1443041515
+      Data2: 1262221108
+      Data3: -1590437977
+      Data4: -523151728
+    Path: event:/Music/Expedition
+  _victoryStinger:
+    Guid:
+      Data1: -1355467004
+      Data2: 1103899904
+      Data3: 1481655728
+      Data4: 1288357120
+    Path: event:/Music/Stingers/DiscoveryComplete
+  _defeatStinger:
+    Guid:
+      Data1: 1377267710
+      Data2: 1298658665
+      Data3: 265461174
+      Data4: 654777512
+    Path: event:/Music/Stingers/ExpeditionRecalled
+  _drawStinger:
+    Guid:
+      Data1: -677184260
+      Data2: 1104904869
+      Data3: -644639566
+      Data4: -1107562255
+    Path: event:/Music/Stingers/Stalemate
+  _cues:
+  - Cue: 0
+    Event:
+      Guid:
+        Data1: -1404770918
+        Data2: 1155837696
+        Data3: 1164068765
+        Data4: 1904376938
+      Path: event:/SFX/UI/ButtonPress
+  _matchBankName: Match
+  _matchIntensityParameterName: MatchIntensity
+  _territoryBalanceParameterName: TerritoryBalance
