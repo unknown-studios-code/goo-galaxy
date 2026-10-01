@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="ParameterPreset" id="{fc5b6f6c-0934-4d6c-9a2b-f83d0a21c7ef}">
+		<property name="name">
+			<value>TerritoryBalance</value>
+		</property>
+		<relationship name="folder">
+			<destination>{334ded3c-62be-4c7a-a046-f6ab474a521d}</destination>
+		</relationship>
+		<relationship name="parameter">
+			<destination>{117779ff-2fdb-4c50-b83d-bd99de264c48}</destination>
+		</relationship>
+	</object>
+	<object class="GameParameter" id="{117779ff-2fdb-4c50-b83d-bd99de264c48}">
+		<property name="minimum">
+			<value>-1</value>
+		</property>
+		<property name="isGlobal">
+			<value>true</value>
+		</property>
+		<property name="initialValue">
+			<value>0</value>
+		</property>
+		<property name="seekSpeed">
+			<value>0.5</value>
+		</property>
+		<property name="isExposedRecursively">
+			<value>false</value>
+		</property>
+	</object>
+</objects>
