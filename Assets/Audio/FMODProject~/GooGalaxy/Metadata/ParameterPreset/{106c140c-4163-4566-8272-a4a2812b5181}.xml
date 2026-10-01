@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="ParameterPreset" id="{106c140c-4163-4566-8272-a4a2812b5181}">
+		<property name="name">
+			<value>MatchIntensity</value>
+		</property>
+		<relationship name="folder">
+			<destination>{334ded3c-62be-4c7a-a046-f6ab474a521d}</destination>
+		</relationship>
+		<relationship name="parameter">
+			<destination>{efef5715-c99d-44b0-b603-13c76d7d5bbc}</destination>
+		</relationship>
+	</object>
+	<object class="GameParameter" id="{efef5715-c99d-44b0-b603-13c76d7d5bbc}">
+		<property name="isGlobal">
+			<value>true</value>
+		</property>
+		<property name="initialValue">
+			<value>0</value>
+		</property>
+		<property name="seekSpeed">
+			<value>0.5</value>
+		</property>
+		<property name="isExposedRecursively">
+			<value>false</value>
+		</property>
+	</object>
+</objects>
