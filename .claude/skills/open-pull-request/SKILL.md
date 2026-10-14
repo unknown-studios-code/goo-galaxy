@@ -19,11 +19,12 @@ Follow these steps in order when opening a PR:
 5. **Generate the title** — format as `type(scope): subject` using the rules in the Title Format section below.
 6. **Read the template** — read `${CLAUDE_SKILL_DIR}/templates/pr-template.md` and use it as the body structure.
 7. **Build the body** — fill in the template with Notion data and concrete details (see Body Generation below).
-8. **Assign labels** — select 3–5 labels based on type, priority, context, and optional status (see Label Assignment below).
-9. **Create the PR** — use **GitHub MCP first** (`create_pull_request`), targeting `main`. Fall back to `gh pr create` only if GitHub MCP is unavailable or fails. Always note which method was used and why if falling back. Open as a draft when the work is incomplete.
-10. **Apply labels** — use **GitHub MCP first**, via `issue_write` with `method: "update"` and the PR number as `issue_number`. `update_pull_request` cannot set labels. Fall back to `gh pr edit --add-label` if needed.
-11. **Update Notion** — when step 4 resolved a page, use `track-task` to write the branch name (`Branch` property) and PR URL (`Pull Request` property) back to it.
-12. **Report** — return the PR number, URL, applied labels, and the Notion sync result (updated, skipped, or failed).
+8. **Humanize the prose** — invoke the `humanizer:humanizer` skill on the body's prose: What Changed, Key Technical Decisions and any other free text. It rewrites wording only. The title, template headings, the Definition of Done checklist, labels, links, file paths, identifiers and code stay exactly as built. Apply it the same way when updating an existing PR's body.
+9. **Assign labels** — select 3–5 labels based on type, priority, context, and optional status (see Label Assignment below).
+10. **Create the PR** — use **GitHub MCP first** (`create_pull_request`), targeting `main`. Fall back to `gh pr create` only if GitHub MCP is unavailable or fails. Always note which method was used and why if falling back. Open as a draft when the work is incomplete.
+11. **Apply labels** — use **GitHub MCP first**, via `issue_write` with `method: "update"` and the PR number as `issue_number`. `update_pull_request` cannot set labels. Fall back to `gh pr edit --add-label` if needed.
+12. **Update Notion** — when step 4 resolved a page, use `track-task` to write the branch name (`Branch` property) and PR URL (`Pull Request` property) back to it.
+13. **Report** — return the PR number, URL, applied labels, and the Notion sync result (updated, skipped, or failed).
 
 ### When the PR Cannot Be Opened
 

@@ -24,8 +24,9 @@ When asked to create or refine a task, story, or epic, you must execute the foll
 4. **Gather context** — Ask the user for details that fill each required section. Break the task down into actionable, granular technical sub-tasks or implementation steps.
 5. **Testing Strategy:** Define clear acceptance criteria and outline required Unit Tests (EditMode) for Models/Presenters and PlayMode tests for Views/Integration.
 6. **Fill the template** — Produce a complete markdown document following the template structure exactly. Adapt optional sections when they add value.
-7. **Apply quality checks** — Run through the template's Quality Checks checklist before creating the page.
-8. **Create the Notion page** — Create the page in the task database (see Output Destination), set its properties, and report the URL and the assigned task ID. When refining an existing task, update that page in place instead of creating a duplicate.
+7. **Humanize the prose** — Invoke the `humanizer:humanizer` skill on the document's prose: the description, implementation notes, risk and mitigation text, and table cells that hold sentences. It rewrites wording only. Template headings, the risk emoji, property values, file paths, identifiers, code blocks, `<mention-page>` tags and Notion table markup stay exactly as written. Apply it the same way when refining an existing page.
+8. **Apply quality checks** — Run through the template's Quality Checks checklist before creating the page.
+9. **Create the Notion page** — Create the page in the task database (see Output Destination), set its properties, and report the URL and the assigned task ID. When refining an existing task, update that page in place instead of creating a duplicate.
 
 ## Template Selection
 

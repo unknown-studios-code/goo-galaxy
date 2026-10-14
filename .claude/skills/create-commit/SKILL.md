@@ -17,9 +17,10 @@ Run these steps in order:
 3. **Resolve trackers** — if a task ID (`GOOE`/`GOOS`/`GOOT`/`GOOM`) is known or the branch name encodes one (`feat/GOOM-1`), use the `track-task` skill to fetch task metadata for the footers. If no ID can be resolved, ask before adding footer references.
 4. **Stage** — stage only files that belong to this commit. Use `git add <path>` with explicit paths; use `git add -A` only when the user asked to commit everything or the whole tree clearly belongs together. Never stage unrelated in-progress work without asking. Do not format or scan by hand: the `pre-commit` hook runs `lint-staged` and both secret gates for you, on exactly what you staged.
 5. **Compose the message** — follow the format rules below.
-6. **Create the commit** — run the commit command with the body as a multi-line argument (see Running the Commit Command). Never write the message to a temporary file, and **do not set `HUSKY=0`** — the hooks are meant to run.
-7. **Verify** — run `git log -1 --stat` and report the commit hash, subject, and file count back to the user.
-8. **Do not push** — pushing requires explicit user approval. Offer it as a next step instead.
+6. **Humanize the prose** — invoke the `humanizer:humanizer` skill on the body's prose: the explanation and the bullet text. It rewrites wording only. The subject line, the `type(scope):` prefix, section titles, footers, identifiers, paths and code stay exactly as composed, and the 72-character wrap still applies afterwards.
+7. **Create the commit** — run the commit command with the body as a multi-line argument (see Running the Commit Command). Never write the message to a temporary file, and **do not set `HUSKY=0`** — the hooks are meant to run.
+8. **Verify** — run `git log -1 --stat` and report the commit hash, subject, and file count back to the user.
+9. **Do not push** — pushing requires explicit user approval. Offer it as a next step instead.
 
 ### Splitting Commits
 
