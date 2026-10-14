@@ -1,5 +1,6 @@
 using System.Threading;
 using GooGalaxy.Runtime.Audio.Models;
+using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Audio.Interfaces
@@ -18,6 +19,15 @@ namespace GooGalaxy.Runtime.Audio.Interfaces
         /// <summary>Plays a short sound once and forgets it.</summary>
         /// <param name="cue">The sound to play.</param>
         public void PlayOneShot(AudioCue cue);
+
+        /// <summary>Plays the sound authored for one card, once, and forgets it.</summary>
+        /// <remarks>
+        /// A card with no sound of its own plays <see cref="AudioCue.CardFallback" /> instead, so a played card is never
+        /// silent just because its row has not been authored yet; the gap is reported once per card, not once per play.
+        /// Allocation-free once each card has been played.
+        /// </remarks>
+        /// <param name="card">The card that was played.</param>
+        public void PlayCardCue(CardId card);
 
         /// <summary>Starts a music track, replacing the one playing.</summary>
         /// <remarks>
@@ -75,6 +85,10 @@ namespace GooGalaxy.Runtime.Audio.Interfaces
 
         /// <summary>Unloads a bank loaded through <see cref="LoadBankAsync" />. Does nothing for a bank that is not loaded.</summary>
         /// <param name="bank">The bank to unload.</param>
+        /// <remarks>
+        /// Not reference-counted: one call releases the bank however many callers loaded it, so each bank needs exactly one
+        /// owner that loads and unloads it (see <see cref="IAudioBankStatus" />).
+        /// </remarks>
         public void UnloadBank(AudioBank bank);
     }
 }

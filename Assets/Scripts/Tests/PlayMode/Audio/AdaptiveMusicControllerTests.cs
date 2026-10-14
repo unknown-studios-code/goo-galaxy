@@ -33,6 +33,7 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
         private GameObject _controllerGO;
         private AdaptiveMusicController _controller;
+        private MatchAudioBankController _bankController;
         private AudioConfigSO _config;
         private FakeAudioService _fakeService;
 
@@ -46,8 +47,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
             _controllerGO = new GameObject(nameof(AdaptiveMusicController));
             _controllerGO.SetActive(false);
+            _bankController = _controllerGO.AddComponent<MatchAudioBankController>();
+            _bankController.Construct(_fakeService);
             _controller = _controllerGO.AddComponent<AdaptiveMusicController>();
-            _controller.Construct(_fakeService, _config);
+            _controller.Construct(_fakeService, _config, _bankController);
             _controllerGO.SetActive(true);
         }
 
@@ -65,20 +68,6 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             {
                 Object.DestroyImmediate(_config);
             }
-        }
-
-        [Test]
-        public void MatchPhaseChanged_Loading_RequestsTheMatchBankExactlyOnce()
-        {
-            // GIVEN
-
-            // WHEN — Countdown follows Loading, exercising the case that would ask for the bank a second time if
-            // "exactly once" did not hold.
-            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
-            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
-
-            // THEN
-            Assert.That(_fakeService.LoadBankRequests, Is.EqualTo(new[] { AudioBank.Match }));
         }
 
         [Test]
@@ -102,7 +91,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             // WHEN
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Countdown);
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after Countdown started the load");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after Countdown started the load"
+            );
 
             // THEN
             Assert.That(_fakeService.PlayedMusicStates, Is.EqualTo(new[] { MusicState.Match }));
@@ -116,7 +108,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             _fakeService.ParameterWrites.Clear();
 
             // WHEN
@@ -140,7 +135,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
             // WHEN
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
 
             // THEN
             Assert.That(
@@ -151,9 +149,9 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator BankLoadCompleting_AfterAnAbandonedLoadIsSupersededByANewOne_PlaysMusicExactlyOnce()
+        public IEnumerator BankLoaded_AfterAnAbandonedStartIsRequestedAgain_PlaysMusicExactlyOnce()
         {
-            // GIVEN — the first Loading kicks off a bank load that None abandons before it ever completes.
+            // GIVEN — None drops the pending start while the bank is still loading; the next Loading asks for the track again, not for the bank.
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.None);
 
@@ -161,8 +159,8 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             _fakeService.CompleteBankLoad();
             yield return WaitUntilAsync(
-                () => _controller.IsBankReady,
-                "AdaptiveMusicController.IsBankReady to become true after the superseding load completed"
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
             );
 
             // THEN
@@ -171,11 +169,11 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator BankLoadCompleting_WhenLoadBankAsyncThrows_LogsMusicStartFailedAndLeavesTheNextMatchWorking()
+        public IEnumerator BankLoaded_AfterAFailedLoadIsRetriedByTheNextMatch_PlaysMusicExactlyOnce()
         {
             // GIVEN
             _fakeService.LoadBankAsyncExceptionToThrow = new InvalidOperationException("Simulated bank load failure.");
-            LogAssert.Expect(LogType.Warning, AudioLogMessages.MusicStartFailed);
+            LogAssert.Expect(LogType.Warning, AudioLogMessages.MatchBankLoadFailed);
             LogAssert.Expect(LogType.Exception, new Regex(".*"));
 
             // WHEN
@@ -186,8 +184,8 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             _fakeService.CompleteBankLoad();
             yield return WaitUntilAsync(
-                () => _controller.IsBankReady,
-                "AdaptiveMusicController.IsBankReady to become true after the next match's load completed"
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the next match's load completed"
             );
 
             // THEN
@@ -202,7 +200,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
             _fakeService.ParameterWrites.Clear();
 
@@ -223,7 +224,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
             MatchEvents.RaiseMatchClockTicked((int)FirstMidBandRemainingSeconds);
             _fakeService.ParameterWrites.Clear();
@@ -244,7 +248,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Standard);
 
             static void code()
@@ -284,7 +291,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
 
             static void code()
             {
@@ -309,7 +319,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             _fakeService.CallLog.Clear();
 
             // WHEN
@@ -328,7 +341,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             _fakeService.CallLog.Clear();
 
             // WHEN
@@ -346,7 +362,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             _fakeService.CallLog.Clear();
 
             // WHEN
@@ -364,7 +383,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfigWithoutLocalSeat());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             _fakeService.CallLog.Clear();
 
             // WHEN
@@ -397,34 +419,6 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator MatchStarted_ForARematchAfterTheFirstMatchEnded_PlaysMusicExactlyOncePerMatch()
-        {
-            // GIVEN
-            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
-            MatchEvents.RaiseMatchStarted(BuildConfig());
-            _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(
-                () => _controller.IsBankReady,
-                "AdaptiveMusicController.IsBankReady to become true after the first bank load completed"
-            );
-            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Ended);
-            MatchEvents.RaiseMatchEnded(new MatchOutcome(LocalPlayerId, MatchEndReason.TimeLimit));
-
-            // WHEN
-            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
-            MatchEvents.RaiseMatchStarted(BuildConfig());
-            _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(
-                () => _fakeService.PlayedMusicStates.Count >= 2,
-                "AdaptiveMusicController to have played music for the rematch after its bank load completed"
-            );
-
-            // THEN
-            Assert.That(_fakeService.PlayedMusicStates, Is.EqualTo(new[] { MusicState.Match, MusicState.Match }));
-        }
-
-        [UnityTest]
-        [Timeout(5000)]
         public IEnumerator MatchStarted_ForARematchWhoseBankIsAlreadyLoaded_PlaysMusicExactlyOnce()
         {
             // GIVEN
@@ -432,19 +426,18 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
             yield return WaitUntilAsync(
-                () => _controller.IsBankReady,
-                "AdaptiveMusicController.IsBankReady to become true after the first bank load completed"
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the first bank load completed"
             );
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Ended);
             MatchEvents.RaiseMatchEnded(new MatchOutcome(LocalPlayerId, MatchEndReason.TimeLimit));
-            _fakeService.CompletesLoadBankAsyncSynchronously = true;
 
             // WHEN
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             yield return WaitUntilAsync(
                 () => _fakeService.PlayedMusicStates.Count >= 2,
-                "AdaptiveMusicController to have played music for the rematch whose bank load completed synchronously"
+                "AdaptiveMusicController to have played music for the rematch from the bank that is already loaded"
             );
 
             // THEN
@@ -476,7 +469,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
             _fakeService.CallLog.Clear();
 
             // WHEN
@@ -494,7 +490,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             MatchEvents.RaiseMatchStarted(BuildConfig());
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after the bank load completed");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+            );
 
             // WHEN
             _controllerGO.SetActive(false);
@@ -505,10 +504,9 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
         [UnityTest]
         [Timeout(5000)]
-        public IEnumerator EventsRaised_ComponentDisabledWhileTheBankLoadIsPendingThenReenabled_PlaysMusicExactlyOnceAfterTheNextLoadCompletes()
+        public IEnumerator OnEnable_AfterADisableDroppedThePendingStart_PlaysMusicExactlyOnceWhenTheBankLoads()
         {
-            // GIVEN — the disable supersedes the pending load; a None raised while disabled reaches nothing, exactly
-            // like an abandoned start the orchestrator itself never observes while this component is unsubscribed.
+            // GIVEN — the disable drops the pending start; a None raised while disabled reaches nothing, exactly like an abandoned start this component never observes while unsubscribed.
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             _controllerGO.SetActive(false);
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.None);
@@ -517,7 +515,10 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             _controllerGO.SetActive(true);
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
             _fakeService.CompleteBankLoad();
-            yield return WaitUntilAsync(() => _controller.IsBankReady, "AdaptiveMusicController.IsBankReady to become true after re-enabling and reloading");
+            yield return WaitUntilAsync(
+                () => _controller.HasMusicStarted,
+                "AdaptiveMusicController.HasMusicStarted to become true after re-enabling and the original load completing"
+            );
 
             // THEN
             Assert.That(_fakeService.PlayedMusicStates, Is.EqualTo(new[] { MusicState.Match }));
@@ -534,7 +535,7 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             try
             {
                 // WHEN
-                inertController.Construct(null, null);
+                inertController.Construct(null, null, null);
 
                 // THEN
                 Assert.That(inertController.Model, Is.Null);
@@ -556,7 +557,7 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             try
             {
                 // WHEN
-                inertController.Construct(new FakeAudioService(), null);
+                inertController.Construct(new FakeAudioService(), null, null);
 
                 // THEN
                 Assert.That(inertController.Model, Is.Null);
@@ -564,6 +565,61 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             finally
             {
                 Object.Destroy(inertControllerGO);
+            }
+        }
+
+        [Test]
+        public void Construct_NullBankStatus_LogsWarningAndLeavesTheComponentInert()
+        {
+            // GIVEN
+            var inertControllerGO = new GameObject(nameof(AdaptiveMusicController) + "_NullBankStatus");
+            AdaptiveMusicController inertController = inertControllerGO.AddComponent<AdaptiveMusicController>();
+            LogAssert.Expect(LogType.Warning, AudioLogMessages.MusicBankStatusMissing);
+
+            try
+            {
+                // WHEN
+                inertController.Construct(new FakeAudioService(), _config, null);
+
+                // THEN
+                Assert.That(inertController.Model, Is.Null);
+            }
+            finally
+            {
+                Object.Destroy(inertControllerGO);
+            }
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator BankLoaded_MusicControllerAddedBeforeTheBankController_PlaysMusicExactlyOnce()
+        {
+            // GIVEN — the prefab's component order: the music controller subscribes before the bank controller requests the load.
+            var orderedGO = new GameObject(nameof(AdaptiveMusicController) + "_MusicFirst");
+            orderedGO.SetActive(false);
+            AdaptiveMusicController music = orderedGO.AddComponent<AdaptiveMusicController>();
+            MatchAudioBankController bank = orderedGO.AddComponent<MatchAudioBankController>();
+            bank.Construct(_fakeService);
+            music.Construct(_fakeService, _config, bank);
+            _controllerGO.SetActive(false);
+            orderedGO.SetActive(true);
+
+            try
+            {
+                // WHEN
+                MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
+                _fakeService.CompleteBankLoad();
+                yield return WaitUntilAsync(
+                    () => music.HasMusicStarted,
+                    "AdaptiveMusicController.HasMusicStarted to become true after the bank load completed"
+                );
+
+                // THEN
+                Assert.That(_fakeService.PlayedMusicStates, Is.EqualTo(new[] { MusicState.Match }));
+            }
+            finally
+            {
+                Object.Destroy(orderedGO);
             }
         }
 
