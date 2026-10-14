@@ -130,7 +130,7 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<MatchInputController>().AsSelf().As<IInteractionFeedbackSource>();
             builder.Register(_ => CreateAnalyticsSink(), Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<AnalyticsController>().AsSelf();
-            builder.Register<IAudioService>(_ => _audioServiceOverride ?? new FmodAudioService(_audioConfig), Lifetime.Singleton);
+            builder.Register(_ => _audioServiceOverride ?? new FmodAudioService(_audioConfig), Lifetime.Singleton);
             RegisterMatchAudio(builder);
         }
 
