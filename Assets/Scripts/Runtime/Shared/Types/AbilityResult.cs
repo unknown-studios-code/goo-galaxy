@@ -21,8 +21,8 @@ namespace GooGalaxy.Runtime.Shared.Types
     public readonly struct AbilityResult
     {
         /// <summary>
-        /// Wraps the three buffers a landing's impacts filled, and the owner split of the affected units. Any buffer
-        /// may be null, which reads as empty.
+        /// Wraps the three buffers a landing's impacts filled, the owner split of the affected units, and the kinds of
+        /// impact that took hold. Any buffer may be null, which reads as empty.
         /// </summary>
         /// <param name="affectedUnitIds">The units an impact applied a status to.</param>
         /// <param name="affectedHexes">The hexes whose state an impact changed, hazards included.</param>
@@ -35,12 +35,17 @@ namespace GooGalaxy.Runtime.Shared.Types
         /// How many of <paramref name="affectedUnitIds" /> another player owned when the impacts resolved. Zero when
         /// the publisher did not split them.
         /// </param>
+        /// <param name="resolvedEffects">
+        /// The kinds of impact that actually took hold. <see cref="ImpactEffectFlags.None" /> when the publisher did not
+        /// report them.
+        /// </param>
         public AbilityResult(
             IReadOnlyList<int> affectedUnitIds,
             IReadOnlyList<HexCoordinates> affectedHexes,
             IReadOnlyList<int> destroyedUnitIds,
             int affectedOwnCount = 0,
-            int affectedEnemyCount = 0
+            int affectedEnemyCount = 0,
+            ImpactEffectFlags resolvedEffects = ImpactEffectFlags.None
         )
         {
             AffectedUnitIds = affectedUnitIds;
@@ -48,6 +53,7 @@ namespace GooGalaxy.Runtime.Shared.Types
             DestroyedUnitIds = destroyedUnitIds;
             AffectedOwnCount = affectedOwnCount;
             AffectedEnemyCount = affectedEnemyCount;
+            ResolvedEffects = resolvedEffects;
         }
 
         /// <summary>Identifiers of the units an impact applied a status to, at most once each.</summary>
@@ -77,7 +83,16 @@ namespace GooGalaxy.Runtime.Shared.Types
         /// <summary>How many of <see cref="AffectedUnitIds" /> a player other than the acting one owned at resolution time.</summary>
         public int AffectedEnemyCount { get; }
 
-        /// <summary>Whether the impacts changed nothing, including on a default-constructed value.</summary>
+        /// <summary>
+        /// The kinds of impact that actually took hold on the board, as opposed to the kinds the card authored. See
+        /// <see cref="ImpactEffectFlags" /> for what each flag guarantees.
+        /// </summary>
+        public ImpactEffectFlags ResolvedEffects { get; }
+
+        /// <summary>
+        /// Whether all three buffers are empty, including on a default-constructed value. <see cref="ResolvedEffects" /> is
+        /// not considered.
+        /// </summary>
         public bool IsEmpty => GetCount(AffectedUnitIds) == 0 && GetCount(AffectedHexes) == 0 && GetCount(DestroyedUnitIds) == 0;
 
         private static int GetCount<TItem>(IReadOnlyList<TItem> items)

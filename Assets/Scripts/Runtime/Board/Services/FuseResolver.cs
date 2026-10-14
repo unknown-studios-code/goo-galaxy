@@ -25,7 +25,7 @@ namespace GooGalaxy.Runtime.Board.Services
     /// </para>
     /// <para>
     /// <see cref="TickFuses"/> is allocation-free: it only removes from the pre-sized roster and appends to the
-    /// caller's buffer. <see cref="ArmFuse"/> allocates once if a third fuse is ever armed simultaneously, then
+    /// caller's buffer. <see cref="TryArmFuse"/> allocates once if a third fuse is ever armed simultaneously, then
     /// keeps the grown capacity. The registry is bound as a keyed dictionary rather than as the value collection
     /// <see cref="StatusEffectResolver"/> takes, because the access pattern is the opposite one: that resolver
     /// ticks every unit and wants an enumerator, this one needs at most two units by id and wants a lookup.
@@ -56,13 +56,13 @@ namespace GooGalaxy.Runtime.Board.Services
         /// The duration is in seconds, on whatever clock the caller later ticks with. Re-arming an already-armed
         /// unit refreshes its remaining time and does <b>not</b> add a second entry, which is what keeps one unit
         /// to one fuse and one expiry. A null unit, a dead unit, and a non-positive duration are all ignored
-        /// rather than rejected.
+        /// rather than rejected, and answer false; true means a fuse is now running on the unit.
         /// </remarks>
-        internal void ArmFuse(GridUnit unit, float durationInSeconds)
+        internal bool TryArmFuse(GridUnit unit, float durationInSeconds)
         {
             if (unit == null || !unit.IsAlive || durationInSeconds <= 0f)
             {
-                return;
+                return false;
             }
 
             unit.ArmFuse(durationInSeconds);
@@ -75,6 +75,8 @@ namespace GooGalaxy.Runtime.Board.Services
             }
 
             PublishFuseArmed(unit);
+
+            return true;
         }
 
         /// <remarks>

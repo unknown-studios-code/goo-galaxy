@@ -172,6 +172,11 @@ namespace GooGalaxy.Runtime.Shared.Events
         /// player picked — so nothing in its payload is relative to a unit, and a subscriber must not read one
         /// back from it. See <see cref="AbilityResult" /> for buffer ownership, iteration, and why
         /// <c>DestroyedUnitIds</c> names units that are still registered while the callback runs.
+        /// <para>
+        /// <see cref="AbilityResult.ResolvedEffects" /> says which kinds of impact actually took hold, so a subscriber
+        /// never has to infer an effect from the buffers or from what the card authored; see
+        /// <see cref="ImpactEffectFlags" /> for what each flag guarantees.
+        /// </para>
         /// </remarks>
         public static event Action<int, AbilityResult> AbilityResolved;
 

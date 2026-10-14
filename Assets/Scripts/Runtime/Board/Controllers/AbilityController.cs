@@ -311,6 +311,7 @@ namespace GooGalaxy.Runtime.Board.Controllers
         private void ResolveImpacts(HexGrid grid, in AbilityContext context, IReadOnlyList<ImpactEffect> landingEffects)
         {
             AbilityDiagnostic diagnostics;
+            ImpactEffectFlags resolvedEffects;
 
             // Scoped to the rules alone: the publish below runs every subscriber's work, and folding that into
             // this marker would charge a view's effect spawning to the resolver.
@@ -328,13 +329,14 @@ namespace GooGalaxy.Runtime.Board.Controllers
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
-                    out diagnostics
+                    out diagnostics,
+                    out resolvedEffects
                 );
             }
 
             LogDiagnostics(diagnostics);
             PublishStatusApplied();
-            PublishAbilityResolved(context.ActingPlayerId);
+            PublishAbilityResolved(context.ActingPlayerId, resolvedEffects);
         }
 
         // Each change is dispatched inside its own guard, for the same reason PublishAbilityResolved guards its one:
@@ -387,11 +389,18 @@ namespace GooGalaxy.Runtime.Board.Controllers
             Debug.LogException(exception, this);
         }
 
-        private void PublishAbilityResolved(int actingPlayerId)
+        private void PublishAbilityResolved(int actingPlayerId, ImpactEffectFlags resolvedEffects)
         {
             CountAffectedByOwner(actingPlayerId, out int affectedOwnCount, out int affectedEnemyCount);
 
-            var result = new AbilityResult(_affectedUnitIdsView, _affectedHexesView, _destroyedUnitIdsView, affectedOwnCount, affectedEnemyCount);
+            var result = new AbilityResult(
+                _affectedUnitIdsView,
+                _affectedHexesView,
+                _destroyedUnitIdsView,
+                affectedOwnCount,
+                affectedEnemyCount,
+                resolvedEffects
+            );
 
             try
             {
