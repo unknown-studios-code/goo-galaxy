@@ -77,6 +77,7 @@ namespace GooGalaxy.Runtime.UI.Presenters
         private bool _isOpponentScoreShown = true;
 
         private readonly HandSlotState[] _handStates = new HandSlotState[HudSelectors.HandSlotCount];
+        private readonly Sprite[] _handArtwork = new Sprite[HudSelectors.HandSlotCount];
         private readonly bool[] _areHandSlotsAffordable = new bool[HudSelectors.HandSlotCount];
 
         private IMatchHudView _hud;
@@ -86,6 +87,7 @@ namespace GooGalaxy.Runtime.UI.Presenters
         private CardPresenter _cardPresenter;
 
         private HandSlotState _nextCardState = HandSlotState.Empty;
+        private Sprite _nextCardArtwork;
         private MatchPhase _phase = MatchPhase.None;
         private string _opponentLabel = HudText.OpponentUnknown;
         private string _outcomeTitle = string.Empty;
@@ -364,6 +366,7 @@ namespace GooGalaxy.Runtime.UI.Presenters
             if (_deckPresenter.TryGetNextCard(_localPlayerId, out CardId nextCard))
             {
                 _nextCardState = BuildSlotState(nextCard);
+                _nextCardArtwork = ResolveArtwork(nextCard);
             }
         }
 
@@ -381,6 +384,7 @@ namespace GooGalaxy.Runtime.UI.Presenters
             {
                 CardId cardId = i < hand.Count ? hand[i] : CardId.Empty;
                 _handStates[i] = BuildSlotState(cardId);
+                _handArtwork[i] = ResolveArtwork(cardId);
             }
         }
 
@@ -396,13 +400,29 @@ namespace GooGalaxy.Runtime.UI.Presenters
                 return HandSlotState.Empty;
             }
 
-            if (!_cardPresenter.TryGetCard(cardId, out ICardData card))
+            if (!_cardPresenter.TryGetCard(cardId, out ICardData card) || UnityReference.IsUnavailable(card))
             {
                 Debug.LogWarning(string.Format(UiLogMessages.HudCardDataMissingFormat, cardId.Value), this);
                 return HandSlotState.Empty;
             }
 
-            return new HandSlotState(cardId, card.DisplayName, card.EnergyCost, ResolveSlotKind(card.Type), card.Accent);
+            return new HandSlotState(cardId, card.DisplayName, card.EnergyCost, ResolveSlotKind(card.Type), card.Accent, card.Rarity);
+        }
+
+        private Sprite ResolveArtwork(CardId cardId)
+        {
+            if ((cardId == CardId.Empty) || (_cardPresenter == null))
+            {
+                return null;
+            }
+
+            // Same registry TryGetCard just resolved, so this fails only for a destroyed asset; a null Artwork is the normal case and is not logged.
+            if (_cardPresenter.TryGetVisuals(cardId, out ICardVisuals visuals) && !UnityReference.IsUnavailable(visuals))
+            {
+                return visuals.Artwork;
+            }
+
+            return null;
         }
 
         private void RefreshMaxEnergy()
@@ -570,10 +590,10 @@ namespace GooGalaxy.Runtime.UI.Presenters
 
             for (int i = 0; i < _handStates.Length; i++)
             {
-                hud.SetHandSlot(i, in _handStates[i]);
+                hud.SetHandSlot(i, in _handStates[i], _handArtwork[i]);
             }
 
-            hud.SetNextCard(in _nextCardState);
+            hud.SetNextCard(in _nextCardState, _nextCardArtwork);
         }
 
         private void PushOutcome()
@@ -599,9 +619,11 @@ namespace GooGalaxy.Runtime.UI.Presenters
             for (int i = 0; i < _handStates.Length; i++)
             {
                 _handStates[i] = HandSlotState.Empty;
+                _handArtwork[i] = null;
             }
 
             _nextCardState = HandSlotState.Empty;
+            _nextCardArtwork = null;
         }
 
         private void HandlePanelInitialized()
@@ -796,6 +818,7 @@ namespace GooGalaxy.Runtime.UI.Presenters
 
             ApplyHand(hand);
             _nextCardState = BuildSlotState(nextCard);
+            _nextCardArtwork = ResolveArtwork(nextCard);
 
             PushHand();
             RefreshAffordability();

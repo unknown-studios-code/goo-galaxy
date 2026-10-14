@@ -16,6 +16,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
     public class CardDataSOTests
     {
         private CardDataSO _card;
+        private Texture2D _texture;
+        private Sprite _sprite;
 
         [TearDown]
         public void TearDown()
@@ -23,6 +25,16 @@ namespace GooGalaxy.Tests.EditMode.Cards
             if (_card != null)
             {
                 UnityEngine.Object.DestroyImmediate(_card);
+            }
+
+            if (_sprite != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_sprite);
+            }
+
+            if (_texture != null)
+            {
+                UnityEngine.Object.DestroyImmediate(_texture);
             }
         }
 
@@ -43,7 +55,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: null
+                landingEffects: null,
+                rarity: CardRarity.Common
             );
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.CardIdEmptyFormat, "TestCard"));
 
@@ -196,7 +209,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: null
+                landingEffects: null,
+                rarity: CardRarity.Common
             );
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DescriptionEmptyFormat, "TestCard"));
 
@@ -205,6 +219,48 @@ namespace GooGalaxy.Tests.EditMode.Cards
 
             // THEN
             LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void Rarity_NeverAuthored_ReturnsNone()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+
+            // WHEN
+            CardRarity rarity = _card.Rarity;
+
+            // THEN
+            Assert.That(rarity, Is.EqualTo(CardRarity.None));
+        }
+
+        [Test]
+        public void SetAuthoredData_WithRarityAndArtwork_ExposesBoth()
+        {
+            // GIVEN
+            _texture = new Texture2D(1, 1);
+            _sprite = Sprite.Create(_texture, new Rect(0f, 0f, 1f, 1f), Vector2.zero);
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+
+            // WHEN
+            _card.SetAuthoredData(
+                "bio_phalanx",
+                "Bio-Phalanx",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 3,
+                canClone: true,
+                canJump: true,
+                hasArmor: true,
+                canIgnoreHazards: false,
+                conversionRadius: 1,
+                landingEffects: null,
+                rarity: CardRarity.Rare,
+                artwork: _sprite
+            );
+
+            // THEN
+            Assert.That((_card.Rarity, _card.Artwork), Is.EqualTo((CardRarity.Rare, _sprite)));
         }
 
         [Test]
@@ -559,7 +615,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: definitions
+                landingEffects: definitions,
+                rarity: CardRarity.Common
             );
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.SpellClusterSizeMissingFormat, "TestSpellCard", 0));
 
@@ -592,7 +649,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: definitions
+                landingEffects: definitions,
+                rarity: CardRarity.Common
             );
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.SpellClusterSizeMissingFormat, "TestSpellCard", 0));
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.SpellClusterSizeMissingFormat, "TestSpellCard", 1));
@@ -626,7 +684,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: definitions
+                landingEffects: definitions,
+                rarity: CardRarity.Common
             );
 
             // WHEN
@@ -657,7 +716,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 2,
-                landingEffects: definitions
+                landingEffects: definitions,
+                rarity: CardRarity.Common
             );
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DurationUnitMismatchFormat, "TestCard", 0));
 
@@ -689,9 +749,66 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: false,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: definitions
+                landingEffects: definitions,
+                rarity: CardRarity.Common
             );
             LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DurationUnitMismatchFormat, "TestCard", 0));
+
+            // WHEN
+            _card.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void ValidateAuthoredData_RarityNone_LogsRarityUnauthoredWarning()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card.name = "TestCard";
+            _card.SetAuthoredData(
+                "subject_alpha",
+                "Subject Alpha",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 1,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                canIgnoreHazards: false,
+                conversionRadius: 1,
+                landingEffects: null
+            );
+            LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.RarityUnauthoredFormat, "TestCard"));
+
+            // WHEN
+            _card.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void ValidateAuthoredData_ArtworkMissing_LogsNothing()
+        {
+            // GIVEN
+            _card = ScriptableObject.CreateInstance<CardDataSO>();
+            _card.name = "TestCard";
+            _card.SetAuthoredData(
+                "subject_alpha",
+                "Subject Alpha",
+                "Test description.",
+                CardType.Troop,
+                energyCost: 1,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                canIgnoreHazards: false,
+                conversionRadius: 1,
+                landingEffects: null,
+                rarity: CardRarity.Common
+            );
 
             // WHEN
             _card.ValidateAuthoredData();

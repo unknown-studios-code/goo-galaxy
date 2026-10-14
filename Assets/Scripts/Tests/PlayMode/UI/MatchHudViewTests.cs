@@ -45,6 +45,8 @@ namespace GooGalaxy.Tests.PlayMode.UI
         private const float DiscardZoneTestWidth = 240f;
         private const float DiscardZoneTestHeight = 120f;
 
+        private readonly List<Object> _createdObjects = new();
+
         private GameObject _documentGO;
         private PanelSettings _panelSettings;
         private UIDocument _document;
@@ -105,6 +107,16 @@ namespace GooGalaxy.Tests.PlayMode.UI
             {
                 Object.Destroy(_panelSettings);
             }
+
+            foreach (Object created in _createdObjects)
+            {
+                if (created != null)
+                {
+                    Object.Destroy(created);
+                }
+            }
+
+            _createdObjects.Clear();
 
             yield return null;
         }
@@ -178,7 +190,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             var state = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 3, HandSlotKind.Specimen, CardAccent.None);
 
             // WHEN
-            _view.SetHandSlot(0, in state);
+            _view.SetHandSlot(0, in state, null);
 
             // THEN
             Assert.That((_handSlotZero.State.DisplayName, _handSlotZero.State.EnergyCost), Is.EqualTo(("Subject Alpha", 3)));
@@ -192,7 +204,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             var state = new HandSlotState(new CardId("cryo_stasis"), "Cryo-Stasis", 2, HandSlotKind.Protocol, CardAccent.Control);
 
             // WHEN
-            _view.SetHandSlot(0, in state);
+            _view.SetHandSlot(0, in state, null);
 
             // THEN
             VisualElement accentBar = _handSlotZero.Q(className: HudSelectors.CardSlotAccent);
@@ -214,7 +226,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             VisualElement accentBar = _handSlotZero.Q(className: HudSelectors.CardSlotAccent);
 
             // WHEN
-            _view.SetHandSlot(0, in state);
+            _view.SetHandSlot(0, in state, null);
 
             // THEN
             Assert.That((accentBar.ClassListContains(HudSelectors.IsHidden), accentBar.ClassListContains(expectedClass)), Is.EqualTo((false, true)));
@@ -227,7 +239,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             var state = new HandSlotState(new CardId("unaccented_card"), "Unaccented", 1, HandSlotKind.Specimen, CardAccent.None);
 
             // WHEN
-            _view.SetHandSlot(0, in state);
+            _view.SetHandSlot(0, in state, null);
 
             // THEN — the class toggle is a plain field write in CardSlotElement.SetState, so it needs no frame
             // to observe; only the CSS-driven display it would otherwise produce needs a live stylesheet.
@@ -241,7 +253,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             // GIVEN
 
             // WHEN
-            _view.SetHandSlot(0, in HandSlotState.Empty);
+            _view.SetHandSlot(0, in HandSlotState.Empty, null);
 
             // THEN
             VisualElement accentBar = _handSlotZero.Q(className: HudSelectors.CardSlotAccent);
@@ -258,11 +270,11 @@ namespace GooGalaxy.Tests.PlayMode.UI
             var cardId = new CardId("volatile_mass");
             var firstState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive);
             var secondState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Control);
-            _view.SetHandSlot(0, in firstState);
+            _view.SetHandSlot(0, in firstState, null);
             VisualElement accentBar = _handSlotZero.Q(className: HudSelectors.CardSlotAccent);
 
             // WHEN
-            _view.SetHandSlot(0, in secondState);
+            _view.SetHandSlot(0, in secondState, null);
 
             // THEN
             Assert.That(
@@ -280,10 +292,10 @@ namespace GooGalaxy.Tests.PlayMode.UI
             var cardId = new CardId("volatile_mass");
             var firstState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive);
             var secondState = new HandSlotState(cardId, "Volatile Mass", 5, HandSlotKind.Specimen, CardAccent.Explosive);
-            _view.SetHandSlot(0, in firstState);
+            _view.SetHandSlot(0, in firstState, null);
 
             // WHEN
-            _view.SetHandSlot(0, in secondState);
+            _view.SetHandSlot(0, in secondState, null);
 
             // THEN
             Assert.That(_handSlotZero.State.EnergyCost, Is.EqualTo(5));
@@ -298,13 +310,181 @@ namespace GooGalaxy.Tests.PlayMode.UI
             var cardId = new CardId("volatile_mass");
             var firstState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive);
             var secondState = new HandSlotState(cardId, "Volatile Mass Prime", 4, HandSlotKind.Specimen, CardAccent.Explosive);
-            _view.SetHandSlot(0, in firstState);
+            _view.SetHandSlot(0, in firstState, null);
 
             // WHEN
-            _view.SetHandSlot(0, in secondState);
+            _view.SetHandSlot(0, in secondState, null);
 
             // THEN
             Assert.That(_handSlotZero.State.DisplayName, Is.EqualTo("Volatile Mass Prime"));
+        }
+
+        [Test]
+        public void SetHandSlot_GivenArtwork_ArtworkElementIsShown()
+        {
+            // GIVEN
+            Sprite artwork = CreateSprite();
+            var state = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 1, HandSlotKind.Specimen, CardAccent.None);
+
+            // WHEN
+            _view.SetHandSlot(0, in state, artwork);
+
+            // THEN
+            VisualElement artworkElement = _handSlotZero.Q(className: HudSelectors.CardSlotArtwork);
+            Assert.That(
+                (artworkElement.ClassListContains(HudSelectors.IsHidden), artworkElement.style.backgroundImage.value.sprite),
+                Is.EqualTo((false, artwork))
+            );
+        }
+
+        [Test]
+        public void SetHandSlot_GivenNullArtwork_ArtworkElementIsHidden()
+        {
+            // GIVEN
+            var state = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 1, HandSlotKind.Specimen, CardAccent.None);
+
+            // WHEN
+            _view.SetHandSlot(0, in state, null);
+
+            // THEN
+            VisualElement artworkElement = _handSlotZero.Q(className: HudSelectors.CardSlotArtwork);
+            Assert.That(artworkElement.ClassListContains(HudSelectors.IsHidden), Is.True);
+        }
+
+        [Test]
+        public void SetHandSlot_GivenArtworkThenHandSlotStateEmpty_BackgroundImageIsCleared()
+        {
+            // GIVEN
+            Sprite artwork = CreateSprite();
+            var filledState = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 1, HandSlotKind.Specimen, CardAccent.None);
+            _view.SetHandSlot(0, in filledState, artwork);
+
+            // WHEN
+            _view.SetHandSlot(0, in HandSlotState.Empty, null);
+
+            // THEN
+            VisualElement artworkElement = _handSlotZero.Q(className: HudSelectors.CardSlotArtwork);
+            Assert.That(artworkElement.style.backgroundImage.value.sprite == null, Is.True);
+        }
+
+        [Test]
+        public void SetHandSlot_GivenArtworkThenHandSlotStateEmpty_ArtworkElementIsHidden()
+        {
+            // GIVEN
+            Sprite artwork = CreateSprite();
+            var filledState = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 1, HandSlotKind.Specimen, CardAccent.None);
+            _view.SetHandSlot(0, in filledState, artwork);
+
+            // WHEN
+            _view.SetHandSlot(0, in HandSlotState.Empty, null);
+
+            // THEN
+            VisualElement artworkElement = _handSlotZero.Q(className: HudSelectors.CardSlotArtwork);
+            Assert.That(artworkElement.ClassListContains(HudSelectors.IsHidden), Is.True);
+        }
+
+        [Test]
+        public void SetHandSlot_GivenSameCardWithDifferentArtwork_ArtworkIsRedrawn()
+        {
+            // GIVEN — every other field matches the previous push, isolating Artwork as the one that moved;
+            // SetState early-out has to compare it, or the slot keeps the first sprite.
+            Sprite firstArtwork = CreateSprite();
+            Sprite secondArtwork = CreateSprite();
+            var cardId = new CardId("volatile_mass");
+            var firstState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive, CardRarity.Epic);
+            var secondState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive, CardRarity.Epic);
+            _view.SetHandSlot(0, in firstState, firstArtwork);
+
+            // WHEN
+            _view.SetHandSlot(0, in secondState, secondArtwork);
+
+            // THEN
+            VisualElement artworkElement = _handSlotZero.Q(className: HudSelectors.CardSlotArtwork);
+            Assert.That(artworkElement.style.backgroundImage.value.sprite, Is.SameAs(secondArtwork));
+        }
+
+        [TestCase(CardRarity.Common, true, false, false, false)]
+        [TestCase(CardRarity.Rare, false, true, false, false)]
+        [TestCase(CardRarity.Epic, false, false, true, false)]
+        [TestCase(CardRarity.Legendary, false, false, false, true)]
+        public void SetHandSlot_GivenARarity_SlotShowsOnlyTheMatchingModifierClass(
+            CardRarity rarity,
+            bool hasCommon,
+            bool hasRare,
+            bool hasEpic,
+            bool hasLegendary
+        )
+        {
+            // GIVEN
+            var state = new HandSlotState(new CardId("rarity_card"), "Rarity Card", 1, HandSlotKind.Specimen, CardAccent.None, rarity);
+
+            // WHEN
+            _view.SetHandSlot(0, in state, null);
+
+            // THEN
+            Assert.That(
+                (
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityCommon),
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityRare),
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityEpic),
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityLegendary)
+                ),
+                Is.EqualTo((hasCommon, hasRare, hasEpic, hasLegendary))
+            );
+        }
+
+        [Test]
+        public void SetHandSlot_GivenRarityNone_SlotHasNoRarityModifier()
+        {
+            // GIVEN
+            var state = new HandSlotState(new CardId("rarity_card"), "Rarity Card", 1, HandSlotKind.Specimen, CardAccent.None, CardRarity.None);
+
+            // WHEN
+            _view.SetHandSlot(0, in state, null);
+
+            // THEN
+            Assert.That(
+                (
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityCommon),
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityRare),
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityEpic),
+                    _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityLegendary)
+                ),
+                Is.EqualTo((false, false, false, false))
+            );
+        }
+
+        [Test]
+        public void SetHandSlot_GivenSameCardWithADifferentRarity_ModifierClassSwaps()
+        {
+            // GIVEN — every other field matches the previous push, isolating Rarity as the one that moved.
+            var cardId = new CardId("volatile_mass");
+            var firstState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive, CardRarity.Rare);
+            var secondState = new HandSlotState(cardId, "Volatile Mass", 4, HandSlotKind.Specimen, CardAccent.Explosive, CardRarity.Epic);
+            _view.SetHandSlot(0, in firstState, null);
+
+            // WHEN
+            _view.SetHandSlot(0, in secondState, null);
+
+            // THEN
+            Assert.That(
+                (_handSlotZero.ClassListContains(HudSelectors.CardSlotRarityRare), _handSlotZero.ClassListContains(HudSelectors.CardSlotRarityEpic)),
+                Is.EqualTo((false, true))
+            );
+        }
+
+        [Test]
+        public void SetHandSlot_GivenARarityThenHandSlotStateEmpty_RarityModifierIsRemoved()
+        {
+            // GIVEN
+            var filledState = new HandSlotState(new CardId("bio_phalanx"), "Bio-Phalanx", 3, HandSlotKind.Specimen, CardAccent.None, CardRarity.Rare);
+            _view.SetHandSlot(0, in filledState, null);
+
+            // WHEN
+            _view.SetHandSlot(0, in HandSlotState.Empty, null);
+
+            // THEN
+            Assert.That(_handSlotZero.ClassListContains(HudSelectors.CardSlotRarityRare), Is.False);
         }
 
 #if UNITY_EDITOR
@@ -534,6 +714,16 @@ namespace GooGalaxy.Tests.PlayMode.UI
         }
 
         [Test]
+        public void Constructor_CardSlotElement_ArtworkIsFirstChildAndScrimIsLast()
+        {
+            // THEN — stacking is child order and USS has no z-index, so artwork first paints under the accent
+            // bar, cost and name, and the scrim last paints over all of them.
+            VisualElement artworkElement = _handSlotZero.Q(className: HudSelectors.CardSlotArtwork);
+            VisualElement scrimElement = _handSlotZero.Q(className: HudSelectors.CardSlotScrim);
+            Assert.That((_handSlotZero.IndexOf(artworkElement), _handSlotZero.IndexOf(scrimElement)), Is.EqualTo((0, _handSlotZero.childCount - 1)));
+        }
+
+        [Test]
         public void Constructor_CardSlotElement_AccentBarStartsHidden()
         {
             // THEN — construction happens in this fixture's SetUp, with no push against the slot since, so this
@@ -570,6 +760,16 @@ namespace GooGalaxy.Tests.PlayMode.UI
             yield return new TestCaseData((Func<VisualElement>)(() => new OpponentBadgeElement())).SetName("OpponentBadgeElement");
             yield return new TestCaseData((Func<VisualElement>)(() => new EnergyGaugeElement())).SetName("EnergyGaugeElement");
             yield return new TestCaseData((Func<VisualElement>)(() => new CountdownOverlayElement())).SetName("CountdownOverlayElement");
+        }
+
+        private Sprite CreateSprite()
+        {
+            var texture = new Texture2D(1, 1);
+            var sprite = Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), Vector2.zero);
+            _createdObjects.Add(sprite);
+            _createdObjects.Add(texture);
+
+            return sprite;
         }
 
         // The screen point that, once IsScreenPointInDiscardZone applies its Y flip, converts to targetPanelPoint

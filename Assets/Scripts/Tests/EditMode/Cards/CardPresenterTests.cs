@@ -62,6 +62,51 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
+        public void TryGetCard_EmptyPresenter_ReturnsFalse()
+        {
+            // GIVEN
+            CardPresenter presenter = CreatePresenter();
+
+            // WHEN
+            bool found = presenter.TryGetCard(new CardId("anything"), out ICardData resolved);
+
+            // THEN
+            Assert.That(found, Is.False);
+            Assert.That(resolved, Is.Null);
+        }
+
+        [Test]
+        public void TryGetVisuals_WithRegisteredId_ReturnsTrueAndTheAuthoredArtwork()
+        {
+            // GIVEN
+            Sprite artwork = CreateSprite();
+            CardDataSO card = CreateCard("subject_alpha", "Subject Alpha", CardType.Troop, 1, canClone: true, canJump: true, hasArmor: false, artwork);
+            CardPresenter presenter = CreatePresenter(card);
+
+            // WHEN
+            bool found = presenter.TryGetVisuals(new CardId("subject_alpha"), out ICardVisuals visuals);
+
+            // THEN
+            Assert.That(found, Is.True);
+            Assert.That(visuals.Artwork, Is.SameAs(artwork));
+        }
+
+        [Test]
+        public void TryGetVisuals_WithUnregisteredId_ReturnsFalse()
+        {
+            // GIVEN
+            CardDataSO card = CreateCard("subject_alpha", "Subject Alpha", CardType.Troop, 1, canClone: true, canJump: true, hasArmor: false);
+            CardPresenter presenter = CreatePresenter(card);
+
+            // WHEN
+            bool found = presenter.TryGetVisuals(new CardId("unknown_card"), out ICardVisuals visuals);
+
+            // THEN
+            Assert.That(found, Is.False);
+            Assert.That(visuals, Is.Null);
+        }
+
+        [Test]
         public void Awake_DuplicateIds_SecondIsSkippedFirstRetained()
         {
             // GIVEN
@@ -80,17 +125,42 @@ namespace GooGalaxy.Tests.EditMode.Cards
         }
 
         [Test]
-        public void TryGetCard_EmptyPresenter_ReturnsFalse()
+        public void Awake_DuplicateIds_TryGetVisualsResolvesTheSameAssetAsTryGetCard()
         {
             // GIVEN
-            CardPresenter presenter = CreatePresenter();
+            Sprite firstArtwork = CreateSprite();
+            Sprite duplicateArtwork = CreateSprite();
+            CardDataSO first = CreateCard(
+                "acid_crawler",
+                "Acid Crawler (First)",
+                CardType.Troop,
+                2,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                firstArtwork
+            );
+            CardDataSO duplicate = CreateCard(
+                "acid_crawler",
+                "Acid Crawler (Duplicate)",
+                CardType.Troop,
+                2,
+                canClone: true,
+                canJump: true,
+                hasArmor: false,
+                duplicateArtwork
+            );
+            duplicate.name = "AcidCrawlerDuplicate";
+            LogAssert.Expect(LogType.Warning, string.Format(CardLogMessages.DuplicateCardIdFormat, "acid_crawler", "AcidCrawlerDuplicate"));
+            CardPresenter presenter = CreatePresenter(first, duplicate);
+
+            presenter.TryGetCard(new CardId("acid_crawler"), out ICardData card);
 
             // WHEN
-            bool found = presenter.TryGetCard(new CardId("anything"), out ICardData resolved);
+            presenter.TryGetVisuals(new CardId("acid_crawler"), out ICardVisuals visuals);
 
             // THEN
-            Assert.That(found, Is.False);
-            Assert.That(resolved, Is.Null);
+            Assert.That(visuals, Is.SameAs(card));
         }
 
         [Test]
@@ -108,7 +178,16 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(resolved, Is.Null);
         }
 
-        private CardDataSO CreateCard(string cardId, string displayName, CardType type, int energyCost, bool canClone, bool canJump, bool hasArmor)
+        private CardDataSO CreateCard(
+            string cardId,
+            string displayName,
+            CardType type,
+            int energyCost,
+            bool canClone,
+            bool canJump,
+            bool hasArmor,
+            Sprite artwork = null
+        )
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
             card.SetAuthoredData(
@@ -122,11 +201,22 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor,
                 canIgnoreHazards: false,
                 conversionRadius: 1,
-                landingEffects: null
+                landingEffects: null,
+                artwork: artwork
             );
             _spawned.Add(card);
 
             return card;
+        }
+
+        private Sprite CreateSprite()
+        {
+            var texture = new Texture2D(1, 1);
+            var sprite = Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), Vector2.zero);
+            _spawned.Add(sprite);
+            _spawned.Add(texture);
+
+            return sprite;
         }
 
         private CardPresenter CreatePresenter(params CardDataSO[] cards)

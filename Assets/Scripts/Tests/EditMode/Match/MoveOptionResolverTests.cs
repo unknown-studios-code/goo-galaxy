@@ -786,6 +786,8 @@ namespace GooGalaxy.Tests.EditMode.Match
             // "no accent" degrade path an unauthored card asset takes.
             public CardAccent Accent => CardAccent.None;
 
+            public CardRarity Rarity => CardRarity.None;
+
             public int EnergyCost { get; }
 
             public bool CanClone => false;

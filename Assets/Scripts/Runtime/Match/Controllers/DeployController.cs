@@ -361,7 +361,7 @@ namespace GooGalaxy.Runtime.Match.Controllers
         }
 
         // CardDefinition is the only type that carries a card's authored data and the board's capability
-        // contracts at once — CardDataSO implements ICardData alone — so it is what bridges the two assemblies
+        // contracts at once — CardDataSO implements none of the board capability contracts — so it is what bridges the two assemblies
         // this controller composes.
         //
         // PERF: memoized. One definition is built the first time each distinct card is played and reused for

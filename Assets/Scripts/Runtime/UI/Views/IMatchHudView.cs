@@ -1,5 +1,6 @@
 using System;
 using GooGalaxy.Runtime.UI.Models;
+using UnityEngine;
 
 namespace GooGalaxy.Runtime.UI.Views
 {
@@ -96,7 +97,11 @@ namespace GooGalaxy.Runtime.UI.Views
         /// <summary>Draws a card into one hand slot, or empties it.</summary>
         /// <param name="slotIndex">Zero-based slot. An index the screen does not author is dropped.</param>
         /// <param name="state">The card to draw. <see cref="HandSlotState.Empty" /> empties the slot.</param>
-        public void SetHandSlot(int slotIndex, in HandSlotState state);
+        /// <param name="artwork">
+        /// The card's artwork, or null for none, which hides the slot's artwork layer. A <c>UnityEngine.Object</c>, so
+        /// compare with <c>!= null</c>.
+        /// </param>
+        public void SetHandSlot(int slotIndex, in HandSlotState state, Sprite artwork);
 
         /// <summary>Reports whether one hand slot can be paid for right now.</summary>
         /// <param name="slotIndex">Zero-based slot. An index the screen does not author is dropped.</param>
@@ -109,7 +114,8 @@ namespace GooGalaxy.Runtime.UI.Views
 
         /// <summary>Draws the card queued for the next freed slot.</summary>
         /// <param name="state">The card to draw. <see cref="HandSlotState.Empty" /> empties the slot.</param>
-        public void SetNextCard(in HandSlotState state);
+        /// <param name="artwork">The card's artwork, or null for none. Compare with <c>!= null</c>.</param>
+        public void SetNextCard(in HandSlotState state, Sprite artwork);
 
         /// <summary>Empties every hand slot and the queued next card, and undims them all.</summary>
         public void ClearHand();

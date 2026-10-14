@@ -18,6 +18,8 @@ MonoBehaviour:
     can land there.
   _type: 0
   _accent: 5
+  _rarity: 1
+  _artwork: {fileID: 0}
   _energyCost: 2
   _canClone: 1
   _canJump: 1

@@ -17,6 +17,8 @@ MonoBehaviour:
   _description: Freezes every unit in a three-sector cluster.
   _type: 1
   _accent: 2
+  _rarity: 2
+  _artwork: {fileID: 0}
   _energyCost: 2
   _canClone: 0
   _canJump: 0

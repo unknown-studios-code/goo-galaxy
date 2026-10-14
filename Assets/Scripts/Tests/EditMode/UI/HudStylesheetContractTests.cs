@@ -36,6 +36,18 @@ namespace GooGalaxy.Tests.EditMode.UI
             nameof(HudSelectors.OutcomeOverlay),
         };
 
+        // Hooks for the rarity treatment, which the GDD has not designed yet (Art Direction & UX open item). No rule
+        // may paint them until then, so they are exempt from the "must be declared" contract and pinned to the
+        // opposite one by UnpaintedHookClass_DeclaredInNoStylesheet_StaysUnpainted. Remove an entry in the same
+        // change that adds its rule.
+        private static readonly HashSet<string> _unpaintedHookClassNames = new()
+        {
+            nameof(HudSelectors.CardSlotRarityCommon),
+            nameof(HudSelectors.CardSlotRarityRare),
+            nameof(HudSelectors.CardSlotRarityEpic),
+            nameof(HudSelectors.CardSlotRarityLegendary),
+        };
+
         private HashSet<string> _declaredClassSelectors;
 
         [OneTimeSetUp]
@@ -69,6 +81,23 @@ namespace GooGalaxy.Tests.EditMode.UI
             );
         }
 
+        [TestCaseSource(nameof(UnpaintedHookClassNames))]
+        public void UnpaintedHookClass_DeclaredInNoStylesheet_StaysUnpainted(string constFieldName)
+        {
+            // GIVEN
+            string value = (string)typeof(HudSelectors).GetField(constFieldName, BindingFlags.Public | BindingFlags.Static).GetValue(null);
+
+            // WHEN
+            bool isDeclared = _declaredClassSelectors.Contains(value);
+
+            // THEN
+            Assert.That(
+                isDeclared,
+                Is.False,
+                $"HudSelectors.{constFieldName} (\"{value}\") is declared in a stylesheet. Remove it from _unpaintedHookClassNames in the same change that adds its rule."
+            );
+        }
+
         [Test]
         public void DeclaredClassSelectors_KnownPresentClass_ContainsEnergyGaugeFill()
         {
@@ -99,11 +128,16 @@ namespace GooGalaxy.Tests.EditMode.UI
                     || value.Contains("--")
                     || _dualPurposeElementNames.Contains(field.Name);
 
-                if (isUssClassConst)
+                if (isUssClassConst && !_unpaintedHookClassNames.Contains(field.Name))
                 {
                     yield return field.Name;
                 }
             }
+        }
+
+        private static IEnumerable<string> UnpaintedHookClassNames()
+        {
+            return _unpaintedHookClassNames;
         }
 
         // StyleSheet's parsed selector data — StyleRule, StyleComplexSelector, StyleSelector and

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using GooGalaxy.Runtime.UI.Constants;
 using GooGalaxy.Runtime.UI.Models;
 using GooGalaxy.Runtime.UI.Views;
+using UnityEngine;
 
 namespace GooGalaxy.Tests.PlayMode.UI
 {
@@ -16,6 +17,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
     {
         public readonly List<string> CallLog = new();
         public readonly HandSlotState[] HandSlots = new HandSlotState[HudSelectors.HandSlotCount];
+        public readonly Sprite[] HandSlotArtwork = new Sprite[HudSelectors.HandSlotCount];
         public readonly bool[] HandSlotAffordability = new bool[HudSelectors.HandSlotCount];
 
         public event Action PanelInitialized;
@@ -51,6 +53,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
         public int SetCatchUpCallCount { get; private set; }
 
         public HandSlotState NextCard { get; private set; } = HandSlotState.Empty;
+        public Sprite NextCardArtwork { get; private set; }
 
         public bool? IsCountdownVisible { get; private set; }
 
@@ -134,9 +137,10 @@ namespace GooGalaxy.Tests.PlayMode.UI
             CallLog.Add($"{nameof(SetCatchUp)}:{isActive}");
         }
 
-        public void SetHandSlot(int slotIndex, in HandSlotState state)
+        public void SetHandSlot(int slotIndex, in HandSlotState state, Sprite artwork)
         {
             HandSlots[slotIndex] = state;
+            HandSlotArtwork[slotIndex] = artwork;
             CallLog.Add(nameof(SetHandSlot));
         }
 
@@ -146,9 +150,10 @@ namespace GooGalaxy.Tests.PlayMode.UI
             CallLog.Add(nameof(SetHandSlotAffordable));
         }
 
-        public void SetNextCard(in HandSlotState state)
+        public void SetNextCard(in HandSlotState state, Sprite artwork)
         {
             NextCard = state;
+            NextCardArtwork = artwork;
             CallLog.Add(nameof(SetNextCard));
         }
 

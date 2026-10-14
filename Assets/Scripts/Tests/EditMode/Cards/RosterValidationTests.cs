@@ -180,6 +180,20 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(card.Description, Is.Not.Null.And.Not.Empty);
         }
 
+        [TestCase(SubjectAlphaPath, CardRarity.Common)]
+        [TestCase(AcidCrawlerPath, CardRarity.Common)]
+        [TestCase(BioPhalanxPath, CardRarity.Rare)]
+        [TestCase(VolatileMassPath, CardRarity.Epic)]
+        [TestCase(CryoStasisPath, CardRarity.Rare)]
+        public void Rarity_EveryShippedCard_MatchesGddRoster(string path, CardRarity rarity)
+        {
+            // GIVEN
+            CardDataSO card = LoadCard(path);
+
+            // WHEN / THEN
+            Assert.That(card.Rarity, Is.EqualTo(rarity));
+        }
+
         [Test]
         public void CardId_AcrossTheRoster_AreAllDistinct()
         {

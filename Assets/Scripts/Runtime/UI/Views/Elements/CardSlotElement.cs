@@ -2,6 +2,7 @@ using System.Globalization;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.UI.Constants;
 using GooGalaxy.Runtime.UI.Models;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace GooGalaxy.Runtime.UI.Views.Elements
@@ -11,13 +12,13 @@ namespace GooGalaxy.Runtime.UI.Views.Elements
     /// player can currently pay for it.
     /// </summary>
     /// <remarks>
-    /// <b>The MVP slot carries no artwork and no rarity border</b>, because <c>ICardData</c> authors neither.
-    /// Beyond the accent bar it shows text and border treatment, which is also what keeps it legible under the
-    /// countdown scrim. Add the image child here when the card data grows one.
+    /// <b>The slot draws artwork when the card has some</b>, behind the text and under the countdown scrim, and
+    /// is hidden when it has none. It also carries a rarity modifier class that no stylesheet paints yet,
+    /// because the GDD has not designed the treatment; the hook exists so the design lands as USS alone.
     /// <para>
-    /// <b>The border is not available to card identity.</b> It already carries two states — Protocol tints it and
-    /// unaffordable dims the whole slot — so the card's accent goes on the accent bar instead, where neither can
-    /// collide with it.
+    /// <b>The border is still not available to card identity.</b> It already carries two states — Protocol tints it
+    /// and unaffordable dims the whole slot — so the card's accent goes on the accent bar instead, where neither
+    /// can collide with it.
     /// </para>
     /// <para>
     /// <b>Affordability is set apart from the card.</b> It flips as Energy regenerates, several times a second,
@@ -37,18 +38,26 @@ namespace GooGalaxy.Runtime.UI.Views.Elements
 
         private static readonly string[] _costTexts = BuildCostTexts();
 
+        private readonly VisualElement _artwork;
         private readonly VisualElement _accentBar;
         private readonly Label _costLabel;
         private readonly Label _nameLabel;
 
         private HandSlotState _state = HandSlotState.Empty;
         private string _accentClass;
+        private Sprite _artworkSprite;
+        private string _rarityClass;
         private bool _isAffordable = true;
         private bool _isDrawn;
 
         public CardSlotElement()
         {
             AddToClassList(HudSelectors.CardSlotBlock);
+
+            // Starts hidden, matching the state SetState leaves it in for a slot without artwork.
+            _artwork = new VisualElement { pickingMode = PickingMode.Ignore };
+            _artwork.AddToClassList(HudSelectors.CardSlotArtwork);
+            _artwork.AddToClassList(HudSelectors.IsHidden);
 
             _accentBar = new VisualElement { pickingMode = PickingMode.Ignore };
             _accentBar.AddToClassList(HudSelectors.CardSlotAccent);
@@ -69,13 +78,13 @@ namespace GooGalaxy.Runtime.UI.Views.Elements
             var scrim = new VisualElement { pickingMode = PickingMode.Ignore };
             scrim.AddToClassList(HudSelectors.CardSlotScrim);
 
+            // Stacking is child order — USS has no z-index — so the artwork goes on first to paint under the
+            // accent bar, the cost and the name, and the scrim goes on last to paint over all of them. A child
+            // added after the scrim would paint on top of it instead of under it, which is the whole cue lost.
+            Add(_artwork);
             Add(_accentBar);
             Add(_costLabel);
             Add(_nameLabel);
-
-            // Stacking is child order — USS has no z-index — so the scrim goes on last to paint over the cost
-            // and the name. A child added after this line would paint on top of the scrim instead of under it,
-            // which is the whole cue lost.
             Add(scrim);
         }
 
@@ -85,16 +94,21 @@ namespace GooGalaxy.Runtime.UI.Views.Elements
 
         /// <summary>Draws a card into the slot, or empties it.</summary>
         /// <param name="state">The card to draw. <see cref="HandSlotState.Empty" /> empties the slot.</param>
-        public void SetState(in HandSlotState state)
+        /// <param name="artwork">The card's artwork, or null for none. Compare with <c>!= null</c>.</param>
+        public void SetState(in HandSlotState state, Sprite artwork)
         {
             // Every member the slot draws is compared, including the two the presenter derives from CardId today.
             // Leaving those out would make the early-out correct only by coincidence, and silently wrong the day a
             // card is re-costed or renamed without its id changing.
+            // The artwork comparison uses Unity's overloaded ==, so a destroyed sprite reads as null. Accepted: card art
+            // is asset-backed and never destroyed at runtime.
             if (
                 _isDrawn
                 && (state.CardId == _state.CardId)
                 && (state.Kind == _state.Kind)
                 && (state.Accent == _state.Accent)
+                && (state.Rarity == _state.Rarity)
+                && (artwork == _artworkSprite)
                 && (state.EnergyCost == _state.EnergyCost)
                 && (state.DisplayName == _state.DisplayName)
             )
@@ -121,10 +135,27 @@ namespace GooGalaxy.Runtime.UI.Views.Elements
             // nothing here maps yet. Either way the bar leaves layout rather than showing an unpainted strip.
             _accentBar.EnableInClassList(HudSelectors.IsHidden, _accentClass == null);
 
+            bool hasArtwork = artwork != null;
+            _artwork.style.backgroundImage = hasArtwork ? new StyleBackground(artwork) : new StyleBackground(StyleKeyword.None);
+            _artwork.EnableInClassList(HudSelectors.IsHidden, !hasArtwork);
+
+            if (_rarityClass != null)
+            {
+                RemoveFromClassList(_rarityClass);
+            }
+
+            _rarityClass = ResolveRarityClass(state.Rarity);
+
+            if (_rarityClass != null)
+            {
+                AddToClassList(_rarityClass);
+            }
+
             EnableInClassList(HudSelectors.CardSlotEmpty, !state.IsFilled);
             EnableInClassList(HudSelectors.CardSlotProtocol, state.Kind == HandSlotKind.Protocol);
 
             _state = state;
+            _artworkSprite = artwork;
             _isDrawn = true;
         }
 
@@ -145,6 +176,18 @@ namespace GooGalaxy.Runtime.UI.Views.Elements
                 CardAccent.Explosive => HudSelectors.CardSlotAccentExplosive,
                 CardAccent.Defensive => HudSelectors.CardSlotAccentDefensive,
                 CardAccent.Corrosive => HudSelectors.CardSlotAccentCorrosive,
+                _ => null,
+            };
+        }
+
+        private static string ResolveRarityClass(CardRarity rarity)
+        {
+            return rarity switch
+            {
+                CardRarity.Common => HudSelectors.CardSlotRarityCommon,
+                CardRarity.Rare => HudSelectors.CardSlotRarityRare,
+                CardRarity.Epic => HudSelectors.CardSlotRarityEpic,
+                CardRarity.Legendary => HudSelectors.CardSlotRarityLegendary,
                 _ => null,
             };
         }

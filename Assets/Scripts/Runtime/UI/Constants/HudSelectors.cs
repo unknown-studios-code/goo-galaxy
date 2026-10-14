@@ -149,6 +149,8 @@ namespace GooGalaxy.Runtime.UI.Constants
 
         public const string CardSlotScrim = "card-slot__scrim";
 
+        public const string CardSlotArtwork = "card-slot__artwork";
+
         public const string CardSlotNext = "card-slot--next";
 
         public const string CardSlotEmpty = "card-slot--empty";
@@ -156,6 +158,14 @@ namespace GooGalaxy.Runtime.UI.Constants
         public const string CardSlotUnaffordable = "card-slot--unaffordable";
 
         public const string CardSlotProtocol = "card-slot--protocol";
+
+        public const string CardSlotRarityCommon = "card-slot--rarity-common";
+
+        public const string CardSlotRarityRare = "card-slot--rarity-rare";
+
+        public const string CardSlotRarityEpic = "card-slot--rarity-epic";
+
+        public const string CardSlotRarityLegendary = "card-slot--rarity-legendary";
 
         public const string CardSlotAccentBaseline = "card-slot__accent--baseline";
 

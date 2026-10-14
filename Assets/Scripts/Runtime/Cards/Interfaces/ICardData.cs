@@ -38,13 +38,20 @@ namespace GooGalaxy.Runtime.Cards.Interfaces
         /// <c>UnityEngine.Color</c> on this contract would sit outside that swap, so nothing here may carry one.
         /// </para>
         /// <para>
-        /// This is the first presentation member on the contract; the artwork and rarity tracked in GOOM-30 join it
-        /// here rather than on a parallel one. That task introduces a rarity enum whose tiers each take a palette
-        /// treatment — a second colour system arriving on this same slot, and one that has to resolve through
-        /// tokens the way this member does, or the bar and the border will disagree about what the card is.
+        /// Artwork is deliberately not on this contract; it lives on <see cref="ICardVisuals" /> so this contract stays
+        /// engine-free.
         /// </para>
         /// </remarks>
         public CardAccent Accent { get; }
+
+        /// <summary>
+        /// The card's collection tier from the GDD roster, or <see cref="CardRarity.None" /> when unauthored.
+        /// </summary>
+        /// <remarks>
+        /// A tier, never a colour, for the reason given on <see cref="Accent" />: any treatment the design assigns must
+        /// resolve from a USS token. None is designed yet (Art Direction &amp; UX open item).
+        /// </remarks>
+        public CardRarity Rarity { get; }
 
         /// <summary>
         /// The card's authored Energy cost. See <see cref="Shared.Interfaces.IEnergyPriced.EnergyCost" /> for how it

@@ -279,6 +279,17 @@
   overflow: hidden;
 }
 
+/* Absolute, so it takes no space from the flow children; stacking order is set in CardSlotElement's constructor.
+   Overflow on the slot clips it to the rounded border. */
+.card-slot__artwork {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  -unity-background-scale-mode: scale-and-crop;
+}
+
 /* First child and in the flow, not absolute: the bar owns the top strip of the card, so the cost below it
    never has to be padded clear of it, and is-hidden takes the strip back out of layout on a card that authors
    no accent — which is also how the bar rests before the first card is pushed into the slot. This rule paints

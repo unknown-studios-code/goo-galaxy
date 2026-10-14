@@ -1074,7 +1074,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             }
         }
 
-        // CardDataSO implements ICardData alone, so the roster cannot answer what a card can do on the board —
+        // CardDataSO implements none of the board capability contracts, so the roster cannot answer what a card can do on the board —
         // CardDefinition is the only type carrying the authored data and the capability contracts at once.
         //
         // PERF: memoized, exactly as DeployController memoizes its own. One definition is built the first time
