@@ -33,6 +33,7 @@ using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.UI.Presenters;
 using GooGalaxy.Runtime.UI.Views;
+using GooGalaxy.Tests.PlayMode.Audio;
 using GooGalaxy.Tests.PlayMode.UI;
 using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
@@ -562,11 +563,14 @@ namespace GooGalaxy.Tests.PlayMode.Core
         public IEnumerator Configure_MusicControllerAndBankOwnerInScene_StartsMusicWhenTheBankOwnerReportsLoaded()
         {
             // GIVEN — the music controller wakes after the container injected it, as it does under a scope that builds in Awake,
-            // so the injection reaches it before OnEnable subscribes it to the bank owner.
+            // so the injection reaches it before OnEnable subscribes it to the bank owner. The fake service keeps FMOD from
+            // starting: a PlayMode run that starts it hangs the Linux CI runner on editor shutdown.
             _presenterGO = CreateBoard();
             CreateScope();
             _audioConfig = ScriptableObject.CreateInstance<AudioConfigSO>();
             _scope.SetAudioConfigForTests(_audioConfig);
+            var audioService = new FakeAudioService();
+            _scope.SetAudioServiceForTests(audioService);
             _audioControllerGO = CreateAdaptiveMusicControllerAwaitingInjection();
             BuildContainer();
             _audioControllerGO.SetActive(true);
@@ -577,6 +581,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
             // WHEN
             MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
+            audioService.CompleteBankLoad();
             int framesWaited = 0;
 
             while (!music.HasMusicStarted && (framesWaited < MaxFramesToWait))

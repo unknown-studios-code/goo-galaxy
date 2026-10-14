@@ -77,6 +77,8 @@ namespace GooGalaxy.Runtime.Core.DI
         [SerializeField]
         private AudioConfigSO _audioConfig;
 
+        private IAudioService _audioServiceOverride;
+
         /// <remarks>
         /// Test seam: when set before the container is built, analytics sessions are written here instead of under
         /// the persistent data path, so a fixture can point them at a temporary folder and delete it afterwards.
@@ -92,6 +94,17 @@ namespace GooGalaxy.Runtime.Core.DI
         internal void SetAudioConfigForTests(AudioConfigSO config)
         {
             _audioConfig = config;
+        }
+
+        /// <remarks>
+        /// Test seam: when set before the container is built, this service is registered in place of
+        /// <see cref="FmodAudioService" />, so a fixture can drive the audio components without starting FMOD. A PlayMode run
+        /// that starts it leaves FMOD's debug callback registered, and on the Linux CI runner that callback overflows the
+        /// stack of FMOD's mixer thread while the editor shuts down, hanging the job. Has no effect once <c>Build</c> has run.
+        /// </remarks>
+        internal void SetAudioServiceForTests(IAudioService audioService)
+        {
+            _audioServiceOverride = audioService;
         }
 
         protected override void Configure(IContainerBuilder builder)
@@ -117,7 +130,7 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<MatchInputController>().AsSelf().As<IInteractionFeedbackSource>();
             builder.Register(_ => CreateAnalyticsSink(), Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<AnalyticsController>().AsSelf();
-            builder.Register<IAudioService>(_ => new FmodAudioService(_audioConfig), Lifetime.Singleton);
+            builder.Register<IAudioService>(_ => _audioServiceOverride ?? new FmodAudioService(_audioConfig), Lifetime.Singleton);
             RegisterMatchAudio(builder);
         }
 
