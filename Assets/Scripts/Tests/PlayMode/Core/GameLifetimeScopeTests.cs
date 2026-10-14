@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using GooGalaxy.Runtime.Analytics.Controllers;
 using GooGalaxy.Runtime.Analytics.Interfaces;
+using GooGalaxy.Runtime.Audio.Controllers;
+using GooGalaxy.Runtime.Audio.Data;
+using GooGalaxy.Runtime.Audio.Interfaces;
+using GooGalaxy.Runtime.Audio.Services;
 using GooGalaxy.Runtime.Board.Controllers;
 using GooGalaxy.Runtime.Board.Data;
 using GooGalaxy.Runtime.Board.Models;
@@ -64,12 +68,14 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameObject _matchHudViewGO;
         private GameObject _pointerInputViewGO;
         private GameObject _boardCameraGO;
+        private GameObject _audioControllerGO;
         private PanelSettings _matchHudViewPanelSettings;
         private InputActionAsset _pointerInputActions;
         private GameLifetimeScope _scope;
         private EnergyPresenter _energyPresenter;
         private DeckPresenter _deckPresenter;
         private KitDataSO _kit;
+        private AudioConfigSO _audioConfig;
         private string _analyticsOverrideDirectory;
 
         [TearDown]
@@ -128,6 +134,16 @@ namespace GooGalaxy.Tests.PlayMode.Core
             if (_boardCameraGO != null)
             {
                 Object.DestroyImmediate(_boardCameraGO);
+            }
+
+            if (_audioControllerGO != null)
+            {
+                Object.DestroyImmediate(_audioControllerGO);
+            }
+
+            if (_audioConfig != null)
+            {
+                Object.DestroyImmediate(_audioConfig);
             }
 
             foreach (GameObject go in _autoScaffoldedGOs)
@@ -472,6 +488,68 @@ namespace GooGalaxy.Tests.PlayMode.Core
             );
         }
 
+        [Test]
+        [Timeout(10000)]
+        public void Configure_NoAudioConfig_ResolvesIAudioServiceAsFmodAudioService()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<IAudioService>(), Is.InstanceOf<FmodAudioService>());
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_AdaptiveMusicControllerAndAudioConfigInScene_InjectsTheController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _audioConfig = ScriptableObject.CreateInstance<AudioConfigSO>();
+            _scope.SetAudioConfigForTests(_audioConfig);
+            _audioControllerGO = CreateAdaptiveMusicController();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<AdaptiveMusicController>(), Is.SameAs(_audioControllerGO.GetComponent<AdaptiveMusicController>()));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_NoAdaptiveMusicControllerAndNoAudioConfig_DoesNotRegisterTheController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            BuildContainer();
+
+            // WHEN / THEN
+            Assert.Throws<VContainerException>(() => _scope.Container.Resolve<AdaptiveMusicController>());
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_AdaptiveMusicControllerWithoutAudioConfig_LeavesTheControllerUninjected()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _audioControllerGO = CreateAdaptiveMusicController();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN — never registered, so Construct never ran and Model stays at its default null.
+            Assert.That(_audioControllerGO.GetComponent<AdaptiveMusicController>().Model, Is.Null);
+        }
+
         // AnalyticsController closes its session — flushing to whatever IAnalyticsSink the container resolved —
         // when it is destroyed, and TearDown destroys this scope on every test. Without this override, every
         // test that reaches BuildContainer() would write a short session file under the real
@@ -620,6 +698,17 @@ namespace GooGalaxy.Tests.PlayMode.Core
             _boardCameraGO = new GameObject("BoardCamera_DI_Test");
             _boardCameraGO.AddComponent<Camera>();
             _boardCameraGO.tag = "MainCamera";
+        }
+
+        // Needs no setup data: the component asks for nothing until Construct runs.
+        private GameObject CreateAdaptiveMusicController()
+        {
+            var go = new GameObject("AdaptiveMusicController_DI_Test");
+            go.SetActive(false);
+            go.AddComponent<AdaptiveMusicController>();
+            go.SetActive(true);
+
+            return go;
         }
 
         private KitDataSO BuildKit()

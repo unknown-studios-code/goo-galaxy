@@ -1,0 +1,5 @@
+# Husky owns core.hooksPath, so the hooks `git lfs install` would have written to
+# .git/hooks never run. Without this one a push sends LFS pointers but not the
+# objects behind them, and GitHub rejects it with GH008 (unknown LFS objects).
+command -v git-lfs >/dev/null 2>&1 || { printf >&2 "\n%s\n\n" "This repository is configured for Git LFS but 'git-lfs' was not found on your path. Install Git LFS, then retry the push."; exit 2; }
+git lfs pre-push "$@"
