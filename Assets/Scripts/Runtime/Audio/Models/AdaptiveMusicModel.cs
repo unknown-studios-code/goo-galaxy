@@ -303,7 +303,7 @@ namespace GooGalaxy.Runtime.Audio.Models
                 return 0;
             }
 
-            float scaledLead = (float)((_localUnitCount - _opponentUnitCount) * BalanceStepsPerUnit) / totalUnits;
+            float scaledLead = (_localUnitCount - _opponentUnitCount) * (float)BalanceStepsPerUnit / totalUnits;
 
             return (int)MathF.Round(scaledLead, MidpointRounding.AwayFromZero);
         }
