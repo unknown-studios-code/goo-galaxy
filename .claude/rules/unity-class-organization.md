@@ -97,7 +97,7 @@ A `[TestFixture]` is a plain C# class and follows Rule 1, with the framework's o
 6. Private helpers — `static` before instance, per Rule 1
 7. Nested test doubles (`Fake*`, `Stub*`) last, as Rule 1 requires of any nested type
 
-**When a fixture covers more than one public member of its subject, group by member first:** complete one member's happy-path-through-failure sequence before starting the next member's. The member is the primary axis and severity orders within it, because a reader arrives looking for `Resolve` or `ValidateTargets`, never for "the failure tests" — and a fixture large enough to raise the question is exactly the one where a global severity order stops being navigable.
+**When a fixture covers more than one public member of its subject, group by member first:** complete one member's happy-path-through-failure sequence before starting the next member's. The member is the primary axis and severity orders within it, because a reader arrives looking for `Resolve` or `ValidateTargets`, never for "the failure tests" — and a fixture large enough to raise the question is exactly the one where a global severity order stops being navigable. **A flow fixture is the exception:** one that covers a single public member through many entry paths — `MatchInputFeedbackTests` drives `FeedbackRaised` from every pointer and hand handler — groups by expected outcome instead, because that reader arrives asking "what produces `DropRejected`?", and the handler named in each test's prefix is the path taken, not the member under test.
 
 Setup and teardown sit above the tests because they are the fixture's own lifecycle, the same reason a MonoBehaviour's `Awake` precedes its methods. Helpers sit below the tests they serve: a reader arrives for a behaviour, not for the scaffolding. A fixture whose helpers have grown past its tests is telling you the setup belongs in a shared builder.
 
@@ -211,13 +211,13 @@ namespace GooGalaxy.Runtime.Board.Views
 
 Test fixtures — Rule 9, and the shape every fixture in `Assets/Scripts/Tests/` already follows:
 
-| Member Category                        | Position     | Ordering Detail                                                      |
-| :------------------------------------- | :----------- | :------------------------------------------------------------------- |
-| `const` / `static readonly`            | Top          | Shared ids, coordinates, durations, tolerances                       |
-| Instance fields                        | Upper        | The system under test and what the fixture builds for it             |
-| `[OneTimeSetUp]` / `[OneTimeTearDown]` | Middle-upper | Above `[SetUp]` — fixture lifetime is wider than test lifetime       |
-| `[SetUp]` / `[UnitySetUp]`             | Middle-upper | `public`; NUnit discovers it by reflection                           |
-| `[TearDown]` / `[UnityTearDown]`       | Middle-upper | Immediately after setup, null-safe — arrange may have failed halfway |
-| `[Test]` / `[UnityTest]`               | Middle       | Grouped by member under test; happy → boundaries → failures within   |
-| Private helpers                        | Lower        | `static` before instance, per Rule 1                                 |
-| Nested `Fake*` / `Stub*`               | Last         | Hand-written test doubles, per Rule 10 of the testing rules          |
+| Member Category                        | Position     | Ordering Detail                                                                    |
+| :------------------------------------- | :----------- | :--------------------------------------------------------------------------------- |
+| `const` / `static readonly`            | Top          | Shared ids, coordinates, durations, tolerances                                     |
+| Instance fields                        | Upper        | The system under test and what the fixture builds for it                           |
+| `[OneTimeSetUp]` / `[OneTimeTearDown]` | Middle-upper | Above `[SetUp]` — fixture lifetime is wider than test lifetime                     |
+| `[SetUp]` / `[UnitySetUp]`             | Middle-upper | `public`; NUnit discovers it by reflection                                         |
+| `[TearDown]` / `[UnityTearDown]`       | Middle-upper | Immediately after setup, null-safe — arrange may have failed halfway               |
+| `[Test]` / `[UnityTest]`               | Middle       | Grouped by member (flow fixture: by outcome); happy → boundaries → failures within |
+| Private helpers                        | Lower        | `static` before instance, per Rule 1                                               |
+| Nested `Fake*` / `Stub*`               | Last         | Hand-written test doubles, per Rule 10 of the testing rules                        |
