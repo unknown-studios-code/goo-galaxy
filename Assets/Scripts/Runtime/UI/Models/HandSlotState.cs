@@ -3,8 +3,7 @@ using GooGalaxy.Runtime.Shared.Types;
 namespace GooGalaxy.Runtime.UI.Models
 {
     /// <summary>
-    /// One hand slot as the HUD draws it: which card is in it, and the authored values a slot shows without
-    /// artwork.
+    /// One hand slot as the HUD draws it: which card is in it, and the authored values the slot shows.
     /// </summary>
     /// <remarks>
     /// This is the seam that keeps <c>Runtime.Cards</c> out of the view. The presenter resolves the card
@@ -16,9 +15,9 @@ namespace GooGalaxy.Runtime.UI.Models
     /// only ever needed a class toggled.
     /// </para>
     /// <para>
-    /// Artwork and rarity are absent because <c>ICardData</c> authors neither. The slot's markup leaves room for
-    /// both; add the fields here when the card data carries them. The accent role is the first member of that
-    /// family to land, and it arrives here the same way the rest will — copied off the card, never re-read.
+    /// Rarity is copied off <c>ICardData</c> like the accent role and never re-read by the view. Artwork is
+    /// deliberately not here: it travels beside the state through <c>IMatchHudView.SetHandSlot</c>, so this model
+    /// stays engine-free.
     /// </para>
     /// </remarks>
     public readonly struct HandSlotState
@@ -35,13 +34,15 @@ namespace GooGalaxy.Runtime.UI.Models
         /// The card's authored accent family. <see cref="CardAccent.None" /> on a card that authors none, and on an
         /// unfilled slot.
         /// </param>
-        public HandSlotState(CardId cardId, string displayName, int energyCost, HandSlotKind kind, CardAccent accent)
+        /// <param name="rarity">The card's authored collection tier. <see cref="CardRarity.None" /> when unauthored.</param>
+        public HandSlotState(CardId cardId, string displayName, int energyCost, HandSlotKind kind, CardAccent accent, CardRarity rarity = CardRarity.None)
         {
             CardId = cardId;
             DisplayName = displayName;
             EnergyCost = energyCost;
             Kind = kind;
             Accent = accent;
+            Rarity = rarity;
         }
 
         /// <summary>The card in the slot, or <see cref="CardId.Empty" /> when the slot is unfilled.</summary>
@@ -63,6 +64,12 @@ namespace GooGalaxy.Runtime.UI.Models
         /// state draws no bar rather than a stripe in whichever colour happened to sort first.
         /// </remarks>
         public CardAccent Accent { get; }
+
+        /// <summary>The card's authored collection tier, or <see cref="CardRarity.None" /> when unauthored.</summary>
+        /// <remarks>
+        /// A tier rather than a colour, for the same reason as <see cref="Accent" />; no treatment is painted yet.
+        /// </remarks>
+        public CardRarity Rarity { get; }
 
         /// <summary>Whether a card actually occupies this slot.</summary>
         public bool IsFilled => Kind != HandSlotKind.None;

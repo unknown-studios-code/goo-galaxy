@@ -534,6 +534,63 @@ namespace GooGalaxy.Tests.PlayMode.UI
         }
 
         [Test]
+        public void HandleHandChanged_CardWithRarity_PushesTheRarityToTheSlot()
+        {
+            // GIVEN
+            CardId cardId = CreateAndRegisterCard("bio_phalanx", "Bio-Phalanx", 3, CardRarity.Rare);
+            EnablePresenter();
+
+            // WHEN
+            MatchEvents.RaiseHandChanged(LocalPlayerId, new List<CardId> { cardId }, CardId.Empty);
+
+            // THEN
+            Assert.That(_view.HandSlots[0].Rarity, Is.EqualTo(CardRarity.Rare));
+        }
+
+        [Test]
+        public void HandleHandChanged_CardWithArtwork_PushesTheArtworkBesideTheSlot()
+        {
+            // GIVEN
+            Sprite artwork = CreateSprite();
+            CardId cardId = CreateAndRegisterCard("bio_phalanx", "Bio-Phalanx", 3, CardRarity.Rare, artwork);
+            EnablePresenter();
+
+            // WHEN
+            MatchEvents.RaiseHandChanged(LocalPlayerId, new List<CardId> { cardId }, CardId.Empty);
+
+            // THEN
+            Assert.That(_view.HandSlotArtwork[0], Is.SameAs(artwork));
+        }
+
+        [Test]
+        public void HandleHandChanged_CardWithoutArtwork_PushesNullArtwork()
+        {
+            // GIVEN
+            CardId cardId = CreateAndRegisterCard("subject_alpha", "Subject Alpha", 1, CardRarity.Common);
+            EnablePresenter();
+
+            // WHEN
+            MatchEvents.RaiseHandChanged(LocalPlayerId, new List<CardId> { cardId }, CardId.Empty);
+
+            // THEN
+            Assert.That(_view.HandSlotArtwork[0] == null, Is.True);
+        }
+
+        [Test]
+        public void HandleHandChanged_CardWithoutArtwork_LogsNothing()
+        {
+            // GIVEN
+            CardId cardId = CreateAndRegisterCard("subject_alpha", "Subject Alpha", 1, CardRarity.Common);
+            EnablePresenter();
+
+            // WHEN
+            MatchEvents.RaiseHandChanged(LocalPlayerId, new List<CardId> { cardId }, CardId.Empty);
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
         public void HandleHandChanged_UnresolvedCardId_RendersAnEmptySlotAndLogsAWarning()
         {
             // GIVEN
@@ -748,10 +805,34 @@ namespace GooGalaxy.Tests.PlayMode.UI
             _presenterGO.SetActive(true);
         }
 
-        private CardId CreateAndRegisterCard(string cardId, string displayName, int energyCost)
+        private Sprite CreateSprite()
+        {
+            var texture = new Texture2D(1, 1);
+            var sprite = Sprite.Create(texture, new Rect(0f, 0f, 1f, 1f), Vector2.zero);
+            _spawned.Add(sprite);
+            _spawned.Add(texture);
+
+            return sprite;
+        }
+
+        private CardId CreateAndRegisterCard(string cardId, string displayName, int energyCost, CardRarity rarity = CardRarity.None, Sprite artwork = null)
         {
             CardDataSO card = ScriptableObject.CreateInstance<CardDataSO>();
-            card.SetAuthoredData(cardId, displayName, "Test description.", CardType.Troop, energyCost, false, false, false, false, 1, null);
+            card.SetAuthoredData(
+                cardId,
+                displayName,
+                "Test description.",
+                CardType.Troop,
+                energyCost,
+                false,
+                false,
+                false,
+                false,
+                1,
+                null,
+                rarity: rarity,
+                artwork: artwork
+            );
             _spawned.Add(card);
 
             _cardPresenter.SetAuthoredCards(card);

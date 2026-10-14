@@ -121,7 +121,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
         {
             // GIVEN
             var state = new HandSlotState(new CardId("subject_alpha"), "Subject Alpha", 3, HandSlotKind.Specimen, CardAccent.None);
-            _view.SetHandSlot(0, in state);
+            _view.SetHandSlot(0, in state, null);
             _view.HandSlotPressed += HandleHandSlotPressed;
             yield return SettleHandSlotLayoutAsync(_handSlotZero);
             CreateEventSystem();
@@ -140,9 +140,9 @@ namespace GooGalaxy.Tests.PlayMode.UI
             // GIVEN — slot one rather than slot zero, because HandleHandSlotPointerDown resolves the index by
             // scanning _handSlots for the pressed element. Pressing only the first slot passes whether the
             // handler reports the element it matched or a hardcoded zero, so this is the case that actually pins
-            // the loop — and the hand strip is due to be reworked when card artwork lands.
+            // the loop.
             var state = new HandSlotState(new CardId("acid_crawler"), "Acid Crawler", 2, HandSlotKind.Specimen, CardAccent.None);
-            _view.SetHandSlot(1, in state);
+            _view.SetHandSlot(1, in state, null);
             _view.HandSlotPressed += HandleHandSlotPressed;
             yield return SettleHandSlotLayoutAsync(_handSlotOne);
             CreateEventSystem();
@@ -162,7 +162,7 @@ namespace GooGalaxy.Tests.PlayMode.UI
             // first, so a silent empty slot proves HandleHandSlotPointerDown's own filter rather than a dispatch
             // pipeline that never fired: this test must stand on its own when run alone.
             var state = new HandSlotState(new CardId("acid_crawler"), "Acid Crawler", 2, HandSlotKind.Specimen, CardAccent.None);
-            _view.SetHandSlot(1, in state);
+            _view.SetHandSlot(1, in state, null);
             _view.HandSlotPressed += HandleHandSlotPressed;
             yield return SettleHandSlotLayoutAsync(_handSlotZero);
             yield return SettleHandSlotLayoutAsync(_handSlotOne);

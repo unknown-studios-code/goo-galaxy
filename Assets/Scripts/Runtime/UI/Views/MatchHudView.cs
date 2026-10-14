@@ -188,14 +188,14 @@ namespace GooGalaxy.Runtime.UI.Views
             SetElementVisible(_catchUpLine, isActive);
         }
 
-        public void SetHandSlot(int slotIndex, in HandSlotState state)
+        public void SetHandSlot(int slotIndex, in HandSlotState state, Sprite artwork)
         {
             if (!IsPanelReady || (slotIndex < 0) || (slotIndex >= _handSlots.Length))
             {
                 return;
             }
 
-            _handSlots[slotIndex]?.SetState(in state);
+            _handSlots[slotIndex]?.SetState(in state, artwork);
         }
 
         public void SetHandSlotAffordable(int slotIndex, bool isAffordable)
@@ -208,14 +208,14 @@ namespace GooGalaxy.Runtime.UI.Views
             _handSlots[slotIndex]?.SetAffordable(isAffordable);
         }
 
-        public void SetNextCard(in HandSlotState state)
+        public void SetNextCard(in HandSlotState state, Sprite artwork)
         {
             if (!IsPanelReady || (_nextCardSlot == null))
             {
                 return;
             }
 
-            _nextCardSlot.SetState(in state);
+            _nextCardSlot.SetState(in state, artwork);
         }
 
         public void ClearHand()
@@ -227,11 +227,11 @@ namespace GooGalaxy.Runtime.UI.Views
 
             for (int i = 0; i < _handSlots.Length; i++)
             {
-                _handSlots[i]?.SetState(HandSlotState.Empty);
+                _handSlots[i]?.SetState(HandSlotState.Empty, null);
                 _handSlots[i]?.SetAffordable(true);
             }
 
-            _nextCardSlot?.SetState(HandSlotState.Empty);
+            _nextCardSlot?.SetState(HandSlotState.Empty, null);
         }
 
         public void SetCountdownVisible(bool isVisible)
