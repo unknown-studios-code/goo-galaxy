@@ -76,7 +76,9 @@ runs:
       if: always()
       with:
         name: ${{ inputs.test-results-artifact-name }}
-        path: ${{ steps.tests.outputs.artifactsPath }}
+        # A literal path, not steps.tests.outputs.artifactsPath: that output is only set once Unity exits, so a run
+        # cancelled by the job timeout uploaded nothing, and the Unity log in here is the only record of where it hung.
+        path: artifacts
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Upload coverage report
@@ -84,7 +86,7 @@ runs:
       if: always()
       with:
         name: ${{ inputs.coverage-artifact-name }}
-        path: ${{ steps.tests.outputs.coveragePath }}
+        path: CodeCoverage
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Print success summary
