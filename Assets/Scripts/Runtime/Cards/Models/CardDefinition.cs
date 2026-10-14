@@ -32,6 +32,7 @@ namespace GooGalaxy.Runtime.Cards.Models
             Description = cardData.Description;
             Type = cardData.Type;
             Accent = cardData.Accent;
+            Rarity = cardData.Rarity;
             EnergyCost = cardData.EnergyCost;
             CanClone = cardData.CanClone;
             CanJump = cardData.CanJump;
@@ -52,6 +53,8 @@ namespace GooGalaxy.Runtime.Cards.Models
         public CardType Type { get; }
 
         public CardAccent Accent { get; }
+
+        public CardRarity Rarity { get; }
 
         public int EnergyCost { get; }
 

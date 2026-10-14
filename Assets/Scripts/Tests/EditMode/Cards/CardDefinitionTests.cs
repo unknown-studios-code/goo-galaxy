@@ -42,7 +42,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 hasArmor: true,
                 canIgnoreHazards: true,
                 conversionRadius: 2,
-                description: "Absorbs the first conversion attempt."
+                description: "Absorbs the first conversion attempt.",
+                rarity: CardRarity.Epic
             );
 
             // WHEN
@@ -61,6 +62,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
             Assert.That(definition.HasArmor, Is.EqualTo(source.HasArmor));
             Assert.That(definition.CanIgnoreHazards, Is.EqualTo(source.CanIgnoreHazards));
             Assert.That(definition.ConversionRadius, Is.EqualTo(source.ConversionRadius));
+            Assert.That(definition.Rarity, Is.EqualTo(source.Rarity));
         }
 
         [Test]
@@ -232,7 +234,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 IReadOnlyList<ImpactEffect> landingEffects = null,
                 string description = "",
                 int cloneDistance = BoardMetrics.DefaultCloneDistance,
-                int jumpDistance = BoardMetrics.DefaultJumpDistance
+                int jumpDistance = BoardMetrics.DefaultJumpDistance,
+                CardRarity rarity = CardRarity.None
             )
             {
                 CardId = new CardId(cardId);
@@ -244,6 +247,7 @@ namespace GooGalaxy.Tests.EditMode.Cards
                 CanJump = canJump;
                 CloneDistance = cloneDistance;
                 JumpDistance = jumpDistance;
+                Rarity = rarity;
                 HasArmor = hasArmor;
                 CanIgnoreHazards = canIgnoreHazards;
                 ConversionRadius = conversionRadius;
@@ -262,6 +266,8 @@ namespace GooGalaxy.Tests.EditMode.Cards
             // "no accent" path an unauthored card asset takes, since none of the tests in this file assert
             // on a specific accent.
             public CardAccent Accent => CardAccent.None;
+
+            public CardRarity Rarity { get; }
 
             public int EnergyCost { get; }
 

@@ -17,6 +17,8 @@ MonoBehaviour:
   _description: The fundamental biomass unit. Cheap enough to deploy almost continuously.
   _type: 0
   _accent: 1
+  _rarity: 1
+  _artwork: {fileID: 0}
   _energyCost: 1
   _canClone: 1
   _canJump: 1

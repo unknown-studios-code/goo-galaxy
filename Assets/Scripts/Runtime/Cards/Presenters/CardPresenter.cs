@@ -17,7 +17,7 @@ namespace GooGalaxy.Runtime.Cards.Presenters
         [SerializeField]
         private CardDataSO[] _cards;
 
-        private readonly Dictionary<CardId, ICardData> _cardsById = new();
+        private readonly Dictionary<CardId, CardDataSO> _cardsById = new();
 
         protected void Awake()
         {
@@ -32,7 +32,24 @@ namespace GooGalaxy.Runtime.Cards.Presenters
         /// <returns><see langword="true"/> if a card with the given id was registered; otherwise <see langword="false"/>.</returns>
         public bool TryGetCard(CardId cardId, out ICardData card)
         {
-            return _cardsById.TryGetValue(cardId, out card);
+            bool isFound = _cardsById.TryGetValue(cardId, out CardDataSO asset);
+            card = asset;
+            return isFound;
+        }
+
+        /// <summary>
+        /// Attempts to resolve the presentation-only data for the given card id, from the same registry as
+        /// <see cref="TryGetCard" />.
+        /// </summary>
+        /// <param name="cardId">The id of the card to look up.</param>
+        /// <param name="visuals">The registered card's visuals, or <see langword="null"/> when <paramref name="cardId"/> was not found.</param>
+        /// <returns><see langword="true"/> if a card with the given id was registered; otherwise <see langword="false"/>.</returns>
+        /// <remarks>When two assets share an id, the first one registered wins, exactly as it does for <see cref="TryGetCard" />.</remarks>
+        public bool TryGetVisuals(CardId cardId, out ICardVisuals visuals)
+        {
+            bool isFound = _cardsById.TryGetValue(cardId, out CardDataSO asset);
+            visuals = asset;
+            return isFound;
         }
 
         /// <remarks>The registry is not rebuilt until the next <see cref="BuildRegistry" /> call.</remarks>

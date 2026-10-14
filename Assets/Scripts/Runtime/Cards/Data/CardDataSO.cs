@@ -9,7 +9,7 @@ using UnityEngine;
 namespace GooGalaxy.Runtime.Cards.Data
 {
     [CreateAssetMenu(menuName = "Goo Galaxy/Cards/Card Data", fileName = "NewCardData")]
-    public class CardDataSO : ScriptableObject, ICardData
+    public class CardDataSO : ScriptableObject, ICardData, ICardVisuals
     {
         private static readonly ImpactEffect[] _noLandingEffects = Array.Empty<ImpactEffect>();
 
@@ -39,6 +39,18 @@ namespace GooGalaxy.Runtime.Cards.Data
         )]
         [SerializeField]
         private CardAccent _accent;
+
+        [Tooltip(
+            "Collection tier from the GDD roster (Specimens, Protocols & Factions). No match rule reads it. None means unauthored and logs a warning on validate."
+        )]
+        [SerializeField]
+        private CardRarity _rarity;
+
+        [Tooltip(
+            "Card face drawn behind the hand slot's text, scaled to fill and cropped to the slot. Import as Sprite (Single). Optional: empty draws the slot with text and accent only, and logs nothing."
+        )]
+        [SerializeField]
+        private Sprite _artwork;
 
         [Header("Energy")]
         [Tooltip("Energy cost required to play this card, in whole Energy units.")]
@@ -101,6 +113,10 @@ namespace GooGalaxy.Runtime.Cards.Data
         public CardType Type => _type;
 
         public CardAccent Accent => _accent;
+
+        public CardRarity Rarity => _rarity;
+
+        public Sprite Artwork => _artwork;
 
         public int EnergyCost => _energyCost;
 
@@ -168,7 +184,9 @@ namespace GooGalaxy.Runtime.Cards.Data
             int conversionRadius,
             ImpactEffectDefinition[] landingEffects,
             int cloneDistance = BoardMetrics.DefaultCloneDistance,
-            int jumpDistance = BoardMetrics.DefaultJumpDistance
+            int jumpDistance = BoardMetrics.DefaultJumpDistance,
+            CardRarity rarity = CardRarity.None,
+            Sprite artwork = null
         )
         {
             _cardId = cardId;
@@ -184,6 +202,8 @@ namespace GooGalaxy.Runtime.Cards.Data
             _canIgnoreHazards = canIgnoreHazards;
             _conversionRadius = conversionRadius;
             _landingEffects = landingEffects;
+            _rarity = rarity;
+            _artwork = artwork;
             _cachedLandingEffects = null;
         }
 
@@ -216,6 +236,13 @@ namespace GooGalaxy.Runtime.Cards.Data
             {
                 Debug.LogWarning(string.Format(CardLogMessages.DescriptionEmptyFormat, name), this);
             }
+
+            if (_rarity == CardRarity.None)
+            {
+                Debug.LogWarning(string.Format(CardLogMessages.RarityUnauthoredFormat, name), this);
+            }
+
+            // No missing-artwork warning, deliberately: artwork is optional, and a slot without it draws text and accent only.
 
             WarnOnUnplayableSpellClusters();
             WarnOnDurationUnitMismatch();
