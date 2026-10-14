@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -8,6 +9,7 @@ using GooGalaxy.Runtime.Audio.Data;
 using GooGalaxy.Runtime.Audio.Interfaces;
 using GooGalaxy.Runtime.Audio.Models;
 using GooGalaxy.Runtime.Shared.Constants;
+using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
 namespace GooGalaxy.Runtime.Audio.Services
@@ -26,7 +28,7 @@ namespace GooGalaxy.Runtime.Audio.Services
     /// <b>Every fault degrades rather than throws.</b> An engine that will not start, or a missing config, logs one warning
     /// and silences the whole service for its lifetime. A missing bank, event, global parameter or VCA logs one warning
     /// and silences only that item. An event left unset on the config is the expected state while the FMOD Studio project
-    /// is still being authored, and is reported the same way: at most once per cue, track or stinger. This service logs
+    /// is still being authored, and is reported the same way: at most once per cue, card, track or stinger. This service logs
     /// only warnings; FMOD's own error callback still logs an error when a bank, event, parameter or VCA is genuinely
     /// named but missing, because that is content drift rather than an unauthored project.
     /// </para>
@@ -53,6 +55,9 @@ namespace GooGalaxy.Runtime.Audio.Services
         // seconds at 60fps, generous next to how fast a local bank actually loads.
         private const int MaxBankWaitFrames = 300;
 
+        // A deck's worth of distinct cards, so reporting every unmapped card in an ordinary match never grows the set.
+        private const int ReportedCardCapacity = 32;
+
         private readonly AudioConfigSO _config;
         private readonly PARAMETER_ID[] _parameterIds;
         private readonly LookupState[] _parameterStates;
@@ -66,6 +71,8 @@ namespace GooGalaxy.Runtime.Audio.Services
         private readonly bool[] _hasReportedStinger;
         private readonly bool[] _hasReportedParameter;
         private readonly bool[] _hasReportedChannel;
+        private readonly HashSet<CardId> _reportedCards = new(ReportedCardCapacity);
+        private readonly Dictionary<CardId, EventReference> _cardCueEvents;
 
         private FMOD.Studio.System _studioSystem;
         private EventInstance _musicInstance;
@@ -100,11 +107,18 @@ namespace GooGalaxy.Runtime.Audio.Services
             _hasReportedChannel = new bool[channelCount];
 
             Array.Fill(_requestedVolumes, DefaultLinearVolume);
+
+            _cardCueEvents = BuildCardCueEvents(config);
         }
 
         internal MusicState MusicState => _musicState;
 
         internal bool IsEngineUnavailable => _engineState == EngineState.Unavailable;
+
+        internal bool TryGetCardCueEvent(CardId card, out EventReference reference)
+        {
+            return _cardCueEvents.TryGetValue(card, out reference);
+        }
 
         public void PlayOneShot(AudioCue cue)
         {
@@ -122,6 +136,44 @@ namespace GooGalaxy.Runtime.Audio.Services
             {
                 instance.release();
             }
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// A card whose row is missing, whose event is unset, or whose event cannot be started is reported once — the card
+        /// id is remembered in a set sized up front, so a repeat play adds nothing — and then sounds
+        /// <see cref="AudioCue.CardFallback" />, which reports its own gaps through <see cref="PlayOneShot" />.
+        /// </remarks>
+        public void PlayCardCue(CardId card)
+        {
+            if (!TryEnsureEngine())
+            {
+                return;
+            }
+
+            if (!TryGetCardCueEvent(card, out EventReference reference) || reference.IsNull)
+            {
+                if (_reportedCards.Add(card))
+                {
+                    Debug.LogWarning(string.Format(AudioLogMessages.CardCueMissingFormat, _config.name, card.Value), _config);
+                }
+
+                PlayOneShot(AudioCue.CardFallback);
+                return;
+            }
+
+            if (TryStartInstance(reference, out EventInstance instance, out FMOD.RESULT result))
+            {
+                instance.release();
+                return;
+            }
+
+            if (_reportedCards.Add(card))
+            {
+                Debug.LogWarning(string.Format(AudioLogMessages.CardCueNotFoundFormat, card.Value, reference, result), _config);
+            }
+
+            PlayOneShot(AudioCue.CardFallback);
         }
 
         public void PlayMusic(MusicState state)
@@ -325,6 +377,29 @@ namespace GooGalaxy.Runtime.Audio.Services
             _isDisposed = true;
         }
 
+        private static Dictionary<CardId, EventReference> BuildCardCueEvents(AudioConfigSO config)
+        {
+            if (config == null)
+            {
+                return new Dictionary<CardId, EventReference>();
+            }
+
+            IReadOnlyList<CardCueEntry> rows = config.CardCues;
+            var events = new Dictionary<CardId, EventReference>(rows.Count);
+
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (string.IsNullOrWhiteSpace(rows[i].CardId))
+                {
+                    continue;
+                }
+
+                events.TryAdd(new CardId(rows[i].CardId), rows[i].Event);
+            }
+
+            return events;
+        }
+
         private static bool IsSlot(int slot, int slotCount)
         {
             return (slot >= 0) && (slot < slotCount);
@@ -496,7 +571,24 @@ namespace GooGalaxy.Runtime.Audio.Services
                 return false;
             }
 
-            FMOD.RESULT result = _studioSystem.getEventByID(reference.Guid, out EventDescription description);
+            if (TryStartInstance(reference, out instance, out FMOD.RESULT result))
+            {
+                return true;
+            }
+
+            if (TryClaimReport(hasReported, slot))
+            {
+                Debug.LogWarning(string.Format(AudioLogMessages.EventNotFoundFormat, key, reference, result), _config);
+            }
+
+            return false;
+        }
+
+        // Leaves no handle behind on failure, so a caller only ever has to release an instance this reported as started.
+        private bool TryStartInstance(EventReference reference, out EventInstance instance, out FMOD.RESULT result)
+        {
+            instance = default;
+            result = _studioSystem.getEventByID(reference.Guid, out EventDescription description);
 
             if (result == FMOD.RESULT.OK)
             {
@@ -519,11 +611,6 @@ namespace GooGalaxy.Runtime.Audio.Services
             }
 
             instance.clearHandle();
-
-            if (TryClaimReport(hasReported, slot))
-            {
-                Debug.LogWarning(string.Format(AudioLogMessages.EventNotFoundFormat, key, reference, result), _config);
-            }
 
             return false;
         }

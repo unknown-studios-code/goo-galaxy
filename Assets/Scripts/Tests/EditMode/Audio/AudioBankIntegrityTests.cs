@@ -1,6 +1,11 @@
+using System;
+using System.Collections.Generic;
 using FMODUnity;
 using GooGalaxy.Runtime.Audio.Data;
 using GooGalaxy.Runtime.Audio.Models;
+using GooGalaxy.Runtime.Audio.Services;
+using GooGalaxy.Runtime.Cards.Data;
+using GooGalaxy.Runtime.Shared.Types;
 using NUnit.Framework;
 using UnityEditor;
 
@@ -51,7 +56,7 @@ namespace GooGalaxy.Tests.EditMode.Audio
             Assert.That(IsInBank(stingerEvent, bankName), Is.True);
         }
 
-        [TestCase(AudioCue.ButtonPress)]
+        [TestCaseSource(nameof(AllCues))]
         public void TryGetCueEvent_EachCue_ResolvesToAnEventInTheMatchBank(AudioCue cue)
         {
             // GIVEN
@@ -63,6 +68,20 @@ namespace GooGalaxy.Tests.EditMode.Audio
 
             // THEN
             Assert.That(IsInBank(cueEvent, bankName), Is.True);
+        }
+
+        [TestCaseSource(nameof(ShippedCardIds))]
+        public void TryGetCardCueEvent_EachShippedCard_ResolvesToAnEventInTheMatchBank(string cardId)
+        {
+            // GIVEN
+            string bankName = _config.GetBankName(AudioBank.Match);
+            new FmodAudioService(_config).TryGetCardCueEvent(new CardId(cardId), out EventReference reference);
+
+            // WHEN
+            EditorEventRef cardEvent = EventManager.EventFromGUID(reference.Guid);
+
+            // THEN
+            Assert.That(IsInBank(cardEvent, bankName), Is.True, $"Card '{cardId}' ships without a sound in the {bankName} bank.");
         }
 
         [TestCase(AudioParameter.MatchIntensity)]
@@ -77,6 +96,20 @@ namespace GooGalaxy.Tests.EditMode.Audio
 
             // THEN
             Assert.That(builtParameter != null && builtParameter.IsGlobal, Is.True);
+        }
+
+        private static IEnumerable<AudioCue> AllCues()
+        {
+            return (AudioCue[])Enum.GetValues(typeof(AudioCue));
+        }
+
+        private static IEnumerable<string> ShippedCardIds()
+        {
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(CardDataSO)}"))
+            {
+                CardDataSO card = AssetDatabase.LoadAssetAtPath<CardDataSO>(AssetDatabase.GUIDToAssetPath(guid));
+                yield return card.CardId.Value;
+            }
         }
 
         private static bool IsInBank(EditorEventRef eventRef, string bankName)

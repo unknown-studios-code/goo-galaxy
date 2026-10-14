@@ -86,6 +86,10 @@ namespace GooGalaxy.Runtime.Shared.Constants
             "MatchInputController found no seat driven by the local player (player one is {0}, player two is {1}), so it accepts input for "
             + "player {2}. Expected in a machine-versus-machine debug match; anywhere else, the match configuration named the wrong control.";
 
+        public const string FeedbackSubscriberFailed =
+            "A subscriber to MatchInputController.FeedbackRaised threw (logged below) while a gesture step was reported. Subscribers after "
+            + "it were skipped, so that step may go unacknowledged; input and the selection are unaffected. Check the stack trace for the subscriber.";
+
         public const string MoveRejectedFormat =
             "MatchInputController: player {0}'s {1} was rejected by the board: {2}. TargetOccupied, TargetBlocked and ResolverBusy are "
             + "normal — both players act at once, so a highlighted sector can be taken before the finger lifts. Any other code means "

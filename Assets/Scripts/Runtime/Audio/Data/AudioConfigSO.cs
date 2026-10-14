@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FMODUnity;
 using GooGalaxy.Runtime.Audio.Models;
 using GooGalaxy.Runtime.Shared.Constants;
@@ -8,12 +9,12 @@ namespace GooGalaxy.Runtime.Audio.Data
 {
     /// <summary>
     /// The authored shape of the game's audio: the intensity bands the match music moves through, the FMOD events each
-    /// cue, track and stinger plays, and the names of the bank and global parameters in the FMOD Studio project.
+    /// cue, card, track and stinger plays, and the names of the bank and global parameters in the FMOD Studio project.
     /// </summary>
     /// <remarks>
-    /// An unset event is a supported state — the FMOD Studio project may not author every sound yet — and plays
-    /// nothing. Band edits reach the music at the next scene load (see
-    /// <see cref="Controllers.AdaptiveMusicController.Construct" />).
+    /// An unset event is a supported state — the FMOD Studio project may not author every sound yet. An unset cue, track or
+    /// stinger plays nothing; an unset card cue plays <see cref="AudioCue.CardFallback" /> instead. Band edits reach the
+    /// music at the next scene load (see <see cref="Controllers.AdaptiveMusicController.Construct" />).
     /// </remarks>
     [CreateAssetMenu(fileName = "NewAudioConfig", menuName = "Goo Galaxy/Audio/Audio Config")]
     public class AudioConfigSO : ScriptableObject
@@ -100,6 +101,14 @@ namespace GooGalaxy.Runtime.Audio.Data
         [Tooltip("The FMOD event each one-shot cue plays. A cue with no row, or a row with no event, stays silent.")]
         [SerializeField]
         private AudioCueEntry[] _cues = Array.Empty<AudioCueEntry>();
+
+        [Header("Card Cues")]
+        [Tooltip(
+            "The FMOD event each card plays when it is played, keyed by card id. A card with no row, or a row with no event, plays the "
+                + "CardFallback cue instead."
+        )]
+        [SerializeField]
+        private CardCueEntry[] _cardCues = Array.Empty<CardCueEntry>();
 
         [Header("FMOD Project Names")]
         [Tooltip(
@@ -196,9 +205,12 @@ namespace GooGalaxy.Runtime.Audio.Data
             ReportMissingName(_matchBankName, nameof(_matchBankName));
             ReportMissingName(_matchIntensityParameterName, nameof(_matchIntensityParameterName));
             ReportMissingName(_territoryBalanceParameterName, nameof(_territoryBalanceParameterName));
+            ReportCardCueIssues();
         }
 
-        /// <remarks>Linear scan of a table a handful of rows long; allocation-free. The first row naming the cue wins.</remarks>
+        /// <remarks>Linear scan of a table of about twenty rows; allocation-free. The first row naming the cue wins.</remarks>
+        internal IReadOnlyList<CardCueEntry> CardCues => _cardCues ?? Array.Empty<CardCueEntry>();
+
         internal bool TryGetCueEvent(AudioCue cue, out EventReference reference)
         {
             AudioCueEntry[] cues = _cues ?? Array.Empty<AudioCueEntry>();
@@ -269,6 +281,28 @@ namespace GooGalaxy.Runtime.Audio.Data
             issues |= IntensityBandIssue.ThresholdsOutOfOrder;
 
             return floorSeconds;
+        }
+
+        private void ReportCardCueIssues()
+        {
+            CardCueEntry[] rows = _cardCues ?? Array.Empty<CardCueEntry>();
+            var seenCardIds = new HashSet<string>(StringComparer.Ordinal);
+
+            for (int i = 0; i < rows.Length; i++)
+            {
+                string cardId = rows[i].CardId;
+
+                if (string.IsNullOrWhiteSpace(cardId))
+                {
+                    Debug.LogWarning(string.Format(AudioLogMessages.ConfigCardCueIdMissingFormat, name, i), this);
+                    continue;
+                }
+
+                if (!seenCardIds.Add(cardId))
+                {
+                    Debug.LogWarning(string.Format(AudioLogMessages.ConfigCardCueDuplicateFormat, name, cardId), this);
+                }
+            }
         }
 
         private void ReportBandIssues(IntensityBandIssue issues)

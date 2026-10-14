@@ -1,10 +1,10 @@
-using System;
 using GooGalaxy.Runtime.Audio.Data;
 using GooGalaxy.Runtime.Audio.Interfaces;
 using GooGalaxy.Runtime.Audio.Models;
 using GooGalaxy.Runtime.Shared.Constants;
 using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Types;
+using GooGalaxy.Runtime.Shared.Utils;
 using UnityEngine;
 using VContainer;
 
@@ -24,12 +24,17 @@ namespace GooGalaxy.Runtime.Audio.Controllers
     /// </para>
     /// <para>
     /// <b>The clock and score handlers allocate nothing after warm-up.</b> The clock ticks once a second and a score moves
-    /// on every landing, so they cost a few comparisons and, on a real change, one cached parameter write. The phase
-    /// handler allocates only when it starts the music — the bank load, once per match, from Loading or from a Countdown
-    /// whose Loading was not observed.
+    /// on every landing, so they cost a few comparisons and, on a real change, one cached parameter write.
     /// </para>
     /// <para>
-    /// <b>Parameters wait for the bank</b> (see <see cref="IAudioService.SetParameter" />): changes that arrive while it
+    /// <b>It never loads the bank; it waits for it.</b> The match bank belongs to whoever implements
+    /// <see cref="IAudioBankStatus" /> — <see cref="MatchAudioBankController" /> in a match scene — because unloading is not
+    /// reference-counted, and two owners would release it from under each other. A track the model asks for while the bank
+    /// is still loading is held as pending and started by <see cref="IAudioBankStatus.BankLoaded" />; a stop, a disable or a
+    /// match ending before then drops the pending start, so a superseded request never plays.
+    /// </para>
+    /// <para>
+    /// <b>Parameters wait for the music</b> (see <see cref="IAudioService.SetParameter" />): changes that arrive while the bank
     /// loads are held in the model and written all at once when the music starts.
     /// </para>
     /// <para>
@@ -40,22 +45,24 @@ namespace GooGalaxy.Runtime.Audio.Controllers
     public class AdaptiveMusicController : MonoBehaviour
     {
         private IAudioService _audioService;
+        private IAudioBankStatus _bankStatus;
         private AdaptiveMusicModel _model;
-        private int _musicRequest;
-        private bool _isBankReady;
+        private bool _isMusicPending;
+        private bool _hasMusicStarted;
 
         internal AdaptiveMusicModel Model => _model;
 
-        internal bool IsBankReady => _isBankReady;
+        internal bool HasMusicStarted => _hasMusicStarted;
 
         private bool IsConfigured => _model != null;
 
         /// <remarks>
         /// Copies the authored bands once, so an Inspector edit to the config changes the next scene rather than the running
-        /// match. A null service or config leaves the component inert, after one warning, rather than failing a match.
+        /// match. Must run before <c>OnEnable</c>, which is where the bank status is subscribed to — the container injects a
+        /// registered scene component while its scope wakes, ahead of the component's own callbacks.
         /// </remarks>
         [Inject]
-        public void Construct(IAudioService audioService, AudioConfigSO config)
+        public void Construct(IAudioService audioService, AudioConfigSO config, IAudioBankStatus bankStatus)
         {
             if (audioService == null)
             {
@@ -69,7 +76,14 @@ namespace GooGalaxy.Runtime.Audio.Controllers
                 return;
             }
 
+            if (UnityReference.IsUnavailable(bankStatus))
+            {
+                Debug.LogWarning(AudioLogMessages.MusicBankStatusMissing, this);
+                return;
+            }
+
             _audioService = audioService;
+            _bankStatus = bankStatus;
             _model = new AdaptiveMusicModel(config.Bands);
         }
 
@@ -80,6 +94,11 @@ namespace GooGalaxy.Runtime.Audio.Controllers
             MatchEvents.MatchClockTicked += HandleMatchClockTicked;
             MatchEvents.ScoreChanged += HandleScoreChanged;
             MatchEvents.MatchEnded += HandleMatchEnded;
+
+            if (IsConfigured)
+            {
+                _bankStatus.BankLoaded += HandleBankLoaded;
+            }
         }
 
         protected void OnDisable()
@@ -95,12 +114,16 @@ namespace GooGalaxy.Runtime.Audio.Controllers
                 return;
             }
 
+            // No Unity null check on purpose: the event lives on the managed object, so unsubscribing stays correct even when
+            // the bank owner was destroyed first during scene teardown.
+            _bankStatus.BankLoaded -= HandleBankLoaded;
+
             // A scene can switch its match root off mid-countdown and on again later (MatchController supports exactly
             // that), which unsubscribes this component before MatchEvents ever reaches the None phase the abandoned
             // start publishes. Left alone, the model would keep believing a track is playing, and the engine would keep
             // playing it into whatever screen comes next — so both are put back to their fresh-match state here instead.
-            _musicRequest++;
-            _isBankReady = false;
+            _isMusicPending = false;
+            _hasMusicStarted = false;
             _audioService.StopMusic(true);
             _model.Reset();
         }
@@ -112,7 +135,7 @@ namespace GooGalaxy.Runtime.Audio.Controllers
                 ApplyMusicState();
             }
 
-            if (!_isBankReady)
+            if (!_hasMusicStarted)
             {
                 return;
             }
@@ -134,51 +157,45 @@ namespace GooGalaxy.Runtime.Audio.Controllers
 
             if (state == MusicState.None)
             {
-                // Supersedes a load still in flight, so a match that ends while its bank loads never starts its music.
-                _musicRequest++;
+                // Drops a start still waiting on the bank, so a match that ends while its bank loads never starts its music.
+                _isMusicPending = false;
                 _audioService.StopMusic(true);
                 return;
             }
 
-            _ = StartMusicAsync(state);
+            if (UnityReference.IsUnavailable(_bankStatus) || !_bankStatus.IsLoaded(AudioBank.Match))
+            {
+                _isMusicPending = true;
+                return;
+            }
+
+            StartMusic(state);
         }
 
-        private async Awaitable StartMusicAsync(MusicState state)
+        private void StartMusic(MusicState state)
         {
-            int request = ++_musicRequest;
+            _isMusicPending = false;
+            _hasMusicStarted = true;
+            _audioService.PlayMusic(state);
+            _audioService.SetParameter(AudioParameter.MatchIntensity, _model.Intensity);
+            _audioService.SetParameter(AudioParameter.TerritoryBalance, _model.Balance);
+        }
 
-            try
+        private void HandleBankLoaded(AudioBank bank)
+        {
+            if (!IsConfigured || (bank != AudioBank.Match) || !_isMusicPending)
             {
-                await _audioService.LoadBankAsync(AudioBank.Match, destroyCancellationToken);
-
-                if ((this == null) || !isActiveAndEnabled)
-                {
-                    return;
-                }
-
-                if ((request != _musicRequest) || (_model.MusicState != state))
-                {
-                    return;
-                }
-
-                _isBankReady = true;
-                _audioService.PlayMusic(state);
-                _audioService.SetParameter(AudioParameter.MatchIntensity, _model.Intensity);
-                _audioService.SetParameter(AudioParameter.TerritoryBalance, _model.Balance);
+                return;
             }
-            catch (OperationCanceledException)
+
+            _isMusicPending = false;
+
+            if (_model.MusicState == MusicState.None)
             {
-                // Expected on scene teardown or a request this instance itself superseded; nothing to clean up.
+                return;
             }
-            catch (Exception exception)
-            {
-                // Dispatch boundary, the same one MatchController's countdown catches at: ApplyMusicState discards this
-                // Awaitable (`_ = StartMusicAsync(...)`), so an escaping exception here would be unobserved. Logged as a
-                // warning, not an error, because audio must never fail a match or the PlayMode suite (see the class
-                // remarks on AudioLogMessages) — the controller is left inert for this request rather than retried.
-                Debug.LogWarning(AudioLogMessages.MusicStartFailed, this);
-                Debug.LogException(exception, this);
-            }
+
+            StartMusic(_model.MusicState);
         }
 
         private void HandleMatchStarted(MatchConfiguration config)

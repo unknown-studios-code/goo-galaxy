@@ -249,6 +249,68 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
         [UnityTest]
         [Timeout(5000)]
+        public IEnumerator ResolveMove_VolatileMassJump_PublishesSelfDestructInResolvedEffects()
+        {
+            // GIVEN
+            yield return ActivateBoardCo();
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0) },
+            };
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _volatileSource, capability);
+            var command = new MoveCommand(MoveType.Jump, _volatileSource, _volatileTarget, ActingPlayerId, ActingUnitId);
+            AbilityResult receivedResult = default;
+            void handleResolved(int actingPlayerId, AbilityResult result) => receivedResult = result;
+            MatchEvents.AbilityResolved += handleResolved;
+
+            // WHEN
+            try
+            {
+                _unitPresenter.ResolveMove(command);
+            }
+            finally
+            {
+                MatchEvents.AbilityResolved -= handleResolved;
+            }
+
+            // THEN
+            Assert.That(receivedResult.ResolvedEffects, Is.EqualTo(ImpactEffectFlags.SelfDestruct));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveMove_AcidCrawlerJump_PublishesSpawnHazardInResolvedEffects()
+        {
+            // GIVEN
+            yield return ActivateBoardCo();
+            var capability = new FakeCapability
+            {
+                CanJump = true,
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0) },
+            };
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _acidSource, capability);
+            var command = new MoveCommand(MoveType.Jump, _acidSource, _acidTarget, ActingPlayerId, ActingUnitId);
+            AbilityResult receivedResult = default;
+            void handleResolved(int actingPlayerId, AbilityResult result) => receivedResult = result;
+            MatchEvents.AbilityResolved += handleResolved;
+
+            // WHEN
+            try
+            {
+                _unitPresenter.ResolveMove(command);
+            }
+            finally
+            {
+                MatchEvents.AbilityResolved -= handleResolved;
+            }
+
+            // THEN
+            Assert.That(receivedResult.ResolvedEffects, Is.EqualTo(ImpactEffectFlags.SpawnHazard));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
         public IEnumerator ResolveMove_LandingConvertsAndResolvesAnAbility_RaisesEventsInTheDocumentedOrder()
         {
             // GIVEN
@@ -854,6 +916,36 @@ namespace GooGalaxy.Tests.PlayMode.Board
 
             // THEN
             Assert.That(_abilityResolvedCallCount, Is.EqualTo(1));
+        }
+
+        [UnityTest]
+        [Timeout(5000)]
+        public IEnumerator ResolveSpell_CryoStasisCluster_PublishesApplyStatusInResolvedEffects()
+        {
+            // GIVEN
+            yield return ActivateBoardCo();
+            RegisterUnitAt(ActingUnitId, ActingPlayerId, _spellAdjacentOne, new FakeCapability());
+            var capability = new FakeCapability
+            {
+                LandingEffects = new[] { new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, FreezeDuration, TargetFilter.All, 3) },
+            };
+            var command = new SpellCommand(ActingPlayerId, new CardId("cryo_stasis"), CryoStasisTargets());
+            AbilityResult receivedResult = default;
+            void handleResolved(int actingPlayerId, AbilityResult result) => receivedResult = result;
+            MatchEvents.AbilityResolved += handleResolved;
+
+            // WHEN
+            try
+            {
+                _abilityController.ResolveSpell(command, capability);
+            }
+            finally
+            {
+                MatchEvents.AbilityResolved -= handleResolved;
+            }
+
+            // THEN
+            Assert.That(receivedResult.ResolvedEffects, Is.EqualTo(ImpactEffectFlags.ApplyStatus));
         }
 
         [UnityTest]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using GooGalaxy.Runtime.Analytics.Controllers;
@@ -20,21 +21,25 @@ using GooGalaxy.Runtime.Deck.Models;
 using GooGalaxy.Runtime.Deck.Presenters;
 using GooGalaxy.Runtime.Energy.Models;
 using GooGalaxy.Runtime.Energy.Presenters;
+using GooGalaxy.Runtime.Input.Controllers;
 using GooGalaxy.Runtime.Input.Views;
 using GooGalaxy.Runtime.Match.Controllers;
 using GooGalaxy.Runtime.Match.Models;
 using GooGalaxy.Runtime.Match.Services;
 using GooGalaxy.Runtime.Shared.Commands;
 using GooGalaxy.Runtime.Shared.Constants;
+using GooGalaxy.Runtime.Shared.Events;
 using GooGalaxy.Runtime.Shared.Interfaces;
 using GooGalaxy.Runtime.Shared.Types;
 using GooGalaxy.Runtime.UI.Presenters;
 using GooGalaxy.Runtime.UI.Views;
+using GooGalaxy.Tests.PlayMode.Audio;
 using GooGalaxy.Tests.PlayMode.UI;
 using GooGalaxy.Tests.Utils;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 using VContainer;
 using Object = UnityEngine.Object;
@@ -45,6 +50,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
     public class GameLifetimeScopeTests
     {
         private const int MaxAutoScaffoldAttempts = 12;
+        private const int MaxFramesToWait = 30;
         private const int ActingPlayerId = 1;
         private const int ActingUnitId = 1;
         private const float Tolerance = 0.0001f;
@@ -58,7 +64,6 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
         private readonly List<GameObject> _autoScaffoldedGOs = new();
         private readonly List<CardDataSO> _kitCards = new();
-
         private GameObject _scopeGO;
         private GameObject _presenterGO;
         private GameObject _energyPresenterGO;
@@ -69,6 +74,8 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private GameObject _pointerInputViewGO;
         private GameObject _boardCameraGO;
         private GameObject _audioControllerGO;
+        private GameObject _bankOwnerGO;
+        private GameObject _sfxControllerGO;
         private PanelSettings _matchHudViewPanelSettings;
         private InputActionAsset _pointerInputActions;
         private GameLifetimeScope _scope;
@@ -77,10 +84,15 @@ namespace GooGalaxy.Tests.PlayMode.Core
         private KitDataSO _kit;
         private AudioConfigSO _audioConfig;
         private string _analyticsOverrideDirectory;
+        private int _bankOwnerWarningCount;
 
         [TearDown]
         public void TearDown()
         {
+            Application.logMessageReceived -= HandleLogMessageReceived;
+            _bankOwnerWarningCount = 0;
+            MatchEvents.ResetEvents();
+
             if ((_analyticsOverrideDirectory != null) && Directory.Exists(_analyticsOverrideDirectory))
             {
                 Directory.Delete(_analyticsOverrideDirectory, true);
@@ -139,6 +151,16 @@ namespace GooGalaxy.Tests.PlayMode.Core
             if (_audioControllerGO != null)
             {
                 Object.DestroyImmediate(_audioControllerGO);
+            }
+
+            if (_bankOwnerGO != null)
+            {
+                Object.DestroyImmediate(_bankOwnerGO);
+            }
+
+            if (_sfxControllerGO != null)
+            {
+                Object.DestroyImmediate(_sfxControllerGO);
             }
 
             if (_audioConfig != null)
@@ -490,6 +512,21 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
         [Test]
         [Timeout(10000)]
+        public void Configure_WithPresentersInScene_ResolvesMatchInputControllerAsIInteractionFeedbackSource()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<IInteractionFeedbackSource>(), Is.SameAs(_scope.Container.Resolve<MatchInputController>()));
+        }
+
+        [Test]
+        [Timeout(10000)]
         public void Configure_NoAudioConfig_ResolvesIAudioServiceAsFmodAudioService()
         {
             // GIVEN
@@ -521,6 +558,46 @@ namespace GooGalaxy.Tests.PlayMode.Core
             Assert.That(_scope.Container.Resolve<AdaptiveMusicController>(), Is.SameAs(_audioControllerGO.GetComponent<AdaptiveMusicController>()));
         }
 
+        [UnityTest]
+        [Timeout(10000)]
+        public IEnumerator Configure_MusicControllerAndBankOwnerInScene_StartsMusicWhenTheBankOwnerReportsLoaded()
+        {
+            // GIVEN — the music controller wakes after the container injected it, as it does under a scope that builds in Awake,
+            // so the injection reaches it before OnEnable subscribes it to the bank owner. The fake service keeps FMOD from
+            // starting: a PlayMode run that starts it hangs the Linux CI runner on editor shutdown.
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _audioConfig = ScriptableObject.CreateInstance<AudioConfigSO>();
+            _scope.SetAudioConfigForTests(_audioConfig);
+            var audioService = new FakeAudioService();
+            _scope.SetAudioServiceForTests(audioService);
+            _audioControllerGO = CreateAdaptiveMusicControllerAwaitingInjection();
+            BuildContainer();
+            _audioControllerGO.SetActive(true);
+            AdaptiveMusicController music = _audioControllerGO.GetComponent<AdaptiveMusicController>();
+
+            // The auto-scaffolded MatchController has no config and reports it from its own Start, one frame in.
+            LogAssert.Expect(LogType.Error, MatchLogMessages.MatchConfigMissing);
+
+            // WHEN
+            MatchEvents.RaiseMatchPhaseChanged(MatchPhase.Loading);
+            audioService.CompleteBankLoad();
+            int framesWaited = 0;
+
+            while (!music.HasMusicStarted && (framesWaited < MaxFramesToWait))
+            {
+                framesWaited++;
+                yield return null;
+            }
+
+            // THEN
+            Assert.That(
+                music.HasMusicStarted,
+                Is.True,
+                "Expected AdaptiveMusicController.HasMusicStarted to become true once the bank owner reported the bank loaded."
+            );
+        }
+
         [Test]
         [Timeout(10000)]
         public void Configure_NoAdaptiveMusicControllerAndNoAudioConfig_DoesNotRegisterTheController()
@@ -548,6 +625,147 @@ namespace GooGalaxy.Tests.PlayMode.Core
 
             // THEN — never registered, so Construct never ran and Model stays at its default null.
             Assert.That(_audioControllerGO.GetComponent<AdaptiveMusicController>().Model, Is.Null);
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_MatchAudioBankControllerInScene_ResolvesItAsIAudioBankStatus()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _bankOwnerGO = CreateMatchAudioBankOwner();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<IAudioBankStatus>(), Is.SameAs(_bankOwnerGO.GetComponent<MatchAudioBankController>()));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_MatchAudioBankControllerInScene_ResolvesItAsItself()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _bankOwnerGO = CreateMatchAudioBankOwner();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<MatchAudioBankController>(), Is.SameAs(_bankOwnerGO.GetComponent<MatchAudioBankController>()));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_SfxControllerAndBankOwnerInScene_InjectsTheSfxController()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _bankOwnerGO = CreateMatchAudioBankOwner();
+            _sfxControllerGO = CreateMatchSfxController();
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_scope.Container.Resolve<MatchSfxController>(), Is.SameAs(_sfxControllerGO.GetComponent<MatchSfxController>()));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_SfxControllerWithoutBankOwner_LeavesTheSfxControllerUninjected()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _sfxControllerGO = CreateMatchSfxController();
+            LogAssert.Expect(LogType.Warning, AudioLogMessages.BankOwnerMissing);
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.Throws<VContainerException>(() => _scope.Container.Resolve<MatchSfxController>());
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_MusicControllerAndConfigWithoutBankOwner_LeavesTheMusicControllerUninjected()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _audioConfig = ScriptableObject.CreateInstance<AudioConfigSO>();
+            _scope.SetAudioConfigForTests(_audioConfig);
+            _audioControllerGO = CreateAdaptiveMusicControllerWithoutBankOwner();
+            LogAssert.Expect(LogType.Warning, AudioLogMessages.BankOwnerMissing);
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.Throws<VContainerException>(() => _scope.Container.Resolve<AdaptiveMusicController>());
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_MusicAndSfxControllersWithoutBankOwner_LeavesTheSfxControllerUninjected()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _audioConfig = ScriptableObject.CreateInstance<AudioConfigSO>();
+            _scope.SetAudioConfigForTests(_audioConfig);
+            _audioControllerGO = CreateAdaptiveMusicControllerWithoutBankOwner();
+            _sfxControllerGO = CreateMatchSfxController();
+            LogAssert.Expect(LogType.Warning, AudioLogMessages.BankOwnerMissing);
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.Throws<VContainerException>(() => _scope.Container.Resolve<MatchSfxController>());
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_MusicAndSfxControllersWithoutBankOwner_LogsExactlyOneBankOwnerMissingWarning()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            _audioConfig = ScriptableObject.CreateInstance<AudioConfigSO>();
+            _scope.SetAudioConfigForTests(_audioConfig);
+            _audioControllerGO = CreateAdaptiveMusicControllerWithoutBankOwner();
+            _sfxControllerGO = CreateMatchSfxController();
+            Application.logMessageReceived += HandleLogMessageReceived;
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_bankOwnerWarningCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        [Timeout(10000)]
+        public void Configure_NeitherMusicNorSfxControllerAndNoBankOwner_LogsNoBankOwnerWarning()
+        {
+            // GIVEN
+            _presenterGO = CreateBoard();
+            CreateScope();
+            Application.logMessageReceived += HandleLogMessageReceived;
+
+            // WHEN
+            BuildContainer();
+
+            // THEN
+            Assert.That(_bankOwnerWarningCount, Is.EqualTo(0));
         }
 
         // AnalyticsController closes its session — flushing to whatever IAnalyticsSink the container resolved —
@@ -615,6 +833,7 @@ namespace GooGalaxy.Tests.PlayMode.Core
         //
         // The double is assigned through SetViewForTests rather than a real MatchHudView, because a real one
         // brings its own UIDocument via RequireComponent and that UIDocument has no authored Source Asset here;
+
         // this fixture exercises container wiring, not HUD rendering, and ResolveSink treats a MatchHudView-typed
         // sink as a destroyed authored view once its serialized _view field is null, which a real component
         // assigned only through this seam would be.
@@ -700,12 +919,54 @@ namespace GooGalaxy.Tests.PlayMode.Core
             _boardCameraGO.tag = "MainCamera";
         }
 
-        // Needs no setup data: the component asks for nothing until Construct runs.
+        // Needs no setup data: the component asks for nothing until Construct runs. Carries the match bank owner as well,
+        // without which the scope injects no music controller at all.
         private GameObject CreateAdaptiveMusicController()
         {
             var go = new GameObject("AdaptiveMusicController_DI_Test");
             go.SetActive(false);
+            go.AddComponent<MatchAudioBankController>();
             go.AddComponent<AdaptiveMusicController>();
+            go.SetActive(true);
+
+            return go;
+        }
+
+        private GameObject CreateAdaptiveMusicControllerAwaitingInjection()
+        {
+            var go = new GameObject("AdaptiveMusicController_Injected_DI_Test");
+            go.SetActive(false);
+            go.AddComponent<MatchAudioBankController>();
+            go.AddComponent<AdaptiveMusicController>();
+
+            return go;
+        }
+
+        private GameObject CreateAdaptiveMusicControllerWithoutBankOwner()
+        {
+            var go = new GameObject("AdaptiveMusicController_NoOwner_DI_Test");
+            go.SetActive(false);
+            go.AddComponent<AdaptiveMusicController>();
+            go.SetActive(true);
+
+            return go;
+        }
+
+        private GameObject CreateMatchAudioBankOwner()
+        {
+            var go = new GameObject("MatchAudioBankController_DI_Test");
+            go.SetActive(false);
+            go.AddComponent<MatchAudioBankController>();
+            go.SetActive(true);
+
+            return go;
+        }
+
+        private GameObject CreateMatchSfxController()
+        {
+            var go = new GameObject("MatchSfxController_DI_Test");
+            go.SetActive(false);
+            go.AddComponent<MatchSfxController>();
             go.SetActive(true);
 
             return go;
@@ -755,6 +1016,10 @@ namespace GooGalaxy.Tests.PlayMode.Core
             // so the loop must attempt Build() one more time than it scaffolds.
             for (int attempt = 0; attempt <= MaxAutoScaffoldAttempts; attempt++)
             {
+                // Every failed attempt re-runs Configure, so a warning logged there repeats once per scaffold; counting only the
+                // attempt that succeeds measures what one real Build logs.
+                _bankOwnerWarningCount = 0;
+
                 try
                 {
                     _scope.Build();
@@ -769,6 +1034,15 @@ namespace GooGalaxy.Tests.PlayMode.Core
             }
 
             Assert.Fail($"Container did not build after {MaxAutoScaffoldAttempts} auto-scaffold attempts.");
+        }
+
+        // Counts instead of LogAssert.NoUnexpectedReceived because building the scene scaffold logs unrelated UI warnings.
+        private void HandleLogMessageReceived(string condition, string stackTrace, LogType type)
+        {
+            if ((type == LogType.Warning) && (condition == AudioLogMessages.BankOwnerMissing))
+            {
+                _bankOwnerWarningCount++;
+            }
         }
 
         // Permissive on purpose: this fixture exercises container wiring, never Energy pricing, so every move is

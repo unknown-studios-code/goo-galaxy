@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using GooGalaxy.Runtime.Audio.Interfaces;
 using GooGalaxy.Runtime.Audio.Models;
+using GooGalaxy.Runtime.Shared.Types;
 using UnityEngine;
 
 namespace GooGalaxy.Tests.PlayMode.Audio
@@ -16,6 +17,8 @@ namespace GooGalaxy.Tests.PlayMode.Audio
         public List<AudioServiceCall> CallLog { get; } = new(LogCapacity);
 
         public List<AudioCue> PlayedCues { get; } = new(LogCapacity);
+
+        public List<CardId> PlayedCardCues { get; } = new(LogCapacity);
 
         public List<MusicState> PlayedMusicStates { get; } = new(LogCapacity);
 
@@ -31,12 +34,6 @@ namespace GooGalaxy.Tests.PlayMode.Audio
 
         public bool IsBankLoadPending { get; private set; }
 
-        /// <remarks>
-        /// When true, <see cref="LoadBankAsync" /> completes on the calling frame instead of waiting for
-        /// <see cref="CompleteBankLoad" />, the way a bank an earlier match already loaded behaves for a rematch.
-        /// </remarks>
-        public bool CompletesLoadBankAsyncSynchronously { get; set; }
-
         /// <remarks>Set before a call, and cleared by the test afterwards; makes the next <see cref="LoadBankAsync" /> fail instead of loading.</remarks>
         public Exception LoadBankAsyncExceptionToThrow { get; set; }
 
@@ -44,6 +41,12 @@ namespace GooGalaxy.Tests.PlayMode.Audio
         {
             CallLog.Add(AudioServiceCall.PlayOneShot);
             PlayedCues.Add(cue);
+        }
+
+        public void PlayCardCue(CardId card)
+        {
+            CallLog.Add(AudioServiceCall.PlayCardCue);
+            PlayedCardCues.Add(card);
         }
 
         public void PlayMusic(MusicState state)
@@ -83,7 +86,7 @@ namespace GooGalaxy.Tests.PlayMode.Audio
         /// <remarks>
         /// Stays pending until a test calls <see cref="CompleteBankLoad" />, so a fixture can hold a bank "loading"
         /// across several frames the way the real service does while FMOD streams sample data in — unless
-        /// <see cref="CompletesLoadBankAsyncSynchronously" /> or <see cref="LoadBankAsyncExceptionToThrow" /> says otherwise.
+        /// <see cref="LoadBankAsyncExceptionToThrow" /> says otherwise.
         /// </remarks>
         public Awaitable LoadBankAsync(AudioBank bank, CancellationToken token)
         {
@@ -93,11 +96,6 @@ namespace GooGalaxy.Tests.PlayMode.Audio
             if (LoadBankAsyncExceptionToThrow != null)
             {
                 return FaultedAsync(LoadBankAsyncExceptionToThrow);
-            }
-
-            if (CompletesLoadBankAsyncSynchronously)
-            {
-                return CompletedAsync();
             }
 
             IsBankLoadPending = true;
@@ -115,14 +113,6 @@ namespace GooGalaxy.Tests.PlayMode.Audio
         public void CompleteBankLoad()
         {
             IsBankLoadPending = false;
-        }
-
-        private static Awaitable CompletedAsync()
-        {
-            var completionSource = new AwaitableCompletionSource();
-            completionSource.SetResult();
-
-            return completionSource.Awaitable;
         }
 
         private static Awaitable FaultedAsync(Exception exception)

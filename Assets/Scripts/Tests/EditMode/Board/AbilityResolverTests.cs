@@ -579,6 +579,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -607,6 +608,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -635,6 +637,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -663,6 +666,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -691,6 +695,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -719,6 +724,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -747,6 +753,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     null,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -775,6 +782,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     null,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -803,6 +811,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     null,
+                    out _,
                     out _
                 );
 
@@ -1143,6 +1152,7 @@ namespace GooGalaxy.Tests.EditMode.Board
                     _affectedHexes,
                     _destroyedUnitIds,
                     _appliedStatuses,
+                    out _,
                     out _
                 );
 
@@ -1274,6 +1284,197 @@ namespace GooGalaxy.Tests.EditMode.Board
             Assert.That(actingUnit.HasStatus(StatusType.Frozen), Is.True);
         }
 
+        [Test]
+        public void Resolve_NoImpacts_ReportsNoResolvedEffects()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void Resolve_ApplyStatusLandingOnAnAdjacentEnemy_ReportsApplyStatus()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            PlaceUnit(EnemyUnitId, RivalPlayerId, _neighborE);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.Enemy, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.ApplyStatus));
+        }
+
+        [Test]
+        public void Resolve_ApplyStatusReachingNoTarget_ReportsNoResolvedEffects()
+        {
+            // GIVEN — the only unit in range is the acting player's own, and the impact targets enemies.
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            PlaceUnit(FriendlyUnitId, ActingPlayerId, _neighborNW);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.Enemy, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void Resolve_SpawnHazardOnJump_ReportsSpawnHazard()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = JumpContext(ActingUnitId, _origin, _jumpSource);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.SpawnHazard));
+        }
+
+        [Test]
+        public void Resolve_SpawnHazardOnClone_ReportsNoResolvedEffects()
+        {
+            // GIVEN — a Clone vacates no hex, so the authored hazard never lands.
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void Resolve_SelfDestructOnLiveUnit_ReportsSelfDestruct()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.SelfDestruct));
+        }
+
+        [Test]
+        public void Resolve_SelfDestructOnDeadUnit_ReportsNoResolvedEffects()
+        {
+            // GIVEN
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            actingUnit.IsAlive = false;
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.SelfDestruct, StatusType.None, 0, 0, TargetFilter.Self, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void Resolve_ArmFuseOnClone_ReportsArmFuse()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.ArmFuse));
+        }
+
+        [Test]
+        public void Resolve_ArmFuseOnJump_ReportsSelfDestructAndNotArmFuse()
+        {
+            // GIVEN — a Jump detonates the fuse through the self-destruct path instead of arming it.
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = JumpContext(ActingUnitId, _origin, _jumpSource);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.SelfDestruct));
+        }
+
+        [Test]
+        public void Resolve_ArmFuseWithZeroDuration_ReportsNoResolvedEffects()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, 0, TargetFilter.Self, 0, ImpactDurationUnit.Seconds));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void Resolve_ArmFuseOnDeadUnit_ReportsNoResolvedEffects()
+        {
+            // GIVEN
+            GridUnit actingUnit = PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            actingUnit.IsAlive = false;
+            AbilityContext context = LandingContext(ActingUnitId, _origin);
+            _landingEffects.Add(
+                new ImpactEffect(ImpactEffectType.ArmFuse, StatusType.None, 0, FuseDurationInSeconds, TargetFilter.Self, 0, ImpactDurationUnit.Seconds)
+            );
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void Resolve_StatusAndHazardOnJump_ReportsBothEffects()
+        {
+            // GIVEN
+            PlaceUnit(ActingUnitId, ActingPlayerId, _origin);
+            PlaceUnit(EnemyUnitId, RivalPlayerId, _neighborE);
+            AbilityContext context = JumpContext(ActingUnitId, _origin, _jumpSource);
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.ApplyStatus, StatusType.Frozen, 1, StatusDuration, TargetFilter.Enemy, 0));
+            _landingEffects.Add(new ImpactEffect(ImpactEffectType.SpawnHazard, StatusType.None, 0, HazardDuration, TargetFilter.Self, 0));
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = ResolveEffects(context);
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.ApplyStatus | ImpactEffectFlags.SpawnHazard));
+        }
+
         [TestCase(3, ExpectedResult = true)]
         [TestCase(4, ExpectedResult = false)]
         public bool ValidateTargets_ForAnAuthoredClusterSize_AnswersWithTheValidatorsRule(int clusterSize)
@@ -1321,10 +1522,32 @@ namespace GooGalaxy.Tests.EditMode.Board
                 _affectedHexes,
                 _destroyedUnitIds,
                 _appliedStatuses,
-                out AbilityDiagnostic diagnostics
+                out AbilityDiagnostic diagnostics,
+                out _
             );
 
             return diagnostics;
+        }
+
+        private ImpactEffectFlags ResolveEffects(in AbilityContext context)
+        {
+            AbilityResolver.Resolve(
+                _grid,
+                _units,
+                context,
+                _landingEffects,
+                _statusEffects,
+                _fuses,
+                _areaBuffer,
+                _affectedUnitIds,
+                _affectedHexes,
+                _destroyedUnitIds,
+                _appliedStatuses,
+                out AbilityDiagnostic _,
+                out ImpactEffectFlags resolvedEffects
+            );
+
+            return resolvedEffects;
         }
 
         private GridUnit PlaceUnit(int unitId, int playerId, HexCoordinates position, bool hasArmor = false)

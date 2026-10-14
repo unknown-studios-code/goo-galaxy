@@ -58,6 +58,183 @@ MonoBehaviour:
         Data3: 1164068765
         Data4: 1904376938
       Path: event:/SFX/UI/ButtonPress
+  - Cue: 1
+    Event:
+      Guid:
+        Data1: -885818885
+        Data2: 1177380652
+        Data3: 1194166659
+        Data4: -679934686
+      Path: event:/SFX/Cards/Fallback
+  - Cue: 2
+    Event:
+      Guid:
+        Data1: 753113096
+        Data2: 1199661566
+        Data3: 1380527536
+        Data4: 507887169
+      Path: event:/SFX/Gameplay/CloneMovement
+  - Cue: 3
+    Event:
+      Guid:
+        Data1: -1005806401
+        Data2: 1341918764
+        Data3: -934991992
+        Data4: 62173254
+      Path: event:/SFX/Gameplay/JumpMovement
+  - Cue: 4
+    Event:
+      Guid:
+        Data1: -1482207166
+        Data2: 1236173568
+        Data3: 1068915078
+        Data4: 474569880
+      Path: event:/SFX/Gameplay/Conversion/Single
+  - Cue: 5
+    Event:
+      Guid:
+        Data1: 2115665438
+        Data2: 1202497340
+        Data3: 2067012999
+        Data4: 364703212
+      Path: event:/SFX/Gameplay/Conversion/Chain
+  - Cue: 6
+    Event:
+      Guid:
+        Data1: -1785753333
+        Data2: 1171358858
+        Data3: -178269525
+        Data4: 840938994
+      Path: event:/SFX/Gameplay/Conversion/Mass
+  - Cue: 7
+    Event:
+      Guid:
+        Data1: 183057003
+        Data2: 1172247701
+        Data3: -673587014
+        Data4: 1921453582
+      Path: event:/SFX/Gameplay/ArmorStrip
+  - Cue: 8
+    Event:
+      Guid:
+        Data1: -1665866017
+        Data2: 1082733803
+        Data3: -927708525
+        Data4: 1874070597
+      Path: event:/SFX/Gameplay/Freeze
+  - Cue: 9
+    Event:
+      Guid:
+        Data1: 1083750199
+        Data2: 1298708024
+        Data3: 1242889113
+        Data4: 1220109174
+      Path: event:/SFX/Gameplay/RootApplied
+  - Cue: 10
+    Event:
+      Guid:
+        Data1: 1339033894
+        Data2: 1106552471
+        Data3: 224146840
+        Data4: 166581496
+      Path: event:/SFX/Gameplay/AcidPuddleCreated
+  - Cue: 11
+    Event:
+      Guid:
+        Data1: 755448661
+        Data2: 1280644626
+        Data3: -1265982330
+        Data4: 722235128
+      Path: event:/SFX/Gameplay/VolatileMassExplosion
+  - Cue: 12
+    Event:
+      Guid:
+        Data1: 1577272657
+        Data2: 1275102444
+        Data3: 207022735
+        Data4: -1128073729
+      Path: event:/SFX/Gameplay/SamplePurge
+  - Cue: 13
+    Event:
+      Guid:
+        Data1: -1092779908
+        Data2: 1270105340
+        Data3: -360522572
+        Data4: 1946525308
+      Path: event:/SFX/Gameplay/OvertimeWarning
+  - Cue: 14
+    Event:
+      Guid:
+        Data1: -1684768587
+        Data2: 1145169740
+        Data3: -1079144831
+        Data4: 1840758899
+      Path: event:/SFX/UI/PlayRejected
+  - Cue: 15
+    Event:
+      Guid:
+        Data1: 637353572
+        Data2: 1118979718
+        Data3: 851188630
+        Data4: -1971011238
+      Path: event:/SFX/UI/CardSelect
+  - Cue: 16
+    Event:
+      Guid:
+        Data1: -670292333
+        Data2: 1303160855
+        Data3: -1279300199
+        Data4: 1526691744
+      Path: event:/SFX/UI/CardDragStart
+  - Cue: 17
+    Event:
+      Guid:
+        Data1: -598155067
+        Data2: 1166261810
+        Data3: 1876452495
+        Data4: -1273668858
+      Path: event:/SFX/UI/CardDropInvalid
+  _cardCues:
+  - CardId: subject_alpha
+    Event:
+      Guid:
+        Data1: -840035438
+        Data2: 1150538522
+        Data3: -645867365
+        Data4: 1711729751
+      Path: event:/SFX/Cards/SubjectAlpha
+  - CardId: acid_crawler
+    Event:
+      Guid:
+        Data1: -1107549453
+        Data2: 1202387223
+        Data3: 740066976
+        Data4: 103730473
+      Path: event:/SFX/Cards/AcidCrawler
+  - CardId: bio_phalanx
+    Event:
+      Guid:
+        Data1: 2099201870
+        Data2: 1304641829
+        Data3: 1005139073
+        Data4: -774856101
+      Path: event:/SFX/Cards/BioPhalanx
+  - CardId: volatile_mass
+    Event:
+      Guid:
+        Data1: -301316862
+        Data2: 1073947221
+        Data3: -1824818044
+        Data4: 2095112310
+      Path: event:/SFX/Cards/VolatileMass
+  - CardId: cryo_stasis
+    Event:
+      Guid:
+        Data1: -67411088
+        Data2: 1121941782
+        Data3: 1866124215
+        Data4: 692430658
+      Path: event:/SFX/Cards/CryoStasis
   _matchBankName: Match
   _matchIntensityParameterName: MatchIntensity
   _territoryBalanceParameterName: TerritoryBalance

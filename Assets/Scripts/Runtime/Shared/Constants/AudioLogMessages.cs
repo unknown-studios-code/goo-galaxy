@@ -2,7 +2,8 @@ namespace GooGalaxy.Runtime.Shared.Constants
 {
     /// <summary>
     /// Console text for the <c>Runtime.Audio</c> assembly: an audio engine that would not start, FMOD content the game
-    /// asked for and could not find, the wiring the music needs, and authoring faults on the Audio Config asset.
+    /// asked for and could not find, the wiring the music, the match bank and the sound effects need, and authoring faults
+    /// on the Audio Config asset.
     /// </summary>
     /// <remarks>
     /// Every message says what has gone quiet and for how long, so a silent build is not mistaken for a muted device, and
@@ -70,9 +71,38 @@ namespace GooGalaxy.Runtime.Shared.Constants
             "AdaptiveMusicController was injected with a null IAudioService, so match music stays off until this scene unloads; gameplay is "
             + "unaffected. Check what GameLifetimeScope registers as IAudioService.";
 
-        public const string MusicStartFailed =
-            "Starting the match track failed after an unexpected exception (logged below), so match music stays off until this scene unloads; "
-            + "gameplay is unaffected. The controller does not retry — check the stack trace for the cause.";
+        public const string MusicBankStatusMissing =
+            "AdaptiveMusicController was injected with a null IAudioBankStatus, so match music stays off until this scene unloads; gameplay is "
+            + "unaffected. Check that the scene holds a MatchAudioBankController and that GameLifetimeScope registers it.";
+
+        public const string BankOwnerMissing =
+            "This scene has match music or sound effects but no MatchAudioBankController to load the match bank, so they stay silent until "
+            + "this scene unloads; gameplay is unaffected. Add a MatchAudioBankController to the scene that holds the GameLifetimeScope.";
+
+        public const string BankServiceMissing =
+            "MatchAudioBankController was injected with a null IAudioService, so the match bank is never loaded and match audio stays silent "
+            + "until this scene unloads; gameplay is unaffected. Check what GameLifetimeScope registers as IAudioService.";
+
+        public const string MatchBankLoadFailed =
+            "Loading the match bank failed after an unexpected exception (logged below), so match music and sound effects stay silent for this "
+            + "match; gameplay is unaffected. The load is retried when the next match starts loading — check the stack trace for the cause.";
+
+        public const string BankLoadedSubscriberFailed =
+            "A subscriber to MatchAudioBankController.BankLoaded threw (logged below) while the match bank finished loading. Subscribers after "
+            + "it were skipped, so some match audio may not start this match; gameplay is unaffected. Check the stack trace for the subscriber.";
+
+        public const string SfxServiceMissing =
+            "MatchSfxController was injected with a null IAudioService, so match sound effects stay off until this scene unloads; gameplay is "
+            + "unaffected. Check what GameLifetimeScope registers as IAudioService.";
+
+        public const string CardCueMissingFormat =
+            "Audio Config '{0}' has no card cue with an FMOD event for card '{1}', so playing it sounds the CardFallback cue until this scene "
+            + "unloads; gameplay is unaffected. Add a row for the card to the Card Cues table, or assign the event on its existing row, once the "
+            + "FMOD Studio project authors its sound.";
+
+        public const string CardCueNotFoundFormat =
+            "The FMOD event assigned to card '{0}' ({1}) could not be played: {2}. Playing the card sounds the CardFallback cue until this scene "
+            + "unloads; gameplay is unaffected. Check that the event still exists in the FMOD Studio project and that its bank is built and loaded.";
 
         public const string ConfigIntensityOutOfRangeFormat =
             "Audio Config '{0}' authors a match intensity outside 0..1, the range of the FMOD MatchIntensity parameter. "
@@ -85,6 +115,14 @@ namespace GooGalaxy.Runtime.Shared.Constants
         public const string ConfigIntensitiesNotAscendingFormat =
             "Audio Config '{0}' authors a match intensity that falls as the match goes on (idle, early, mid, late, final window, overtime). "
             + "It was kept as authored; confirm the drop is intended.";
+
+        public const string ConfigCardCueDuplicateFormat =
+            "Audio Config '{0}' lists card '{1}' more than once in its Card Cues table. The first row is played and the rest are ignored; "
+            + "remove the duplicates.";
+
+        public const string ConfigCardCueIdMissingFormat =
+            "Audio Config '{0}' has a Card Cues row (Element {1} in the Inspector) with no card id, so it can never play. Enter the card id exactly as the card's data "
+            + "asset spells it, or remove the row.";
 
         public const string ConfigNameMissingFormat =
             "Audio Config '{0}' has no value in its {1} field, so the FMOD content it names cannot be found. Enter the name exactly as FMOD "

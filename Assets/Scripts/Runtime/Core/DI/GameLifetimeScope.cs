@@ -55,10 +55,13 @@ namespace GooGalaxy.Runtime.Core.DI
     /// <para>
     /// Audio is the one feature registered as <b>optional</b>. <see cref="IAudioService" /> is always registered, built from
     /// a factory so a missing Audio Config reaches the service as null instead of failing <c>Build</c> — the service then
-    /// stays silent and says so once, on first use. <c>AdaptiveMusicController</c> is registered only when the scene holds
-    /// one, found the same way <c>RegisterComponentInHierarchy</c> finds a component, and only injected when the config is
-    /// assigned as well; a controller without a config gets one warning here and stays inert. That keeps every scene and
-    /// fixture that predates audio building unchanged, and keeps FMOD untouched until something actually plays.
+    /// stays silent and says so once, on first use. The three audio components are each registered only when the scene holds
+    /// one, found the same way <c>RegisterComponentInHierarchy</c> finds a component. <c>MatchAudioBankController</c> owns
+    /// the match bank and is registered as <c>IAudioBankStatus</c> whenever it is present. <c>AdaptiveMusicController</c>
+    /// and <c>MatchSfxController</c> both need that owner, so without it neither is injected and one warning names the
+    /// missing owner, unless the only one present is a music controller already dropped for a missing config, whose own
+    /// warning is then the only one. Uninjected, each stays silent rather than failing the match. That keeps every scene and fixture that
+    /// predates audio building unchanged, and keeps FMOD untouched until something actually plays.
     /// </para>
     /// <para>
     /// Components instantiated at runtime — <c>CellView</c> from <see cref="GridView"/>, and the unit visuals
@@ -73,6 +76,8 @@ namespace GooGalaxy.Runtime.Core.DI
         )]
         [SerializeField]
         private AudioConfigSO _audioConfig;
+
+        private IAudioService _audioServiceOverride;
 
         /// <remarks>
         /// Test seam: when set before the container is built, analytics sessions are written here instead of under
@@ -89,6 +94,17 @@ namespace GooGalaxy.Runtime.Core.DI
         internal void SetAudioConfigForTests(AudioConfigSO config)
         {
             _audioConfig = config;
+        }
+
+        /// <remarks>
+        /// Test seam: when set before the container is built, this service is registered in place of
+        /// <see cref="FmodAudioService" />, so a fixture can drive the audio components without starting FMOD. A PlayMode run
+        /// that starts it leaves FMOD's debug callback registered, and on the Linux CI runner that callback overflows the
+        /// stack of FMOD's mixer thread while the editor shuts down, hanging the job. Has no effect once <c>Build</c> has run.
+        /// </remarks>
+        internal void SetAudioServiceForTests(IAudioService audioService)
+        {
+            _audioServiceOverride = audioService;
         }
 
         protected override void Configure(IContainerBuilder builder)
@@ -111,11 +127,26 @@ namespace GooGalaxy.Runtime.Core.DI
             builder.RegisterComponentInHierarchy<MatchHudView>().AsSelf().As<IHandGestureSource>();
             builder.RegisterComponentInHierarchy<PointerInputView>().AsSelf().As<IPointerSource>();
             builder.RegisterComponentInHierarchy<TargetHighlightPresenter>().AsSelf();
-            builder.RegisterComponentInHierarchy<MatchInputController>().AsSelf();
+            builder.RegisterComponentInHierarchy<MatchInputController>().AsSelf().As<IInteractionFeedbackSource>();
             builder.Register(_ => CreateAnalyticsSink(), Lifetime.Singleton);
             builder.RegisterComponentInHierarchy<AnalyticsController>().AsSelf();
-            builder.Register<IAudioService>(_ => new FmodAudioService(_audioConfig), Lifetime.Singleton);
-            RegisterAdaptiveMusic(builder);
+            builder.Register(_ => _audioServiceOverride ?? new FmodAudioService(_audioConfig), Lifetime.Singleton);
+            RegisterMatchAudio(builder);
+        }
+
+        // One warning for the scene, not one per component: the fix is the same single missing owner either way.
+        private static void ReportMissingBankOwner(AdaptiveMusicController musicController, MatchSfxController sfxController)
+        {
+            if (musicController != null)
+            {
+                Debug.LogWarning(AudioLogMessages.BankOwnerMissing, musicController);
+                return;
+            }
+
+            if (sfxController != null)
+            {
+                Debug.LogWarning(AudioLogMessages.BankOwnerMissing, sfxController);
+            }
         }
 
         private IAnalyticsSink CreateAnalyticsSink()
@@ -127,27 +158,40 @@ namespace GooGalaxy.Runtime.Core.DI
             return new JsonlFileSink(directoryPath);
         }
 
-        private void RegisterAdaptiveMusic(IContainerBuilder builder)
+        private void RegisterMatchAudio(IContainerBuilder builder)
         {
             if (_audioConfig != null)
             {
                 builder.RegisterInstance(_audioConfig);
             }
 
-            AdaptiveMusicController controller = FindInOwnScene<AdaptiveMusicController>();
+            MatchAudioBankController bankController = FindInOwnScene<MatchAudioBankController>();
+            AdaptiveMusicController musicController = FindInOwnScene<AdaptiveMusicController>();
+            MatchSfxController sfxController = FindInOwnScene<MatchSfxController>();
 
-            if (controller == null)
+            if ((musicController != null) && (_audioConfig == null))
             {
+                Debug.LogWarning(AudioLogMessages.MusicConfigMissing, musicController);
+                musicController = null;
+            }
+
+            if (bankController == null)
+            {
+                ReportMissingBankOwner(musicController, sfxController);
                 return;
             }
 
-            if (_audioConfig == null)
+            builder.RegisterComponent(bankController).AsSelf().As<IAudioBankStatus>();
+
+            if (musicController != null)
             {
-                Debug.LogWarning(AudioLogMessages.MusicConfigMissing, controller);
-                return;
+                builder.RegisterComponent(musicController);
             }
 
-            builder.RegisterComponent(controller);
+            if (sfxController != null)
+            {
+                builder.RegisterComponent(sfxController);
+            }
         }
 
         // Searches this scope's own scene, inactive objects included, exactly as RegisterComponentInHierarchy does — a

@@ -47,6 +47,8 @@ GameObject:
   m_Component:
   - component: {fileID: 7516524931181957010}
   - component: {fileID: 854857079135427913}
+  - component: {fileID: 7963876990318889989}
+  - component: {fileID: 4276217720793545741}
   m_Layer: 0
   m_Name: Audio
   m_TagString: Untagged
@@ -81,6 +83,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ab4803541b87d7c4aa4aea9082ac2074, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GooGalaxy.Runtime.Audio::GooGalaxy.Runtime.Audio.Controllers.AdaptiveMusicController
+--- !u!114 &7963876990318889989
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3751337251077419555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d2c266483dd5bd4d8d8c64e5b4fc45d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Audio::GooGalaxy.Runtime.Audio.Controllers.MatchAudioBankController
+--- !u!114 &4276217720793545741
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3751337251077419555}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d4d0bc6c121ff1440ad26f2a5498cb8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GooGalaxy.Runtime.Audio::GooGalaxy.Runtime.Audio.Controllers.MatchSfxController
 --- !u!1 &4451200285573538336
 GameObject:
   m_ObjectHideFlags: 0

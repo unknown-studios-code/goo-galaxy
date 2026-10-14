@@ -47,6 +47,19 @@ namespace GooGalaxy.Tests.EditMode.Shared
         }
 
         [Test]
+        public void IsEmpty_OnlyResolvedEffectsSet_IsTrue()
+        {
+            // GIVEN — the flags describe what took hold, not what changed, so they never make a result non-empty on their own.
+            var result = new AbilityResult(null, null, null, 0, 0, ImpactEffectFlags.ApplyStatus);
+
+            // WHEN
+            bool isEmpty = result.IsEmpty;
+
+            // THEN
+            Assert.That(isEmpty, Is.True);
+        }
+
+        [Test]
         public void IsEmpty_OnlyAffectedUnitIdsPopulated_IsFalse()
         {
             // GIVEN
@@ -83,6 +96,32 @@ namespace GooGalaxy.Tests.EditMode.Shared
 
             // THEN
             Assert.That(isEmpty, Is.False);
+        }
+
+        [Test]
+        public void ResolvedEffects_DefaultConstructedValue_IsNone()
+        {
+            // GIVEN
+            var result = default(AbilityResult);
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = result.ResolvedEffects;
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
+        }
+
+        [Test]
+        public void ResolvedEffects_OmittedFromConstructor_IsNone()
+        {
+            // GIVEN
+            var result = new AbilityResult(new List<int>(), new List<HexCoordinates>(), new List<int>());
+
+            // WHEN
+            ImpactEffectFlags resolvedEffects = result.ResolvedEffects;
+
+            // THEN
+            Assert.That(resolvedEffects, Is.EqualTo(ImpactEffectFlags.None));
         }
 
         [Test]

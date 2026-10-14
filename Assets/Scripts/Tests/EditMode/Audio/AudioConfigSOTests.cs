@@ -1,8 +1,12 @@
+using System.Collections.Generic;
+using System.Text;
 using FMODUnity;
 using GooGalaxy.Runtime.Audio.Data;
 using GooGalaxy.Runtime.Audio.Models;
+using GooGalaxy.Runtime.Shared.Constants;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
 namespace GooGalaxy.Tests.EditMode.Audio
@@ -11,6 +15,11 @@ namespace GooGalaxy.Tests.EditMode.Audio
     public class AudioConfigSOTests
     {
         private const float Tolerance = 0.0001f;
+        private const string ConfigName = "TestAudioConfig";
+        private const string AcidCrawlerId = "acid_crawler";
+        private const string CryoStasisId = "cryo_stasis";
+        private const string FirstEventPath = "event:/test/first";
+        private const string SecondEventPath = "event:/test/second";
 
         private AudioConfigSO _config;
 
@@ -18,6 +27,7 @@ namespace GooGalaxy.Tests.EditMode.Audio
         public void SetUp()
         {
             _config = ScriptableObject.CreateInstance<AudioConfigSO>();
+            _config.name = ConfigName;
         }
 
         [TearDown]
@@ -102,6 +112,99 @@ namespace GooGalaxy.Tests.EditMode.Audio
 
             // THEN
             Assert.That(wasFound, Is.False);
+        }
+
+        [Test]
+        public void CardCues_RowsAuthored_ExposesEveryRowInAuthoredOrder()
+        {
+            // GIVEN
+            SetCardCues((AcidCrawlerId, FirstEventPath), (CryoStasisId, SecondEventPath));
+
+            // WHEN
+            IReadOnlyList<CardCueEntry> rows = _config.CardCues;
+
+            // THEN
+            Assert.That((rows.Count, rows[0].CardId, rows[1].CardId), Is.EqualTo((2, AcidCrawlerId, CryoStasisId)));
+        }
+
+        [Test]
+        public void CardCues_RowsAuthored_ExposesEachRowsEventPath()
+        {
+            // GIVEN
+            SetCardCues((AcidCrawlerId, FirstEventPath));
+
+            // WHEN
+            IReadOnlyList<CardCueEntry> rows = _config.CardCues;
+
+            // THEN
+            Assert.That(rows[0].Event.Path, Is.EqualTo(FirstEventPath));
+        }
+
+        [Test]
+        public void CardCues_NoRowsAuthored_IsEmpty()
+        {
+            // GIVEN
+
+            // WHEN
+            IReadOnlyList<CardCueEntry> rows = _config.CardCues;
+
+            // THEN
+            Assert.That(rows, Is.Empty);
+        }
+
+        [Test]
+        public void ValidateAuthoredData_CardListedTwice_WarnsOnceNamingTheCard()
+        {
+            // GIVEN
+            SetCardCues((AcidCrawlerId, FirstEventPath), (AcidCrawlerId, SecondEventPath));
+            LogAssert.Expect(LogType.Warning, string.Format(AudioLogMessages.ConfigCardCueDuplicateFormat, ConfigName, AcidCrawlerId));
+
+            // WHEN
+            _config.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void ValidateAuthoredData_RowWithABlankId_WarnsNamingTheRowIndex()
+        {
+            // GIVEN
+            SetCardCues((AcidCrawlerId, FirstEventPath), ("", SecondEventPath));
+            LogAssert.Expect(LogType.Warning, string.Format(AudioLogMessages.ConfigCardCueIdMissingFormat, ConfigName, 1));
+
+            // WHEN
+            _config.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        [Test]
+        public void ValidateAuthoredData_DistinctCardRows_LogsNothing()
+        {
+            // GIVEN
+            SetCardCues((AcidCrawlerId, FirstEventPath), (CryoStasisId, SecondEventPath));
+
+            // WHEN
+            _config.ValidateAuthoredData();
+
+            // THEN
+            LogAssert.NoUnexpectedReceived();
+        }
+
+        private void SetCardCues(params (string CardId, string EventPath)[] rows)
+        {
+            var json = new StringBuilder("{\"_cardCues\":[");
+
+            for (int i = 0; i < rows.Length; i++)
+            {
+                json.Append(i == 0 ? "" : ",");
+                json.Append("{\"CardId\":\"").Append(rows[i].CardId).Append("\",\"Event\":{\"Path\":\"").Append(rows[i].EventPath).Append("\"}}");
+            }
+
+            json.Append("]}");
+            JsonUtility.FromJsonOverwrite(json.ToString(), _config);
         }
     }
 }

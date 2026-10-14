@@ -48,77 +48,20 @@ namespace GooGalaxy.Tests.EditMode.Board
         }
 
         [Test]
-        public void ArmFuse_NullUnit_DoesNotArm()
-        {
-            // GIVEN
-
-            // WHEN
-            _resolver.ArmFuse(null, FuseDurationInSeconds);
-
-            // THEN
-            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void ArmFuse_DeadUnit_DoesNotArm()
-        {
-            // GIVEN
-            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            unit.IsAlive = false;
-
-            // WHEN
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
-
-            // THEN
-            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(0));
-        }
-
-        [TestCase(0)]
-        [TestCase(-1)]
-        public void ArmFuse_NonPositiveDuration_DoesNotArm(int duration)
+        public void TryArmFuse_LivingUnitWithPositiveDuration_ReturnsTrue()
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
 
             // WHEN
-            _resolver.ArmFuse(unit, duration);
+            bool wasArmed = _resolver.TryArmFuse(unit, FuseDurationInSeconds);
 
             // THEN
-            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(0));
+            Assert.That(wasArmed, Is.True);
         }
 
         [Test]
-        public void ArmFuse_AlreadyArmedUnit_DoesNotAddASecondRosterEntry()
-        {
-            // GIVEN
-            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
-
-            // WHEN
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
-
-            // THEN
-            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(1));
-        }
-
-        [Test]
-        public void TickFuses_UnitArmedTwice_ReportsItOnce()
-        {
-            // GIVEN
-            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
-            var expiredUnitIds = new List<int>();
-
-            // WHEN
-            _resolver.TickFuses(FuseDurationInSeconds, expiredUnitIds);
-
-            // THEN
-            Assert.That(expiredUnitIds, Is.EqualTo(new List<int> { unit.UnitId }), "A duplicated id would report the same unit twice.");
-        }
-
-        [Test]
-        public void ArmFuse_ArmsUnit_RaisesFuseArmedOnce()
+        public void TryArmFuse_ArmsUnit_RaisesFuseArmedOnce()
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
@@ -129,7 +72,7 @@ namespace GooGalaxy.Tests.EditMode.Board
             try
             {
                 // WHEN
-                _resolver.ArmFuse(unit, FuseDurationInSeconds);
+                _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             }
             finally
             {
@@ -138,6 +81,130 @@ namespace GooGalaxy.Tests.EditMode.Board
 
             // THEN
             Assert.That(raisedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TryArmFuse_AlreadyArmedUnit_ReturnsTrue()
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+
+            // WHEN
+            bool wasArmed = _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(wasArmed, Is.True);
+        }
+
+        [Test]
+        public void TryArmFuse_AlreadyArmedUnit_DoesNotAddASecondRosterEntry()
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+
+            // WHEN
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TryArmFuse_NullUnit_ReturnsFalse()
+        {
+            // GIVEN
+
+            // WHEN
+            bool wasArmed = _resolver.TryArmFuse(null, FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(wasArmed, Is.False);
+        }
+
+        [Test]
+        public void TryArmFuse_NullUnit_DoesNotArm()
+        {
+            // GIVEN
+
+            // WHEN
+            _resolver.TryArmFuse(null, FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TryArmFuse_DeadUnit_ReturnsFalse()
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            unit.IsAlive = false;
+
+            // WHEN
+            bool wasArmed = _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(wasArmed, Is.False);
+        }
+
+        [Test]
+        public void TryArmFuse_DeadUnit_DoesNotArm()
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            unit.IsAlive = false;
+
+            // WHEN
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+
+            // THEN
+            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(0));
+        }
+
+        [TestCase(0f)]
+        [TestCase(-1f)]
+        public void TryArmFuse_NonPositiveDuration_ReturnsFalse(float duration)
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+
+            // WHEN
+            bool wasArmed = _resolver.TryArmFuse(unit, duration);
+
+            // THEN
+            Assert.That(wasArmed, Is.False);
+        }
+
+        [TestCase(0)]
+        [TestCase(-1)]
+        public void TryArmFuse_NonPositiveDuration_DoesNotArm(int duration)
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+
+            // WHEN
+            _resolver.TryArmFuse(unit, duration);
+
+            // THEN
+            Assert.That(_resolver.ArmedUnitCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void TickFuses_UnitArmedTwice_ReportsItOnce()
+        {
+            // GIVEN
+            GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
+            var expiredUnitIds = new List<int>();
+
+            // WHEN
+            _resolver.TickFuses(FuseDurationInSeconds, expiredUnitIds);
+
+            // THEN
+            Assert.That(expiredUnitIds, Is.EqualTo(new List<int> { unit.UnitId }), "A duplicated id would report the same unit twice.");
         }
 
         [Test]
@@ -170,7 +237,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             var expiredUnitIds = new List<int>();
 
             // WHEN
@@ -185,7 +252,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             var expiredUnitIds = new List<int>();
 
             // WHEN
@@ -200,7 +267,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             var expiredUnitIds = new List<int>();
             float perCallDelta = FuseDurationInSeconds / 3f;
             _resolver.TickFuses(perCallDelta, expiredUnitIds);
@@ -218,7 +285,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             _units.Remove(UnitOneId);
             var expiredUnitIds = new List<int>();
 
@@ -234,7 +301,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             unit.IsAlive = false;
             var expiredUnitIds = new List<int>();
 
@@ -250,7 +317,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             var expiredUnitIds = new List<int> { JunkUnitId };
 
             // WHEN
@@ -265,7 +332,7 @@ namespace GooGalaxy.Tests.EditMode.Board
         {
             // GIVEN
             GridUnit unit = RegisterUnit(UnitOneId, PlayerOneId);
-            _resolver.ArmFuse(unit, FuseDurationInSeconds);
+            _resolver.TryArmFuse(unit, FuseDurationInSeconds);
             _resolver.ClearFuse(unit.UnitId);
             var expiredUnitIds = new List<int>();
 

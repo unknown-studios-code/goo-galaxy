@@ -58,10 +58,12 @@ namespace GooGalaxy.Runtime.Board.Services
         /// cleared on entry: the first receives the units an impact conditioned, the second the coordinates whose hex
         /// state changed — the affected units' hexes plus any hex a hazard was spawned on — the third the units a
         /// self-destruct impact marked for removal, which the caller removes after publishing, and the fourth one
-        /// <see cref="StatusChange" /> per status application, refreshes included, in the order they were applied. <paramref name="diagnostics" /> reports the authoring
-        /// or state problems the resolution ran into, or <see cref="AbilityDiagnostic.None" />. Throws
-        /// <see cref="ArgumentNullException" /> when the grid, the registry, the impact list, the status system, the
-        /// fuse system, or any buffer is null.
+        /// <see cref="StatusChange" /> per status application, refreshes included, in the order they were applied.
+        /// <paramref name="diagnostics" /> reports the authoring or state problems the resolution ran into, or
+        /// <see cref="AbilityDiagnostic.None" />. <paramref name="resolvedEffects" /> reports which kinds of impact took
+        /// hold — a condition a unit accepted, a hazard set on a vacated hex, a live unit marked for self-destruct, a fuse
+        /// armed — and never a kind the card merely authored. Throws <see cref="ArgumentNullException" /> when the grid, the
+        /// registry, the impact list, the status system, the fuse system, or any buffer is null.
         /// </remarks>
         internal static void Resolve(
             HexGrid grid,
@@ -75,7 +77,8 @@ namespace GooGalaxy.Runtime.Board.Services
             List<HexCoordinates> affectedHexes,
             List<int> destroyedUnitIds,
             List<StatusChange> appliedStatuses,
-            out AbilityDiagnostic diagnostics
+            out AbilityDiagnostic diagnostics,
+            out ImpactEffectFlags resolvedEffects
         )
         {
             if (grid == null)
@@ -129,6 +132,7 @@ namespace GooGalaxy.Runtime.Board.Services
             }
 
             diagnostics = AbilityDiagnostic.None;
+            resolvedEffects = ImpactEffectFlags.None;
             affectedUnitIds.Clear();
             affectedHexes.Clear();
             destroyedUnitIds.Clear();
@@ -145,24 +149,35 @@ namespace GooGalaxy.Runtime.Board.Services
                     case ImpactEffectType.ApplyStatus:
                         if (HasExpectedDurationUnit(effect, ImpactDurationUnit.ActionWindows, ref diagnostics))
                         {
-                            ApplyStatus(grid, units, context, effect, statusEffects, areaBuffer, affectedUnitIds, affectedHexes, appliedStatuses);
+                            ApplyStatus(
+                                grid,
+                                units,
+                                context,
+                                effect,
+                                statusEffects,
+                                areaBuffer,
+                                affectedUnitIds,
+                                affectedHexes,
+                                appliedStatuses,
+                                ref resolvedEffects
+                            );
                         }
 
                         break;
                     case ImpactEffectType.SpawnHazard:
                         if (HasExpectedDurationUnit(effect, ImpactDurationUnit.ActionWindows, ref diagnostics))
                         {
-                            SpawnHazard(grid, context, effect, affectedHexes, ref diagnostics);
+                            SpawnHazard(grid, context, effect, affectedHexes, ref diagnostics, ref resolvedEffects);
                         }
 
                         break;
                     case ImpactEffectType.SelfDestruct:
-                        SelfDestruct(units, context, destroyedUnitIds, ref diagnostics);
+                        SelfDestruct(units, context, destroyedUnitIds, ref diagnostics, ref resolvedEffects);
                         break;
                     case ImpactEffectType.ArmFuse:
                         if (HasExpectedDurationUnit(effect, ImpactDurationUnit.Seconds, ref diagnostics))
                         {
-                            ArmFuse(units, context, effect, fuses, destroyedUnitIds, ref diagnostics);
+                            ArmFuse(units, context, effect, fuses, destroyedUnitIds, ref diagnostics, ref resolvedEffects);
                         }
 
                         break;
@@ -182,7 +197,8 @@ namespace GooGalaxy.Runtime.Board.Services
             List<HexCell> areaBuffer,
             List<int> affectedUnitIds,
             List<HexCoordinates> affectedHexes,
-            List<StatusChange> appliedStatuses
+            List<StatusChange> appliedStatuses,
+            ref ImpactEffectFlags resolvedEffects
         )
         {
             if (effect.Status == StatusType.None || effect.Duration <= 0)
@@ -213,7 +229,15 @@ namespace GooGalaxy.Runtime.Board.Services
                     continue;
                 }
 
+                int appliedBefore = appliedStatuses.Count;
+
                 statusEffects.ApplyStatus(unit, effect.Status, effect.Duration, context.ActingPlayerId, appliedStatuses);
+
+                // The buffer records only an application the unit accepted, so its growth is the proof one landed.
+                if (appliedStatuses.Count > appliedBefore)
+                {
+                    resolvedEffects |= ImpactEffectFlags.ApplyStatus;
+                }
 
                 // The output buffers are cleared once per deployment, not per impact, so a card with two status
                 // impacts would otherwise report the same unit twice — breaking the payload's "at most once
@@ -268,7 +292,8 @@ namespace GooGalaxy.Runtime.Board.Services
             in AbilityContext context,
             in ImpactEffect effect,
             List<HexCoordinates> affectedHexes,
-            ref AbilityDiagnostic diagnostics
+            ref AbilityDiagnostic diagnostics,
+            ref ImpactEffectFlags resolvedEffects
         )
         {
             // The GDD puts the corrosive trail on the hex the unit vacated, and only a Jump vacates one. A
@@ -292,13 +317,15 @@ namespace GooGalaxy.Runtime.Board.Services
             }
 
             affectedHexes.Add(context.VacatedHex);
+            resolvedEffects |= ImpactEffectFlags.SpawnHazard;
         }
 
         private static void SelfDestruct(
             IReadOnlyDictionary<int, GridUnit> units,
             in AbilityContext context,
             List<int> destroyedUnitIds,
-            ref AbilityDiagnostic diagnostics
+            ref AbilityDiagnostic diagnostics,
+            ref ImpactEffectFlags resolvedEffects
         )
         {
             if (!context.HasActingUnit)
@@ -312,6 +339,9 @@ namespace GooGalaxy.Runtime.Board.Services
                 diagnostics |= AbilityDiagnostic.SelfDestructOnDeadUnit;
                 return;
             }
+
+            // Set before the duplicate check: a second self-destruct of the same live unit is still one that holds.
+            resolvedEffects |= ImpactEffectFlags.SelfDestruct;
 
             if (destroyedUnitIds.Contains(context.ActingUnitId))
             {
@@ -333,7 +363,8 @@ namespace GooGalaxy.Runtime.Board.Services
             in ImpactEffect effect,
             FuseResolver fuses,
             List<int> destroyedUnitIds,
-            ref AbilityDiagnostic diagnostics
+            ref AbilityDiagnostic diagnostics,
+            ref ImpactEffectFlags resolvedEffects
         )
         {
             if (!context.HasActingUnit)
@@ -344,16 +375,16 @@ namespace GooGalaxy.Runtime.Board.Services
 
             if (context.HasVacatedHex)
             {
-                SelfDestruct(units, context, destroyedUnitIds, ref diagnostics);
+                SelfDestruct(units, context, destroyedUnitIds, ref diagnostics, ref resolvedEffects);
                 return;
             }
 
             // A miss is not reported: the acting unit is read off the landing hex, so its absence is already the
-            // "nothing landed" case the caller handles by passing no impacts at all. The fuse system rejects a
-            // null or dead unit on its own, so this only has to avoid arming one that was never there.
-            if (units.TryGetValue(context.ActingUnitId, out GridUnit actingUnit))
+            // "nothing landed" case the caller handles by passing no impacts at all. The flag follows the fuse system's
+            // own answer, so it is set only for a fuse that is now really running.
+            if (units.TryGetValue(context.ActingUnitId, out GridUnit actingUnit) && fuses.TryArmFuse(actingUnit, effect.Duration))
             {
-                fuses.ArmFuse(actingUnit, effect.Duration);
+                resolvedEffects |= ImpactEffectFlags.ArmFuse;
             }
         }
 

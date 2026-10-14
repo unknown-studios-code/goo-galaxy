@@ -138,7 +138,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardCo();
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseHex, new FakeCapability());
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
             Time.timeScale = AcceleratedTimeScale;
 
             // WHEN
@@ -156,7 +156,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardCo();
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseHex, new FakeCapability());
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
 
             bool wasUnregisteredWhenRaised = false;
             void handleFuseExpired(int unitId, int playerId) => wasUnregisteredWhenRaised = !_unitPresenter.ActiveUnits.ContainsKey(unitId);
@@ -185,7 +185,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — a fuse survives conversion and goes off for its new owner.
             yield return ActivateBoardCo();
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseHex, new FakeCapability());
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
             unit.ReceiveConversionAttempt(RivalPlayerId);
 
             int reportedOwnerId = 0;
@@ -215,7 +215,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN
             yield return ActivateBoardCo();
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseHex, new FakeCapability());
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
             float energyBefore = _energyPresenter.GetEnergy(ActingPlayerId);
             Time.timeScale = AcceleratedTimeScale;
 
@@ -233,7 +233,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             // GIVEN — the fuse reads scaled Time.deltaTime, so a paused match must freeze it.
             yield return ActivateBoardCo();
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseHex, new FakeCapability());
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
             Time.timeScale = 0f;
 
             // WHEN
@@ -305,7 +305,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _energyPresenter.InitializePlayer(ActingPlayerId, new EnergyConfig(InsufficientEnergyCap, NoEnergyRegen, InsufficientEnergyStarting));
 
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseJumpSource, new FakeCapability { CanJump = true });
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
             var command = new MoveCommand(MoveType.Jump, _fuseJumpSource, _fuseJumpTarget, ActingPlayerId, ActingUnitId);
 
             // WHEN
@@ -324,7 +324,7 @@ namespace GooGalaxy.Tests.PlayMode.Board
             _energyPresenter.InitializePlayer(ActingPlayerId, new EnergyConfig(InsufficientEnergyCap, NoEnergyRegen, InsufficientEnergyStarting));
 
             GridUnit unit = RegisterUnitAt(ActingUnitId, ActingPlayerId, _fuseJumpSource, new FakeCapability { CanJump = true });
-            _fuseController.Fuses.ArmFuse(unit, MinFuseDurationInSeconds);
+            _fuseController.Fuses.TryArmFuse(unit, MinFuseDurationInSeconds);
             GridUnit enemyUnit = RegisterUnitAt(EnemyUnitId, RivalPlayerId, _fuseJumpEnemyCoords, new FakeCapability());
             _unitPresenter.ResolveMove(new MoveCommand(MoveType.Jump, _fuseJumpSource, _fuseJumpTarget, ActingPlayerId, ActingUnitId));
             Time.timeScale = AcceleratedTimeScale;
