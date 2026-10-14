@@ -97,9 +97,14 @@ namespace GooGalaxy.Runtime.Input.Controllers
     /// whole press-drag-release cycle allocates nothing, and neither does hover-aiming a Protocol — the guarantee
     /// <c>MatchInputSteadyStateAllocationTests</c> holds this type to.
     /// </para>
+    /// <para>
+    /// <b>It reports the gesture, never the outcome.</b> <see cref="FeedbackRaised" /> acknowledges the player's own
+    /// selection steps so feedback can answer a tap at once; whether a commit changed the board is published on
+    /// <c>MatchEvents</c> by the system that resolved it, and is never re-announced here.
+    /// </para>
     /// </remarks>
     [DisallowMultipleComponent]
-    public class MatchInputController : MonoBehaviour
+    public class MatchInputController : MonoBehaviour, IInteractionFeedbackSource
     {
         private const int HandSlotCapacity = DeckState.DefaultHandSize;
 
@@ -187,6 +192,19 @@ namespace GooGalaxy.Runtime.Input.Controllers
         private bool _isCommitting;
         private bool _hasSpellPreview;
         private bool _isSpellPreviewValid;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// <see cref="InteractionFeedback.Selected" /> when a hand card or board unit becomes the selection;
+        /// <see cref="InteractionFeedback.DragStarted" /> when a press on that selection first travels past the drag
+        /// threshold; <see cref="InteractionFeedback.DropRejected" /> when a release or commit lands where the selection
+        /// has no legal action; <see cref="InteractionFeedback.Cleared" /> when the player deliberately lets the
+        /// selection go. Teardown the player did not ask for — a commit settling, a phase or match boundary, a hand
+        /// rotation, a press the system cancelled, this component disabling — raises nothing, and neither does a commit
+        /// the board refuses: a refused card play is reported by <c>MatchEvents.CardPlayAttempted</c>, and a refused unit
+        /// move only by this component's console warning. At most one value per press, move or release.
+        /// </remarks>
+        public event Action<InteractionFeedback> FeedbackRaised;
 
         /// <remarks>The phase the live selection is in, exposed so a fixture can assert it without reading the board.</remarks>
         internal InteractionState State => _stateMachine.State;
@@ -347,6 +365,21 @@ namespace GooGalaxy.Runtime.Input.Controllers
             _hudDocument = document;
         }
 
+        protected virtual void OnFeedbackRaised(InteractionFeedback feedback)
+        {
+            try
+            {
+                FeedbackRaised?.Invoke(feedback);
+            }
+            catch (Exception exception)
+            {
+                // Dispatch boundary into arbitrary subscriber code from inside an input callback: a throw here would abort the
+                // gesture step that raised it, so acknowledging a step must never change what the step does.
+                Debug.LogWarning(InputLogMessages.FeedbackSubscriberFailed, this);
+                Debug.LogException(exception, this);
+            }
+        }
+
         private static bool HasSameSequence(List<HexCoordinates> left, List<HexCoordinates> right)
         {
             if (left.Count != right.Count)
@@ -443,36 +476,39 @@ namespace GooGalaxy.Runtime.Input.Controllers
             _highlightPresenter.SetTargets(_targets);
         }
 
-        private void TrySelectUnitAt(HexCoordinates coordinates)
+        private bool TrySelectUnitAt(HexCoordinates coordinates)
         {
             if (!IsPlayOpen)
             {
-                return;
+                return false;
             }
 
             HexGrid grid = GetGrid();
 
             if (grid == null || _unitPresenter == null || !grid.TryGetCell(coordinates, out HexCell cell))
             {
-                return;
+                return false;
             }
 
             if (cell.OccupantUnitId == HexCell.NoOccupant || !_unitPresenter.ActiveUnits.TryGetValue(cell.OccupantUnitId, out GridUnit unit))
             {
-                return;
+                return false;
             }
 
             if (unit == null || !unit.IsAlive || unit.PlayerId != _localPlayerId)
             {
-                return;
+                return false;
             }
 
             if (!_stateMachine.TrySelectBoardUnit(unit.UnitId, coordinates))
             {
-                return;
+                return false;
             }
 
             ResolveTargets();
+            OnFeedbackRaised(InteractionFeedback.Selected);
+
+            return true;
         }
 
         private void CommitTarget(HexCoordinates target)
@@ -482,6 +518,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             if (!SelectionTargetResolver.TryFindOptionForTarget(_options, in source, target, out MoveOption option))
             {
                 CancelSelection();
+                OnFeedbackRaised(InteractionFeedback.DropRejected);
 
                 return;
             }
@@ -611,6 +648,18 @@ namespace GooGalaxy.Runtime.Input.Controllers
             }
 
             _spellCard = spellCard;
+            OnFeedbackRaised(InteractionFeedback.Selected);
+        }
+
+        private void SelectTroop(int slotIndex)
+        {
+            if (!_stateMachine.TrySelectHandSlot(slotIndex))
+            {
+                return;
+            }
+
+            ResolveTargets();
+            OnFeedbackRaised(InteractionFeedback.Selected);
         }
 
         private bool TryGetSpellCard(int slotIndex, out CardDefinition spellCard)
@@ -744,6 +793,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             {
                 _pressGesture = PressGesture.HandDrag;
                 SetDiscardZoneArmed(true);
+                OnFeedbackRaised(InteractionFeedback.DragStarted);
             }
 
             if (_pressGesture == PressGesture.HandDrag && IsScreenPointInDiscardZone(position))
@@ -766,6 +816,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             if (!TryResolveBoardPoint(position, out HexCoordinates centre, out Vector2 boardPosition))
             {
                 CancelSelection();
+                OnFeedbackRaised(InteractionFeedback.Cleared);
 
                 return;
             }
@@ -791,6 +842,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             if (!isOnBoard)
             {
                 CancelSelection();
+                OnFeedbackRaised(InteractionFeedback.DropRejected);
 
                 return;
             }
@@ -827,6 +879,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             if (IsScreenPointOverHud(position))
             {
                 CancelSelection();
+                OnFeedbackRaised(InteractionFeedback.DropRejected);
 
                 return;
             }
@@ -846,6 +899,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             }
 
             CancelSelection();
+            OnFeedbackRaised(InteractionFeedback.DropRejected);
         }
 
         // A refusal keeps the aim and the preview, because the usual causes — ResolverBusy while another play is
@@ -1141,10 +1195,14 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
                 CancelSelection();
 
-                if (isSecondTapOnSource)
+                // A press that picks another unit is one selection replacing another, and reports only that; every
+                // other press away from a live selection is the player letting it go.
+                if (isSecondTapOnSource || !hasHex || !TrySelectUnitAt(coordinates))
                 {
-                    return;
+                    OnFeedbackRaised(InteractionFeedback.Cleared);
                 }
+
+                return;
             }
 
             if (!hasHex)
@@ -1152,7 +1210,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
                 return;
             }
 
-            TrySelectUnitAt(coordinates);
+            _ = TrySelectUnitAt(coordinates);
         }
 
         private void HandlePointerMoved(PointerSample sample)
@@ -1185,6 +1243,8 @@ namespace GooGalaxy.Runtime.Input.Controllers
                     _pressGesture = PressGesture.HandDrag;
                     SetDiscardZoneArmed(true);
                 }
+
+                OnFeedbackRaised(InteractionFeedback.DragStarted);
             }
 
             if (_stateMachine.State is not (InteractionState.Dragging or InteractionState.Previewing))
@@ -1278,6 +1338,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
                 }
 
                 CancelSelection();
+                OnFeedbackRaised(InteractionFeedback.Cleared);
 
                 return;
             }
@@ -1285,6 +1346,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
             if (gesture != PointerGesture.Commit)
             {
                 CancelSelection();
+                OnFeedbackRaised(InteractionFeedback.DropRejected);
 
                 return;
             }
@@ -1322,6 +1384,8 @@ namespace GooGalaxy.Runtime.Input.Controllers
 
             if (isSecondPressOnSource)
             {
+                OnFeedbackRaised(InteractionFeedback.Cleared);
+
                 return;
             }
 
@@ -1332,12 +1396,7 @@ namespace GooGalaxy.Runtime.Input.Controllers
                 return;
             }
 
-            if (!_stateMachine.TrySelectHandSlot(slotIndex))
-            {
-                return;
-            }
-
-            ResolveTargets();
+            SelectTroop(slotIndex);
         }
 
         private void HandleMatchStarted(MatchConfiguration config)
