@@ -21,10 +21,12 @@
     "GooGalaxy.Runtime.Energy",
     "GooGalaxy.Runtime.Board",
     "GooGalaxy.Runtime.Cards",
+    "GooGalaxy.Runtime.Core",
     "GooGalaxy.Runtime.Deck",
     "GooGalaxy.Runtime.Match",
     "GooGalaxy.Runtime.UI",
     "GooGalaxy.Runtime.Input",
+    "GooGalaxy.Editor.Build",
     "GooGalaxy.Tests.Utils",
     "UnityEngine.TestRunner",
     "Unity.InputSystem"
