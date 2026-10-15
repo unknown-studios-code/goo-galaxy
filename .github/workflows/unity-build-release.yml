@@ -1,20 +1,19 @@
-# This workflow produces signed, store-ready mobile builds from main.
+# This workflow produces signed, store-ready mobile builds.
 # Android: an App Bundle signed with the upload keystore, versionCode = run_number * 10 + run_attempt.
 # iOS: the Unity Xcode export from the iOS-Release Build Profile, archived and exported as an
 # App Store Connect .ipa with manual signing, CFBundleVersion = the same build number.
 # Signing files reach the runner only as base64 secrets (passwords as plain secrets) and are deleted
 # when their step or job ends.
+# Not used during the MVP: manual dispatch only, and the workflow is disabled in the repository
+# (gh workflow disable). Add a push trigger back when store releases start.
 
 name: Unity Build (Release)
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
-# A running release is never cancelled mid-signing; a newer push waits for it (GitHub keeps only the
-# newest pending run in the group).
+# A running release is never cancelled mid-signing; a newer dispatch waits for it (GitHub keeps only
+# the newest pending run in the group).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false

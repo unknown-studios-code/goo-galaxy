@@ -12,7 +12,7 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
 ├── secret-scan.yml            # Betterleaks full-history secret scanning
 ├── unity-build-android.yml    # Android build validation
 ├── unity-build-ios.yml        # iOS build validation
-├── unity-build-release.yml    # Signed Android .aab and iOS .ipa from main
+├── unity-build-release.yml    # Signed Android .aab and iOS .ipa (manual; disabled for the MVP)
 ├── unity-tests-editmode.yml   # Edit Mode tests
 ├── unity-tests-playmode.yml   # Play Mode tests
 └── README.md
@@ -90,8 +90,9 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
 ### Release Build
 
 - File: `unity-build-release.yml`
-- Trigger: `push` to `main`, plus `workflow_dispatch`
-- Jobs: `Signed Android Build` (`ubuntu-latest`) and `Signed iOS Build` (`macos-26`, Xcode 26.6) — not required status checks, since they run after merge
+- Trigger: `workflow_dispatch` only
+- Status: **disabled for the MVP.** The workflow is turned off in the repository (`gh workflow disable "Unity Build (Release)"`), so even a manual dispatch does nothing until it is re-enabled with `gh workflow enable`. Add a `push` to `main` trigger back when store releases start.
+- Jobs: `Signed Android Build` (`ubuntu-latest`) and `Signed iOS Build` (`macos-26`, Xcode 26.6) — not required status checks
 - Environment: `release` — both jobs declare it, so its secrets, variables and branch restrictions apply (see Required Secrets)
 - Build Profile: `Assets/Settings/Build Profiles/iOS-Release.asset` for iOS; none for Android (see below)
 - Output:
@@ -101,7 +102,7 @@ This directory contains the CI workflows for Goo Galaxy. They are aligned with t
   - `Android-Release-Logs` / `iOS-Release-Logs`: Unity build logs, uploaded only on failure
   - The marketing version is `bundleVersion` in Player Settings; the workflow does not override it.
 - **Build number = `github.run_number * 10 + github.run_attempt`**, computed once per job and used for both versionCode and `CFBundleVersion`. `run_number` alone repeats when a run is re-run, which both stores reject; the attempt digit keeps each upload unique, and a tenth attempt fails rather than collide with the next run. **`run_number` restarts at 1 if the workflow file is renamed or recreated** — the stores then reject every build as a duplicate or downgrade. If that ever happens, add a fixed offset above the last uploaded build number to the computation.
-- **Concurrency does not cancel in progress.** A running release is never interrupted mid-signing; a newer push waits, and GitHub keeps only the newest pending run.
+- **Concurrency does not cancel in progress.** A running release is never interrupted mid-signing; a newer dispatch waits, and GitHub keeps only the newest pending run.
 - **Both jobs fail before checkout if a signing secret is missing.** The check passes only `secrets.X != ''` into the shell, never the value.
 - **The Android job builds without a Build Profile, on purpose.** The `Validate build inputs` step of the `unity-build` action explains why and rejects the combination. Player Settings, scenes and defines match `Android-Release`; the profile's own platform build settings do not apply on this path, and debug symbols come from `android-symbol-type` (`public` here, for Play Console crash symbolication).
 - **The keystore is decoded into the workspace as `ci-upload.keystore`** by the CLI (it needs a file path for Unity's `PlayerSettings.Android.keystoreName`) and deleted by the composite action in an `always()` step. It is outside `build/Android`, so it never reaches an artifact.
