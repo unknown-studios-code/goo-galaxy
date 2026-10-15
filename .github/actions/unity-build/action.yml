@@ -8,11 +8,11 @@ inputs:
   target-platform:
     description: Unity target platform.
     required: true
-  library-cache-key:
-    description: Cache key for the Unity Library directory.
+  library-cache-prefix:
+    description: Library cache key prefix, such as Library-Android. See the library-cache action for the key layout.
     required: true
-  library-cache-restore-keys:
-    description: Restore keys for the Unity Library cache.
+  unity-cache-version:
+    description: UNITY_CACHE_VERSION, part of the Library cache key.
     required: true
   unity-license:
     description: Unity license content.
@@ -120,21 +120,13 @@ runs:
           exit 1
         fi
 
-    - name: Restore and save Library cache
-      if: ${{ inputs.save-library-cache != 'false' }}
-      uses: actions/cache@v6
+    - name: Restore Library cache
+      uses: ./.github/actions/library-cache
       with:
-        path: Library
-        key: ${{ inputs.library-cache-key }}
-        restore-keys: ${{ inputs.library-cache-restore-keys }}
-
-    - name: Restore Library cache (restore only)
-      if: ${{ inputs.save-library-cache == 'false' }}
-      uses: actions/cache/restore@v6
-      with:
-        path: Library
-        key: ${{ inputs.library-cache-key }}
-        restore-keys: ${{ inputs.library-cache-restore-keys }}
+        prefix: ${{ inputs.library-cache-prefix }}
+        unity-version: ${{ inputs.unity-version }}
+        cache-version: ${{ inputs.unity-cache-version }}
+        save: ${{ inputs.save-library-cache }}
 
     - name: Build Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac != 'true' }}

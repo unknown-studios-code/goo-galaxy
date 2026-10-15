@@ -1,13 +1,11 @@
-# This workflow produces signed, store-ready mobile builds.
-# Android: an App Bundle signed with the upload keystore, versionCode = run_number * 10 + run_attempt.
-# iOS: the Unity Xcode export from the iOS-Release Build Profile, archived and exported as an
-# App Store Connect .ipa with manual signing, CFBundleVersion = the same build number.
-# Signing files reach the runner only as base64 secrets (passwords as plain secrets) and are deleted
-# when their step or job ends.
+# This workflow produces a signed iOS App Store Connect .ipa.
+# The Unity Xcode export from the iOS-Release Build Profile is archived and exported with manual signing,
+# CFBundleVersion = run_number * 10 + run_attempt.
+# Signing files reach the runner only as base64 secrets and are deleted when their step or job ends.
 # Not used during the MVP: manual dispatch only, and the workflow is disabled in the repository
-# (gh workflow disable). Add a push trigger back when store releases start.
+# (gh workflow disable "Unity Build (iOS Release)"). Add a push trigger back when store releases start.
 
-name: Unity Build (Release)
+name: Unity Build (iOS Release)
 
 on:
   workflow_dispatch:
@@ -26,129 +24,10 @@ env:
   UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
   CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
   ARTIFACT_RETENTION_DAYS: ${{ vars.ARTIFACT_RETENTION_DAYS }}
-  # Apple requires Xcode 26 for App Store uploads. Must exist on the pinned macos-26 image (actions/runner-images).
-  XCODE_VERSION: "26.6"
+  # Repository variable. Apple requires Xcode 26 for App Store uploads; keep it on a version the pinned macos-26 image ships (actions/runner-images).
+  XCODE_VERSION: ${{ vars.XCODE_VERSION }}
 
 jobs:
-  release-android:
-    name: Signed Android Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    environment: release
-
-    steps:
-      - name: Validate required CI variables
-        env:
-          UNITY_VERSION: ${{ env.UNITY_VERSION }}
-          UNITY_CACHE_VERSION: ${{ env.UNITY_CACHE_VERSION }}
-          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
-          ARTIFACT_RETENTION_DAYS: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        shell: bash
-        run: |
-          missing=0
-
-          for variable_name in UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS; do
-            if [[ -z "${!variable_name}" ]]; then
-              echo "Missing required GitHub Actions variable: $variable_name" >&2
-              missing=1
-            fi
-          done
-
-          if [[ "$missing" -ne 0 ]]; then
-            exit 1
-          fi
-
-      # Only whether each secret is set crosses into the shell, never its value.
-      - name: Validate required signing secrets
-        env:
-          HAS_ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-          HAS_ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS != '' }}
-          HAS_ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME != '' }}
-          HAS_ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS != '' }}
-        shell: bash
-        run: |
-          missing=0
-
-          for secret_name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASS ANDROID_KEYALIAS_NAME ANDROID_KEYALIAS_PASS; do
-            flag_name="HAS_$secret_name"
-            if [[ "${!flag_name}" != "true" ]]; then
-              echo "Missing required GitHub Actions secret: $secret_name" >&2
-              missing=1
-            fi
-          done
-
-          if [[ "$missing" -ne 0 ]]; then
-            exit 1
-          fi
-
-      # run_number alone repeats on a re-run; the attempt digit keeps every upload unique.
-      - name: Compute build number
-        shell: bash
-        run: |
-          if (( GITHUB_RUN_ATTEMPT > 9 )); then
-            echo "Run attempt $GITHUB_RUN_ATTEMPT would collide with the next run's build number." >&2
-            exit 1
-          fi
-
-          echo "BUILD_NUMBER=$(( GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT ))" >> "$GITHUB_ENV"
-
-      - name: Checkout repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
-          lfs: true
-
-      - name: Create LFS file list
-        shell: bash
-        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-
-      - name: Restore LFS cache
-        uses: actions/cache@v6
-        with:
-          path: .git/lfs
-          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-          restore-keys: |
-            ${{ runner.os }}-lfs-
-
-      - name: Pull LFS assets
-        shell: bash
-        run: git lfs pull
-
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
-        with:
-          android: false
-
-      # No build-profile here (see Validate build inputs in the unity-build action). Player Settings,
-      # scenes and defines match Android-Release; the profile's own platform build settings do not
-      # apply on this path, and debug symbols come from android-symbol-type.
-      - name: Build signed Android App Bundle
-        uses: ./.github/actions/unity-build
-        with:
-          unity-version: ${{ env.UNITY_VERSION }}
-          target-platform: Android
-          library-cache-key: Library-Android-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          library-cache-restore-keys: |
-            Library-Android-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-
-            Library-Android-${{ runner.os }}-${{ env.UNITY_VERSION }}-
-            Library-Android-${{ runner.os }}-
-            Library-
-          unity-license: ${{ secrets.UNITY_LICENSE }}
-          unity-email: ${{ secrets.UNITY_EMAIL }}
-          unity-password: ${{ secrets.UNITY_PASSWORD }}
-          android-export-type: androidAppBundle
-          android-version-code: ${{ env.BUILD_NUMBER }}
-          android-symbol-type: public
-          save-library-cache: "false"
-          android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          android-keystore-pass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
-          android-keyalias-name: ${{ secrets.ANDROID_KEYALIAS_NAME }}
-          android-keyalias-pass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
-          artifact-name: Android-Release
-          artifact-path: build/Android
-          log-artifact-name: Android-Release-Logs
-          artifact-retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-
   release-ios:
     name: Signed iOS Build
     runs-on: macos-26
@@ -159,28 +38,6 @@ jobs:
       APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
 
     steps:
-      - name: Validate required CI variables
-        env:
-          UNITY_VERSION: ${{ env.UNITY_VERSION }}
-          UNITY_CACHE_VERSION: ${{ env.UNITY_CACHE_VERSION }}
-          CI_FETCH_DEPTH: ${{ env.CI_FETCH_DEPTH }}
-          ARTIFACT_RETENTION_DAYS: ${{ env.ARTIFACT_RETENTION_DAYS }}
-          APPLE_TEAM_ID: ${{ env.APPLE_TEAM_ID }}
-        shell: bash
-        run: |
-          missing=0
-
-          for variable_name in UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS APPLE_TEAM_ID; do
-            if [[ -z "${!variable_name}" ]]; then
-              echo "Missing required GitHub Actions variable: $variable_name" >&2
-              missing=1
-            fi
-          done
-
-          if [[ "$missing" -ne 0 ]]; then
-            exit 1
-          fi
-
       # Only whether each secret is set crosses into the shell, never its value.
       - name: Validate required signing secrets
         env:
@@ -218,51 +75,28 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: ${{ env.CI_FETCH_DEPTH }}
-          lfs: true
+          lfs: false
 
-      # Select XCODE_VERSION explicitly instead of trusting the image default; fail with the installed list if the image dropped it.
-      - name: Select Xcode
-        shell: bash
-        run: |
-          xcode_app="/Applications/Xcode_${XCODE_VERSION}.app"
-
-          if [[ ! -d "$xcode_app" ]]; then
-            echo "Xcode $XCODE_VERSION is not installed on this runner image ($xcode_app missing). Installed:" >&2
-            ls -d /Applications/Xcode_*.app >&2
-            exit 1
-          fi
-
-          sudo xcode-select -s "$xcode_app/Contents/Developer"
-          xcodebuild -version
-          echo "DEVELOPER_DIR=$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
-
-      - name: Create LFS file list
-        shell: bash
-        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-
-      - name: Restore LFS cache
-        uses: actions/cache@v6
+      - name: Validate required CI variables
+        uses: ./.github/actions/ci-preflight
         with:
-          path: .git/lfs
-          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-          restore-keys: |
-            ${{ runner.os }}-lfs-
+          variables: UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS APPLE_TEAM_ID XCODE_VERSION
 
-      - name: Pull LFS assets
-        shell: bash
-        run: git lfs pull
+      - name: Select Xcode
+        uses: ./.github/actions/select-xcode
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Set up Git LFS
+        uses: ./.github/actions/lfs-setup
 
       - name: Export iOS Xcode project
         uses: ./.github/actions/unity-build
         with:
           unity-version: ${{ env.UNITY_VERSION }}
           target-platform: iOS
-          library-cache-key: Library-iOS-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          library-cache-restore-keys: |
-            Library-iOS-${{ runner.os }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_CACHE_VERSION }}-
-            Library-iOS-${{ runner.os }}-${{ env.UNITY_VERSION }}-
-            Library-iOS-${{ runner.os }}-
-            Library-
+          library-cache-prefix: Library-iOS
+          unity-cache-version: ${{ env.UNITY_CACHE_VERSION }}
           unity-license: ${{ secrets.UNITY_LICENSE }}
           unity-email: ${{ secrets.UNITY_EMAIL }}
           unity-password: ${{ secrets.UNITY_PASSWORD }}

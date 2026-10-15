@@ -8,11 +8,11 @@ inputs:
   test-mode:
     description: Unity test mode to run.
     required: true
-  library-cache-key:
-    description: Cache key for the Unity Library directory.
+  library-cache-prefix:
+    description: Library cache key prefix, such as Library-Tests-EditMode. See the library-cache action for the key layout.
     required: true
-  library-cache-restore-keys:
-    description: Restore keys for the Unity Library cache.
+  unity-cache-version:
+    description: UNITY_CACHE_VERSION, part of the Library cache key.
     required: true
   unity-license:
     description: Unity license content.
@@ -47,11 +47,11 @@ runs:
   using: composite
   steps:
     - name: Restore Library cache
-      uses: actions/cache@v5
+      uses: ./.github/actions/library-cache
       with:
-        path: Library
-        key: ${{ inputs.library-cache-key }}
-        restore-keys: ${{ inputs.library-cache-restore-keys }}
+        prefix: ${{ inputs.library-cache-prefix }}
+        unity-version: ${{ inputs.unity-version }}
+        cache-version: ${{ inputs.unity-cache-version }}
 
     - name: Run Unity tests
       id: tests

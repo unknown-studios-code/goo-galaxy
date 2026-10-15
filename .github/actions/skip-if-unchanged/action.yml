@@ -1,0 +1,41 @@
+name: Skip If Unchanged
+description: Report whether the commit differs from the last successful run of a workflow on main.
+
+inputs:
+  workflow-file:
+    description: File name of the workflow whose last successful run is compared, such as unity-build-release-validation-android.yml.
+    required: true
+  github-token:
+    description: Token for gh run list. The calling job needs permissions actions read.
+    required: true
+
+outputs:
+  changed:
+    description: "false when github.sha equals the head SHA of the last successful run on main, otherwise true. A manual dispatch and a failed lookup both report true."
+    value: ${{ steps.compare.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - name: Compare with the last successful run
+      id: compare
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        WORKFLOW_FILE: ${{ inputs.workflow-file }}
+      run: |
+        changed=true
+        last_sha=""
+
+        if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+          if last_sha="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$WORKFLOW_FILE" --branch main --status success --limit 1 --json headSha --jq '.[0].headSha // ""')"; then
+            if [[ -n "$last_sha" && "$last_sha" == "$GITHUB_SHA" ]]; then
+              changed=false
+            fi
+          else
+            echo "Could not look up the last successful run; building anyway." >&2
+          fi
+        fi
+
+        echo "Last successful run: ${last_sha:-none}; this run: $GITHUB_SHA; build: $changed"
+        echo "changed=$changed" >> "$GITHUB_OUTPUT"

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Template for `xcodebuild -exportArchive` in unity-build-release.yml.
+  Template for `xcodebuild -exportArchive` in unity-build-release-ios.yml.
   teamID, signingCertificate and the provisioningProfiles entry are left empty on purpose: the
   workflow copies this file to the runner's temp directory and fills them with PlistBuddy from
   APPLE_TEAM_ID, the imported certificate's SHA-1 and the decoded profile's UUID, so nothing
