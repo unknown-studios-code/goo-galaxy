@@ -424,3 +424,9 @@ __pycache__/
 /[Aa]ssets/StreamingAssets/**/*.bank
 /[Aa]ssets/StreamingAssets/**/*.bank.meta
 fmod_editor.log
+
+# Created by player builds: FMOD makes StreamingAssets to receive the banks, and the performance testing
+# package (via com.unity.feature.development) writes its run info into Resources for the player.
+/[Aa]ssets/StreamingAssets.meta
+/[Aa]ssets/Resources/PerformanceTestRunInfo.json*
+/[Aa]ssets/Resources/PerformanceTestRunSettings.json*
