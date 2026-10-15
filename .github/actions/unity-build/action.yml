@@ -8,11 +8,11 @@ inputs:
   target-platform:
     description: Unity target platform.
     required: true
-  library-cache-key:
-    description: Cache key for the Unity Library directory.
+  library-cache-prefix:
+    description: Library cache key prefix, such as Library-Android. See the library-cache action for the key layout.
     required: true
-  library-cache-restore-keys:
-    description: Restore keys for the Unity Library cache.
+  unity-cache-version:
+    description: UNITY_CACHE_VERSION, part of the Library cache key.
     required: true
   unity-license:
     description: Unity license content.
@@ -44,16 +44,89 @@ inputs:
     description: Whether to cache the Unity installation on macOS.
     required: false
     default: "false"
+  build-profile:
+    description: >-
+      Build Profile asset to activate, relative to the project root. Rejected together with Android signing or
+      android-version-code inputs (see Validate build inputs).
+    required: false
+    default: ""
+  android-keystore-base64:
+    description: Base64 of the Android upload keystore. Written into the workspace for the build and deleted after.
+    required: false
+    default: ""
+  android-keystore-pass:
+    description: Android keystore password.
+    required: false
+    default: ""
+  android-keyalias-name:
+    description: Android key alias name.
+    required: false
+    default: ""
+  android-keyalias-pass:
+    description: Android key alias password.
+    required: false
+    default: ""
+  android-version-code:
+    description: Android versionCode. Empty keeps the value in Player Settings.
+    required: false
+    default: ""
+  version:
+    description: Player version (bundleVersion). Switches versioning to Custom when set; empty keeps Player Settings.
+    required: false
+    default: ""
+  android-symbol-type:
+    description: >-
+      Android debug symbols to package — none, public or debugging. Empty keeps the previous behaviour (none). Applied
+      only on the non-profile path.
+    required: false
+    default: ""
+  save-library-cache:
+    description: >-
+      Whether to save the Library cache after the build. "false" restores only, for jobs whose Library must never seed
+      a cache other branches can read.
+    required: false
+    default: "true"
 
 runs:
   using: composite
   steps:
+    - name: Validate build inputs
+      shell: bash
+      env:
+        HAS_BUILD_PROFILE: ${{ inputs.build-profile != '' }}
+        HAS_KEYSTORE: ${{ inputs.android-keystore-base64 != '' }}
+        HAS_KEYSTORE_PASS: ${{ inputs.android-keystore-pass != '' }}
+        HAS_KEYALIAS_NAME: ${{ inputs.android-keyalias-name != '' }}
+        HAS_KEYALIAS_PASS: ${{ inputs.android-keyalias-pass != '' }}
+        HAS_VERSION_CODE: ${{ inputs.android-version-code != '' }}
+        HAS_EXPORT_TYPE: ${{ inputs.android-export-type != '' }}
+      run: |
+        # Only the Android step forwards signing and versionCode; without an export type the call
+        # would route to the generic step and drop them.
+        if [[ "$HAS_EXPORT_TYPE" != "true" && ( "$HAS_KEYSTORE" == "true" || "$HAS_VERSION_CODE" == "true" ) ]]; then
+          echo "Android signing and android-version-code inputs require android-export-type." >&2
+          exit 1
+        fi
+
+        # The default build script applies Android signing and versionCode only on its non-profile
+        # path, so a profile combined with either would produce an unsigned or unversioned build silently.
+        if [[ "$HAS_BUILD_PROFILE" == "true" && ( "$HAS_KEYSTORE" == "true" || "$HAS_VERSION_CODE" == "true" ) ]]; then
+          echo "build-profile cannot be combined with Android signing or android-version-code inputs." >&2
+          exit 1
+        fi
+
+        if [[ "$HAS_KEYSTORE" == "true" && ( "$HAS_KEYSTORE_PASS" != "true" || "$HAS_KEYALIAS_NAME" != "true" || "$HAS_KEYALIAS_PASS" != "true" ) ]]; then
+          echo "android-keystore-base64 requires android-keystore-pass, android-keyalias-name and android-keyalias-pass." >&2
+          exit 1
+        fi
+
     - name: Restore Library cache
-      uses: actions/cache@v5
+      uses: ./.github/actions/library-cache
       with:
-        path: Library
-        key: ${{ inputs.library-cache-key }}
-        restore-keys: ${{ inputs.library-cache-restore-keys }}
+        prefix: ${{ inputs.library-cache-prefix }}
+        unity-version: ${{ inputs.unity-version }}
+        cache-version: ${{ inputs.unity-cache-version }}
+        save: ${{ inputs.save-library-cache }}
 
     - name: Build Unity player
       if: ${{ inputs.android-export-type == '' && inputs.cache-unity-installation-on-mac != 'true' }}
@@ -65,7 +138,11 @@ runs:
       with:
         targetPlatform: ${{ inputs.target-platform }}
         unityVersion: ${{ inputs.unity-version }}
-        versioning: None
+        # unity-builder drops empty inputs instead of forwarding them, so buildProfile and version
+        # are no-ops for callers that leave them unset.
+        buildProfile: ${{ inputs.build-profile }}
+        versioning: ${{ inputs.version != '' && 'Custom' || 'None' }}
+        version: ${{ inputs.version }}
         # Pinned, not 'latest': resolving 'latest' calls the GitHub API unauthenticated, and shared
         # macOS runners exhaust that rate limit (403). Review it when unity-builder is bumped.
         cliVersion: v0.1.69
@@ -80,8 +157,24 @@ runs:
       with:
         targetPlatform: ${{ inputs.target-platform }}
         unityVersion: ${{ inputs.unity-version }}
+        # With a build profile set, androidExportType only routes the call to this step: the default
+        # build script then takes the export type and symbols from the profile, not from here.
         androidExportType: ${{ inputs.android-export-type }}
-        versioning: None
+        # buildProfile, version, androidVersionCode and the keystore inputs rely on unity-builder
+        # dropping empty values, so unsigned callers that leave them unset are unaffected.
+        buildProfile: ${{ inputs.build-profile }}
+        versioning: ${{ inputs.version != '' && 'Custom' || 'None' }}
+        version: ${{ inputs.version }}
+        androidVersionCode: ${{ inputs.android-version-code }}
+        # Omitting the input used to forward unity-builder's own default, none; keep that when unset.
+        androidSymbolType: ${{ inputs.android-symbol-type != '' && inputs.android-symbol-type || 'none' }}
+        # The CLI writes the keystore only when both name and contents are set, so the name
+        # follows the contents and an unsigned call keeps passing neither.
+        androidKeystoreName: ${{ inputs.android-keystore-base64 != '' && 'ci-upload.keystore' || '' }}
+        androidKeystoreBase64: ${{ inputs.android-keystore-base64 }}
+        androidKeystorePass: ${{ inputs.android-keystore-pass }}
+        androidKeyaliasName: ${{ inputs.android-keyalias-name }}
+        androidKeyaliasPass: ${{ inputs.android-keyalias-pass }}
         cliVersion: v0.1.69
 
     - name: Build macOS-backed Unity player
@@ -95,8 +188,28 @@ runs:
         targetPlatform: ${{ inputs.target-platform }}
         unityVersion: ${{ inputs.unity-version }}
         cacheUnityInstallationOnMac: true
-        versioning: None
+        buildProfile: ${{ inputs.build-profile }}
+        versioning: ${{ inputs.version != '' && 'Custom' || 'None' }}
+        version: ${{ inputs.version }}
         cliVersion: v0.1.69
+
+    - name: Remove decoded keystore
+      if: ${{ always() && inputs.android-keystore-base64 != '' }}
+      shell: bash
+      run: rm -f "$GITHUB_WORKSPACE/ci-upload.keystore"
+
+    # Unity can write the keystore passwords in plain text into the generated Gradle project under
+    # Library/Bee/Android. Delete it even when the cache is not saved, so nothing later in the job can
+    # pick it up. The Linux build runs in a root-owned container, hence sudo there.
+    - name: Remove generated Android Gradle project
+      if: ${{ always() && inputs.android-keystore-base64 != '' }}
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo rm -rf "$GITHUB_WORKSPACE/Library/Bee/Android"
+        else
+          rm -rf "$GITHUB_WORKSPACE/Library/Bee/Android"
+        fi
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v7

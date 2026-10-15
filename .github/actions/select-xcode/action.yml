@@ -1,0 +1,28 @@
+name: Select Xcode
+description: Point xcode-select and DEVELOPER_DIR at an explicit Xcode instead of the runner image default.
+
+inputs:
+  xcode-version:
+    description: Xcode version to select, such as 26.6. It must exist on the runner image.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Fail with the installed list if the image dropped the requested version.
+    - name: Select Xcode
+      shell: bash
+      env:
+        XCODE_VERSION: ${{ inputs.xcode-version }}
+      run: |
+        xcode_app="/Applications/Xcode_${XCODE_VERSION}.app"
+
+        if [[ ! -d "$xcode_app" ]]; then
+          echo "Xcode $XCODE_VERSION is not installed on this runner image ($xcode_app missing). Installed:" >&2
+          ls -d /Applications/Xcode_*.app >&2
+          exit 1
+        fi
+
+        sudo xcode-select -s "$xcode_app/Contents/Developer"
+        xcodebuild -version
+        echo "DEVELOPER_DIR=$xcode_app/Contents/Developer" >> "$GITHUB_ENV"

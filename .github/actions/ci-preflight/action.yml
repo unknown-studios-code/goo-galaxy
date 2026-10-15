@@ -1,0 +1,30 @@
+name: CI Preflight
+description: Fail early, naming every required GitHub Actions variable that is missing or empty.
+
+inputs:
+  variables:
+    description: >-
+      Space-separated names of the required variables. They are read from the job environment, so the workflow must map
+      each one from vars in its top-level env block.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Check required variables
+      shell: bash
+      env:
+        REQUIRED_VARIABLES: ${{ inputs.variables }}
+      run: |
+        missing=0
+
+        for variable_name in $REQUIRED_VARIABLES; do
+          if [[ -z "${!variable_name:-}" ]]; then
+            echo "Missing required GitHub Actions variable: $variable_name" >&2
+            missing=1
+          fi
+        done
+
+        if [[ "$missing" -ne 0 ]]; then
+          exit 1
+        fi

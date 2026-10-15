@@ -1,0 +1,67 @@
+name: Unity Library Cache
+description: Restore (and optionally save) the Unity Library directory under a key built from the editor and cache versions.
+
+inputs:
+  prefix:
+    description: Cache key prefix that separates unrelated Library folders, such as Library-Android.
+    required: true
+  unity-version:
+    description: Unity editor version.
+    required: true
+  cache-version:
+    description: UNITY_CACHE_VERSION; bump the repository variable to invalidate every Library cache.
+    required: true
+  save:
+    description: >-
+      Whether to save the cache after the job. "false" restores only, for jobs whose Library must never seed a cache
+      other branches can read.
+    required: false
+    default: "true"
+  extra-restore-keys:
+    description: Additional restore keys, one per line, tried after the prefix keys and before the bare Library- key.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Build cache keys
+      id: keys
+      shell: bash
+      env:
+        PREFIX: ${{ inputs.prefix }}
+        UNITY_VERSION: ${{ inputs.unity-version }}
+        CACHE_VERSION: ${{ inputs.cache-version }}
+        EXTRA_RESTORE_KEYS: ${{ inputs.extra-restore-keys }}
+        SOURCE_HASH: ${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+      run: |
+        base="${PREFIX}-${RUNNER_OS}"
+
+        {
+          echo "key=${base}-${UNITY_VERSION}-${CACHE_VERSION}-${SOURCE_HASH}"
+          echo "restore-keys<<LIBRARY_RESTORE_KEYS_EOF"
+          echo "${base}-${UNITY_VERSION}-${CACHE_VERSION}-"
+          echo "${base}-${UNITY_VERSION}-"
+          echo "${base}-"
+          if [[ -n "$EXTRA_RESTORE_KEYS" ]]; then
+            printf '%s\n' "$EXTRA_RESTORE_KEYS"
+          fi
+          echo "Library-"
+          echo "LIBRARY_RESTORE_KEYS_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Restore and save Library cache
+      if: ${{ inputs.save != 'false' }}
+      uses: actions/cache@v6
+      with:
+        path: Library
+        key: ${{ steps.keys.outputs.key }}
+        restore-keys: ${{ steps.keys.outputs.restore-keys }}
+
+    - name: Restore Library cache (restore only)
+      if: ${{ inputs.save == 'false' }}
+      uses: actions/cache/restore@v6
+      with:
+        path: Library
+        key: ${{ steps.keys.outputs.key }}
+        restore-keys: ${{ steps.keys.outputs.restore-keys }}

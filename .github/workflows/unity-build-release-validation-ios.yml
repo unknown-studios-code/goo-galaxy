@@ -1,0 +1,100 @@
+# This workflow validates the iOS release configuration without any release signing material.
+# It exports the Xcode project from the iOS-Release Build Profile; no .ipa is produced because signing is absent.
+# Pull request builds are development builds; this is the scheduled check that the release configuration still
+# compiles. The signed store build stays in unity-build-release-ios.yml. Not a required status check.
+# A scheduled run is skipped when main has not changed since this workflow last succeeded.
+
+name: Unity Build (iOS Release Validation)
+
+on:
+  schedule:
+    # Mondays 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# A manual dispatch must not kill a scheduled run that is already building, so nothing is cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UNITY_VERSION: ${{ vars.UNITY_VERSION }}
+  UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
+  CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
+  ARTIFACT_RETENTION_DAYS: ${{ vars.ARTIFACT_RETENTION_DAYS }}
+  # Repository variable shared with the other iOS workflows, so validation exports with the Xcode that ships.
+  XCODE_VERSION: ${{ vars.XCODE_VERSION }}
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      changed: ${{ steps.gate.outputs.changed }}
+
+    steps:
+      # Only the composite actions are needed, so the checkout is sparse.
+      - name: Checkout composite actions
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/actions
+
+      # Skips the scheduled build when main has not moved since the last successful run of this workflow.
+      # A manual dispatch always builds. If the lookup fails the job fails open and the build runs.
+      - name: Compare with the last successful run
+        id: gate
+        uses: ./.github/actions/skip-if-unchanged
+        with:
+          workflow-file: unity-build-release-validation-ios.yml
+          github-token: ${{ github.token }}
+
+  validate-ios:
+    name: Release Validation (iOS)
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed == 'true'
+    runs-on: macos-26
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
+          lfs: false
+
+      - name: Validate required CI variables
+        uses: ./.github/actions/ci-preflight
+        with:
+          variables: UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS XCODE_VERSION
+
+      - name: Select Xcode
+        uses: ./.github/actions/select-xcode
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Set up Git LFS
+        uses: ./.github/actions/lfs-setup
+
+      - name: Export release iOS Xcode project
+        uses: ./.github/actions/unity-build
+        with:
+          unity-version: ${{ env.UNITY_VERSION }}
+          target-platform: iOS
+          library-cache-prefix: Library-iOS
+          unity-cache-version: ${{ env.UNITY_CACHE_VERSION }}
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}
+          cache-unity-installation-on-mac: "true"
+          build-profile: Assets/Settings/Build Profiles/iOS-Release.asset
+          artifact-name: iOS-Release-XcodeProject
+          artifact-path: build/iOS
+          log-artifact-name: iOS-Release-Validation-Logs
+          artifact-retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}

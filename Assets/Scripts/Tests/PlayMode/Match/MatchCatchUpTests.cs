@@ -42,6 +42,9 @@ namespace GooGalaxy.Tests.PlayMode.Match
         // against an infinite loop if the awaited event never fires at all.
         private const int PollFrameBudget = 20000;
         private const int SettleFrameBudget = 60;
+
+        // Scaled game seconds, well inside _shortCatchUp's 10s cooldown so a second window cannot reopen while settling.
+        private const float SettleGameSeconds = 3f;
         private const string TroopCardId = "troop_alpha";
 
         // PERF: this fixture is bounded by wall-clock waits, not by work — every test drives a countdown and/or
@@ -284,9 +287,12 @@ namespace GooGalaxy.Tests.PlayMode.Match
             yield return WaitForCatchUpEvent(PlayerTwoId, isActive: true);
             yield return WaitForCatchUpEvent(PlayerTwoId, isActive: false);
 
-            int settleFrames = SettleFrameBudget;
+            // Measured in scaled game time, not frames: the cooldown is time, and at AcceleratedTimeScale a fixed frame
+            // count covers a frame-rate-dependent share of it (60 frames at 60 FPS is the whole 10s cooldown).
+            float settleEndsAt = Time.time + SettleGameSeconds;
+            int frameBudget = PollFrameBudget;
 
-            while (settleFrames-- > 0)
+            while (Time.time < settleEndsAt && frameBudget-- > 0)
             {
                 yield return null;
             }

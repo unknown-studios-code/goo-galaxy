@@ -1,0 +1,113 @@
+# This workflow produces a signed, store-ready Android App Bundle.
+# Signed with the upload keystore, versionCode = run_number * 10 + run_attempt.
+# The keystore reaches the runner only as a base64 secret (passwords as plain secrets) and is deleted
+# when the build step ends.
+# Not used during the MVP: manual dispatch only, and the workflow is disabled in the repository
+# (gh workflow disable "Unity Build (Android Release)"). Add a push trigger back when store releases start.
+
+name: Unity Build (Android Release)
+
+on:
+  workflow_dispatch:
+
+# A running release is never cancelled mid-signing; a newer dispatch waits for it (GitHub keeps only
+# the newest pending run in the group).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UNITY_VERSION: ${{ vars.UNITY_VERSION }}
+  UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
+  CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
+  ARTIFACT_RETENTION_DAYS: ${{ vars.ARTIFACT_RETENTION_DAYS }}
+
+jobs:
+  release-android:
+    name: Signed Android Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: release
+
+    steps:
+      # Only whether each secret is set crosses into the shell, never its value.
+      - name: Validate required signing secrets
+        env:
+          HAS_ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+          HAS_ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS != '' }}
+          HAS_ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME != '' }}
+          HAS_ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS != '' }}
+        shell: bash
+        run: |
+          missing=0
+
+          for secret_name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASS ANDROID_KEYALIAS_NAME ANDROID_KEYALIAS_PASS; do
+            flag_name="HAS_$secret_name"
+            if [[ "${!flag_name}" != "true" ]]; then
+              echo "Missing required GitHub Actions secret: $secret_name" >&2
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      # run_number alone repeats on a re-run; the attempt digit keeps every upload unique.
+      - name: Compute build number
+        shell: bash
+        run: |
+          if (( GITHUB_RUN_ATTEMPT > 9 )); then
+            echo "Run attempt $GITHUB_RUN_ATTEMPT would collide with the next run's build number." >&2
+            exit 1
+          fi
+
+          echo "BUILD_NUMBER=$(( GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT ))" >> "$GITHUB_ENV"
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ env.CI_FETCH_DEPTH }}
+          lfs: false
+
+      - name: Validate required CI variables
+        uses: ./.github/actions/ci-preflight
+        with:
+          variables: UNITY_VERSION UNITY_CACHE_VERSION CI_FETCH_DEPTH ARTIFACT_RETENTION_DAYS
+
+      - name: Set up Git LFS
+        uses: ./.github/actions/lfs-setup
+
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6 # v2.0.0
+        with:
+          android: false
+
+      # No build-profile here (see Validate build inputs in the unity-build action). Player Settings,
+      # scenes and defines match Android-Release; the profile's own platform build settings do not
+      # apply on this path, and debug symbols come from android-symbol-type.
+      - name: Build signed Android App Bundle
+        uses: ./.github/actions/unity-build
+        with:
+          unity-version: ${{ env.UNITY_VERSION }}
+          target-platform: Android
+          library-cache-prefix: Library-Android
+          unity-cache-version: ${{ env.UNITY_CACHE_VERSION }}
+          unity-license: ${{ secrets.UNITY_LICENSE }}
+          unity-email: ${{ secrets.UNITY_EMAIL }}
+          unity-password: ${{ secrets.UNITY_PASSWORD }}
+          android-export-type: androidAppBundle
+          android-version-code: ${{ env.BUILD_NUMBER }}
+          android-symbol-type: public
+          save-library-cache: "false"
+          android-keystore-base64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          android-keystore-pass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          android-keyalias-name: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          android-keyalias-pass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          artifact-name: Android-Release
+          artifact-path: build/Android
+          log-artifact-name: Android-Release-Logs
+          artifact-retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
