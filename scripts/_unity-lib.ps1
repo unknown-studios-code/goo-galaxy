@@ -59,6 +59,7 @@ function Get-UnityStatusResult {
     param($Envelope)
 
     if ($null -eq $Envelope) { return $null }
+    if (-not $Envelope.PSObject.Properties['data'] -or $null -eq $Envelope.data -or -not $Envelope.data.PSObject.Properties['result']) { return $null }
     $result = $Envelope.data.result
     if ($null -eq $result) { return $null }
 
@@ -76,6 +77,7 @@ function Get-UnityStatusRaw {
     param($Envelope)
 
     if ($null -eq $Envelope) { return $null }
+    if (-not $Envelope.PSObject.Properties['data'] -or $null -eq $Envelope.data -or -not $Envelope.data.PSObject.Properties['result']) { return $null }
     $result = $Envelope.data.result
     if ($null -eq $result) { return $null }
     if ($result -is [string]) { return $result }
