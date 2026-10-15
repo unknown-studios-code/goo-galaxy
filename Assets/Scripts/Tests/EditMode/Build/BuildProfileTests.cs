@@ -1,17 +1,21 @@
+using System.IO;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Build.Profile;
 
 namespace GooGalaxy.Tests.EditMode.Build
 {
-    // BuildProfile exposes its target and platform settings only as internal members, so they are read through
-    // SerializedObject. A missing property fails with its name: a Unity upgrade that renames one is then diagnosable.
+    // Top-level fields are read through SerializedObject. The platform settings are a [SerializeReference] whose concrete types
+    // live in the Android and iOS module assemblies, which CI editors do not have, so they are read from the asset's own YAML.
+    // A missing class or key fails with its name: a Unity upgrade that renames one is then diagnosable.
     [TestFixture]
     public class BuildProfileTests
     {
         private const string AndroidReleasePath = "Assets/Settings/Build Profiles/Android-Release.asset";
         private const string IosReleasePath = "Assets/Settings/Build Profiles/iOS-Release.asset";
         private const string AndroidDevelopmentPath = "Assets/Settings/Build Profiles/Android-Development.asset";
+        private const string AndroidSettingsClass = "AndroidPlatformBuildSettings";
+        private const string IosSettingsClass = "iOSPlatformSettings";
         private const int Lz4HcCompression = 3;
         private const string NoOverridesReason =
             "the release CI path builds Android without the profile and both iOS workflows build through iOS-Release, so a release profile must carry no overrides.";
@@ -45,15 +49,15 @@ namespace GooGalaxy.Tests.EditMode.Build
             Assert.That(target, Is.EqualTo((int)expected), $"{path} targets the wrong platform.");
         }
 
-        [TestCase(AndroidReleasePath)]
-        [TestCase(IosReleasePath)]
-        public void Development_ReleaseProfile_IsFalse(string path)
+        [TestCase(AndroidReleasePath, AndroidSettingsClass)]
+        [TestCase(IosReleasePath, IosSettingsClass)]
+        public void Development_ReleaseProfile_IsFalse(string path, string settingsClass)
         {
             // GIVEN
             using var profile = new ProfileReader(path);
 
             // WHEN
-            bool isDevelopment = profile.Find("m_PlatformBuildProfile.m_Development").boolValue;
+            bool isDevelopment = profile.ReadPlatformValue(settingsClass, "m_Development") != 0;
 
             // THEN
             Assert.That(isDevelopment, Is.False, $"{path} is a release profile and must not produce a development build.");
@@ -66,7 +70,7 @@ namespace GooGalaxy.Tests.EditMode.Build
             using var profile = new ProfileReader(AndroidDevelopmentPath);
 
             // WHEN
-            bool isDevelopment = profile.Find("m_PlatformBuildProfile.m_Development").boolValue;
+            bool isDevelopment = profile.ReadPlatformValue(AndroidSettingsClass, "m_Development") != 0;
 
             // THEN
             Assert.That(isDevelopment, Is.True, "The development profile must produce a development build.");
@@ -79,7 +83,7 @@ namespace GooGalaxy.Tests.EditMode.Build
             using var profile = new ProfileReader(AndroidReleasePath);
 
             // WHEN
-            bool buildsBundle = profile.Find("m_PlatformBuildProfile.m_BuildAppBundle").boolValue;
+            bool buildsBundle = profile.ReadPlatformValue(AndroidSettingsClass, "m_BuildAppBundle") != 0;
 
             // THEN
             Assert.That(
@@ -96,21 +100,21 @@ namespace GooGalaxy.Tests.EditMode.Build
             using var profile = new ProfileReader(AndroidDevelopmentPath);
 
             // WHEN
-            bool connectsProfiler = profile.Find("m_PlatformBuildProfile.m_ConnectProfiler").boolValue;
+            bool connectsProfiler = profile.ReadPlatformValue(AndroidSettingsClass, "m_ConnectProfiler") != 0;
 
             // THEN
             Assert.That(connectsProfiler, Is.True, "The development profile must autoconnect the profiler.");
         }
 
-        [TestCase(AndroidReleasePath)]
-        [TestCase(IosReleasePath)]
-        public void CompressionType_ReleaseProfile_IsLz4Hc(string path)
+        [TestCase(AndroidReleasePath, AndroidSettingsClass)]
+        [TestCase(IosReleasePath, IosSettingsClass)]
+        public void CompressionType_ReleaseProfile_IsLz4Hc(string path, string settingsClass)
         {
             // GIVEN
             using var profile = new ProfileReader(path);
 
             // WHEN
-            int compression = profile.Find("m_PlatformBuildProfile.m_CompressionType").intValue;
+            int compression = profile.ReadPlatformValue(settingsClass, "m_CompressionType");
 
             // THEN
             Assert.That(
@@ -165,9 +169,11 @@ namespace GooGalaxy.Tests.EditMode.Build
         private sealed class ProfileReader : System.IDisposable
         {
             private readonly SerializedObject _serialized;
+            private readonly string _path;
 
             public ProfileReader(string path)
             {
+                _path = path;
                 BuildProfile profile = AssetDatabase.LoadAssetAtPath<BuildProfile>(path);
                 Assert.That(profile != null, Is.True, $"Build profile is missing or failed to import: {path}");
                 _serialized = new SerializedObject(profile);
@@ -178,6 +184,29 @@ namespace GooGalaxy.Tests.EditMode.Build
                 SerializedProperty property = _serialized.FindProperty(propertyPath);
                 Assert.That(property, Is.Not.Null, $"BuildProfile no longer serializes '{propertyPath}' — Unity renamed it; update this test.");
                 return property;
+            }
+
+            public int ReadPlatformValue(string settingsClass, string key)
+            {
+                string[] lines = File.ReadAllLines(_path);
+                int start = System.Array.FindIndex(lines, line => line.Contains($"type: {{class: {settingsClass},"));
+                Assert.That(
+                    start,
+                    Is.GreaterThanOrEqualTo(0),
+                    $"{_path} has no '{settingsClass}' platform settings — Unity renamed the type or the profile targets another platform; update this test."
+                );
+
+                string prefix = $"        {key}:";
+                for (int i = start + 1; i < lines.Length && !lines[i].TrimStart().StartsWith("- rid:"); i++)
+                {
+                    if (lines[i].StartsWith(prefix))
+                    {
+                        return int.Parse(lines[i][prefix.Length..].Trim());
+                    }
+                }
+
+                Assert.Fail($"{_path} '{settingsClass}' no longer stores '{key}' — Unity renamed it; update this test.");
+                return -1;
             }
 
             public void Dispose()
