@@ -1,6 +1,6 @@
 # This workflow builds the Android player on pull requests to main.
-# It produces an Android App Bundle through IL2CPP and uploads it as a build artifact,
-# proving the project still compiles and packages for the mobile target.
+# It produces an Android App Bundle through IL2CPP from the Android-Release Build Profile and uploads it
+# as a build artifact, proving the project and the profile still compile and package for the mobile target.
 
 name: Unity Build (Android)
 
@@ -94,6 +94,7 @@ jobs:
           unity-email: ${{ secrets.UNITY_EMAIL }}
           unity-password: ${{ secrets.UNITY_PASSWORD }}
           android-export-type: androidAppBundle
+          build-profile: Assets/Settings/Build Profiles/Android-Release.asset
           artifact-name: Android-Build
           artifact-path: build/Android
           log-artifact-name: Android-Build-Logs

@@ -1,5 +1,5 @@
 # This workflow builds the iOS player on pull requests to main.
-# It exports the Xcode project through IL2CPP and uploads it as a build artifact.
+# It exports the Xcode project through IL2CPP from the iOS-Release Build Profile and uploads it as a build artifact.
 # It runs on a macOS runner because Unity's iOS export depends on Apple tooling.
 
 name: Unity Build (iOS)
@@ -22,12 +22,14 @@ env:
   UNITY_CACHE_VERSION: ${{ vars.UNITY_CACHE_VERSION }}
   CI_FETCH_DEPTH: ${{ vars.CI_FETCH_DEPTH }}
   ARTIFACT_RETENTION_DAYS: ${{ vars.ARTIFACT_RETENTION_DAYS }}
+  # Apple requires Xcode 26 for App Store uploads. Must exist on the pinned macos-26 image (actions/runner-images).
+  XCODE_VERSION: "26.6"
 
 jobs:
   build-ios:
     name: Build iOS Player
     if: github.event.pull_request.user.login != 'dependabot[bot]'
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 90
 
     steps:
@@ -57,6 +59,22 @@ jobs:
         with:
           fetch-depth: ${{ env.CI_FETCH_DEPTH }}
           lfs: true
+
+      # Select XCODE_VERSION explicitly instead of trusting the image default; fail with the installed list if the image dropped it.
+      - name: Select Xcode
+        shell: bash
+        run: |
+          xcode_app="/Applications/Xcode_${XCODE_VERSION}.app"
+
+          if [[ ! -d "$xcode_app" ]]; then
+            echo "Xcode $XCODE_VERSION is not installed on this runner image ($xcode_app missing). Installed:" >&2
+            ls -d /Applications/Xcode_*.app >&2
+            exit 1
+          fi
+
+          sudo xcode-select -s "$xcode_app/Contents/Developer"
+          xcodebuild -version
+          echo "DEVELOPER_DIR=$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Create LFS file list
         shell: bash
@@ -89,6 +107,7 @@ jobs:
           unity-email: ${{ secrets.UNITY_EMAIL }}
           unity-password: ${{ secrets.UNITY_PASSWORD }}
           cache-unity-installation-on-mac: "true"
+          build-profile: Assets/Settings/Build Profiles/iOS-Release.asset
           artifact-name: iOS-Build
           artifact-path: build/iOS
           log-artifact-name: iOS-Build-Logs

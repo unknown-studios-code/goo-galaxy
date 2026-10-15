@@ -401,6 +401,10 @@ nohup.out
 # Superpowers plugin state
 .superpowers/
 
+# Python bytecode (from CI helper scripts such as .github/ios/configure_signing.py)
+__pycache__/
+*.pyc
+
 
 
 ######################
