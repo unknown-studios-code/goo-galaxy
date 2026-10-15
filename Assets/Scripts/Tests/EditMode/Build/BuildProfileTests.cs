@@ -14,15 +14,17 @@ namespace GooGalaxy.Tests.EditMode.Build
         private const string AndroidReleasePath = "Assets/Settings/Build Profiles/Android-Release.asset";
         private const string IosReleasePath = "Assets/Settings/Build Profiles/iOS-Release.asset";
         private const string AndroidDevelopmentPath = "Assets/Settings/Build Profiles/Android-Development.asset";
+        private const string IosDevelopmentPath = "Assets/Settings/Build Profiles/iOS-Development.asset";
         private const string AndroidSettingsClass = "AndroidPlatformBuildSettings";
         private const string IosSettingsClass = "iOSPlatformSettings";
         private const int Lz4HcCompression = 3;
         private const string NoOverridesReason =
-            "the release CI path builds Android without the profile and both iOS workflows build through iOS-Release, so a release profile must carry no overrides.";
+            "every profile must build the same game as Player Settings: both Android release paths (signed release and release validation) build without a profile, while the PR builds and every iOS build go through one, so an override would make those builds diverge from what ships; remove the override from the profile.";
 
         [TestCase(AndroidReleasePath)]
         [TestCase(IosReleasePath)]
         [TestCase(AndroidDevelopmentPath)]
+        [TestCase(IosDevelopmentPath)]
         public void LoadAssetAtPath_EachProfile_Loads(string path)
         {
             // GIVEN
@@ -37,6 +39,7 @@ namespace GooGalaxy.Tests.EditMode.Build
         [TestCase(AndroidReleasePath, BuildTarget.Android)]
         [TestCase(IosReleasePath, BuildTarget.iOS)]
         [TestCase(AndroidDevelopmentPath, BuildTarget.Android)]
+        [TestCase(IosDevelopmentPath, BuildTarget.iOS)]
         public void BuildTarget_EachProfile_MatchesItsPlatform(string path, BuildTarget expected)
         {
             // GIVEN
@@ -63,17 +66,18 @@ namespace GooGalaxy.Tests.EditMode.Build
             Assert.That(isDevelopment, Is.False, $"{path} is a release profile and must not produce a development build.");
         }
 
-        [Test]
-        public void Development_AndroidDevelopment_IsTrue()
+        [TestCase(AndroidDevelopmentPath, AndroidSettingsClass)]
+        [TestCase(IosDevelopmentPath, IosSettingsClass)]
+        public void Development_DevelopmentProfile_IsTrue(string path, string settingsClass)
         {
             // GIVEN
-            using var profile = new ProfileReader(AndroidDevelopmentPath);
+            using var profile = new ProfileReader(path);
 
             // WHEN
-            bool isDevelopment = profile.ReadPlatformValue(AndroidSettingsClass, "m_Development") != 0;
+            bool isDevelopment = profile.ReadPlatformValue(settingsClass, "m_Development") != 0;
 
             // THEN
-            Assert.That(isDevelopment, Is.True, "The development profile must produce a development build.");
+            Assert.That(isDevelopment, Is.True, $"{path} is a development profile and must produce a development build.");
         }
 
         [Test]
@@ -94,16 +98,40 @@ namespace GooGalaxy.Tests.EditMode.Build
         }
 
         [Test]
-        public void ConnectProfiler_AndroidDevelopment_IsTrue()
+        public void BuildAppBundle_AndroidDevelopment_IsFalse()
         {
             // GIVEN
             using var profile = new ProfileReader(AndroidDevelopmentPath);
 
             // WHEN
-            bool connectsProfiler = profile.ReadPlatformValue(AndroidSettingsClass, "m_ConnectProfiler") != 0;
+            bool buildsBundle = profile.ReadPlatformValue(AndroidSettingsClass, "m_BuildAppBundle") != 0;
 
             // THEN
-            Assert.That(connectsProfiler, Is.True, "The development profile must autoconnect the profiler.");
+            Assert.That(
+                buildsBundle,
+                Is.False,
+                "Android-Development builds an App Bundle — PR CI uploads it as an installable APK for testers, and an App Bundle cannot be sideloaded; turn Build App Bundle off in the profile."
+            );
+        }
+
+        [TestCase(AndroidReleasePath, AndroidSettingsClass)]
+        [TestCase(IosReleasePath, IosSettingsClass)]
+        [TestCase(AndroidDevelopmentPath, AndroidSettingsClass)]
+        [TestCase(IosDevelopmentPath, IosSettingsClass)]
+        public void ConnectProfiler_EveryProfile_IsFalse(string path, string settingsClass)
+        {
+            // GIVEN
+            using var profile = new ProfileReader(path);
+
+            // WHEN
+            bool connectsProfiler = profile.ReadPlatformValue(settingsClass, "m_ConnectProfiler") != 0;
+
+            // THEN
+            Assert.That(
+                connectsProfiler,
+                Is.False,
+                $"{path} autoconnects the profiler again — CI artifacts would try to reach the runner's IP at startup; local builds add ConnectWithProfiler through npm run unity:build:android. Turn Autoconnect Profiler off in the profile."
+            );
         }
 
         [TestCase(AndroidReleasePath, AndroidSettingsClass)]
@@ -120,13 +148,15 @@ namespace GooGalaxy.Tests.EditMode.Build
             Assert.That(
                 compression,
                 Is.EqualTo(Lz4HcCompression),
-                $"{path} no longer compresses with LZ4HC (3) — every build that activates this profile grows (the iOS release and both PR builds; the signed Android path does not apply the profile)."
+                $"{path} no longer compresses with LZ4HC (3) — every build that activates this profile grows (the signed iOS release and the iOS release validation export; no Android workflow applies Android-Release). Set Compression Method back to LZ4HC in the profile."
             );
         }
 
         [TestCase(AndroidReleasePath)]
         [TestCase(IosReleasePath)]
-        public void OverrideGlobalSceneList_ReleaseProfile_IsFalse(string path)
+        [TestCase(AndroidDevelopmentPath)]
+        [TestCase(IosDevelopmentPath)]
+        public void OverrideGlobalSceneList_EveryProfile_IsFalse(string path)
         {
             // GIVEN
             using var profile = new ProfileReader(path);
@@ -140,7 +170,9 @@ namespace GooGalaxy.Tests.EditMode.Build
 
         [TestCase(AndroidReleasePath)]
         [TestCase(IosReleasePath)]
-        public void HasScriptingDefines_ReleaseProfile_IsFalse(string path)
+        [TestCase(AndroidDevelopmentPath)]
+        [TestCase(IosDevelopmentPath)]
+        public void HasScriptingDefines_EveryProfile_IsFalse(string path)
         {
             // GIVEN
             using var profile = new ProfileReader(path);
@@ -154,7 +186,9 @@ namespace GooGalaxy.Tests.EditMode.Build
 
         [TestCase(AndroidReleasePath)]
         [TestCase(IosReleasePath)]
-        public void PlayerSettingsYaml_ReleaseProfile_HoldsNoOverrides(string path)
+        [TestCase(AndroidDevelopmentPath)]
+        [TestCase(IosDevelopmentPath)]
+        public void PlayerSettingsYaml_EveryProfile_HoldsNoOverrides(string path)
         {
             // GIVEN
             using var profile = new ProfileReader(path);
